@@ -69,13 +69,18 @@ class P1CandidateAnalyzer:
         validate_record(instrument_config, ANALYZER, "InstrumentConfig")
         configured = instrument_config["instruments"]
         require(len({x["instrument_id"] for x in configured}) == len(configured), "Duplicate instrument IDs")
-        records, seen = [], set()
+        records, seen, origin = [], set(), None
         for window in windows:
             require(len(records) < 1024, "Reference exceeds bounded 1024-window cache")
             self._window(window)
             require(window.input_kind == "uploaded_file", "Only matched digital reference is supported")
             require(not window.input_clipped_fraction and max(abs(x) for x in window.samples) < 1,
                     "Clipped reference is outside candidate envelope")
+            current_origin = (window.session_id, window.analysis_run_id,
+                              window.input_asset_or_device_id, window.clock_id)
+            if origin is None:
+                origin = current_origin
+            require(current_origin == origin, "Reference windows span incompatible input timelines")
             span = (window.sample_start, window.sample_end)
             require(span not in seen, "Ambiguous reference sample spans")
             seen.add(span)
