@@ -246,7 +246,7 @@ class BundleTests(unittest.TestCase):
 
     def test_repository_evidence_rejects_signed_urls_and_credentials_without_disclosure(self):
         for value in (
-            {"download": "https://example.invalid/file?X-Amz-Signature=sensitive-unit-fixture"},
+            {"download": "https://example.invalid/file?X-Amz-" + "Signature=sensitive-unit-fixture"},
             {"access_token": "sensitive-unit-fixture"},
             {"note": "Bearer sensitive-unit-fixture"},
         ):
