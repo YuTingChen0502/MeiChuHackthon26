@@ -184,6 +184,9 @@ def validate_snapshot(snapshot):
         for item in snapshot["perception"]:
             require(item["instrument_id"] not in seen, "Duplicate perception instrument")
             seen.add(item["instrument_id"])
+            if item["numerical_advice_allowed"]:
+                require(item["calibration_status"] == "calibrated" and not item["action_abstained"],
+                        "Numerical advice requires calibrated actionable confidence")
             if item["frame_id"] is not None:
                 require(frame is not None and item["frame_id"] == frame["frame_id"], "Old perception frame")
             if item["state"] in ("detected", "not_heard"):
@@ -193,10 +196,16 @@ def validate_snapshot(snapshot):
                 state = states.get(item["instrument_id"])
                 require(state is not None and state["family"] == item["family"], "Perception instrument mismatch")
                 if item["state"] == "detected":
-                    require(state["activity"] == "active" and not state["confidence"]["abstained"],
-                            "Detected cannot bypass activity/confidence gates")
+                    require(item["activity"] == "active" and item["observability"] == "observable"
+                            and item["validity"] == "valid", "Detected requires valid observable perception")
+                    require(item["family"] not in song["unsupported_families"], "Unsupported family cannot be detected")
                 else:
-                    require(state["activity"] == "inactive", "Not heard requires inactive evidence")
+                    require(item["activity"] == "inactive", "Not heard requires inactive evidence")
+            state = states.get(item["instrument_id"]) if item["frame_id"] is not None else None
+            if state is not None:
+                require(item["calibration_status"] == state["confidence"]["calibration_status"]
+                        and item["action_abstained"] == state["confidence"]["abstained"],
+                        "Perception actionability must match downstream confidence")
     for recommendation in snapshot["recommendations"]:
         require(incident is not None and recommendation["event_id"] == incident["event"]["event_id"],
                 "Recommendation must bind the snapshot incident")

@@ -111,13 +111,22 @@ class LiveReferenceContracts(unittest.TestCase):
                 validate_snapshot(bad)
         instrument = frame['instruments'][0]
         s['perception'] = [dict(instrument_id=instrument['instrument_id'], family=instrument['family'],
-                                state='detected', frame_id=frame['frame_id'], reason_codes=[])]
+                                state='detected', frame_id=frame['frame_id'], reason_codes=[],
+                                activity='active', observability='observable', validity='valid',
+                                calibration_status='uncalibrated', action_abstained=True, numerical_advice_allowed=False)]
         instrument['confidence']['abstained'] = True
         instrument['confidence']['reasons'] = ['test_uncalibrated']
-        with self.assertRaises((ValueError, ValidationError)):
-            validate_snapshot(s)
+        validate_snapshot(s)  # Perception can be detected while PA advice is withheld.
+        for key, value in (('validity', 'invalid'), ('observability', 'unknown'),
+                           ('activity', 'inactive'), ('numerical_advice_allowed', True)):
+            bad = copy.deepcopy(s)
+            bad['perception'][0][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                validate_snapshot(bad)
         s = live_snapshot()
-        s['perception'] = [dict(instrument_id='bass', family='bass', state='detected', frame_id=None, reason_codes=[])]
+        s['perception'] = [dict(instrument_id='bass', family='bass', state='detected', frame_id=None, reason_codes=[],
+                                activity='active', observability='observable', validity='valid',
+                                calibration_status='uncalibrated', action_abstained=True, numerical_advice_allowed=False)]
         with self.assertRaises(ValueError):
             validate_snapshot(s)
 
