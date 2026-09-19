@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "config_id": "cp2-probe-thresholds-v1",
+  "activity_floor_dbfs": -70,
+  "alert_db": 3,
+  "missing_prediction_penalty_db": 12,
+  "status": "predeclared_diagnostic_not_calibrated"
+}
