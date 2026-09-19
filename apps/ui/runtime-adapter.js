@@ -81,17 +81,31 @@ export class RuntimeAdapter {
   }
 
   async setup(values) {
+    const progress = update => values.onProgress?.(update);
+    progress({ stage:'project', status:'running', message:'Creating project…' });
     const project = await this.request('/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:values.project }) });
+    progress({ stage:'project', status:'completed', message:'Project ready.', project_id:project.project_id });
+    progress({ stage:'song', status:'running', message:'Creating song and checking model coverage…' });
     const song = await this.request('/songs', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ project_id:project.project_id, name:values.song, instruments:values.families.map(family => ({ instrument_id:family, family })) }) });
+    progress({ stage:'song', status:'completed', message:'Song ready.', song });
+    progress({ stage:'upload', status:'running', message:'Uploading ideal reference…' });
     const asset = await this.request('/audio-assets', { method:'POST', headers:{'Content-Type':'audio/wav','X-Audio-Filename':values.reference.name}, body:values.reference });
+    progress({ stage:'upload', status:'completed', message:'Reference uploaded.', asset_id:asset.asset_id });
+    progress({ stage:'reference', status:'queued', progress:0, message:'Reference analysis queued.' });
     let job = await this.request(`/songs/${encodeURIComponent(song.song_id)}/reference`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ asset_id:asset.asset_id }) });
+    let polls = 0;
+    progress({ stage:'reference', status:job.status, progress:job.progress, message:'Reference analysis queued.', job_id:job.job_id });
     while (job.status === 'queued' || job.status === 'running') {
-      await new Promise(resolve => setTimeout(resolve, 150));
+      if (polls++ >= (values.maxJobPolls ?? 400)) throw new Error(`Reference analysis timed out (${job.job_id}).`);
+      await new Promise(resolve => setTimeout(resolve, values.jobPollIntervalMs ?? 150));
       job = await this.request(`/jobs/${encodeURIComponent(job.job_id)}`);
+      progress({ stage:'reference', status:job.status, progress:job.progress, error:job.error, message:job.status === 'completed' ? 'Reference analysis completed.' : job.status === 'failed' ? 'Reference analysis failed.' : 'Analyzing reference…', job_id:job.job_id });
     }
     if (job.status !== 'completed') throw new Error(job.error ?? 'Reference preparation failed.');
     const sourceId = values.source === 'uploaded_file' && values.sourceId === 'reference-asset' ? asset.asset_id : values.sourceId;
+    progress({ stage:'session', status:'running', message:`Connecting ${values.source === 'live_microphone' ? 'live microphone' : 'uploaded file'} source…` });
     const snapshot = await this.request('/sessions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ song_id:song.song_id, reference_id:job.reference_id, source:{ input_kind:values.source, input_asset_or_device_id:sourceId }, capture_fingerprint:{ device_id:sourceId, profile_id:values.captureProfile ?? 'ui-request-v1', native_sample_rate_hz:Number(values.requestedSampleRateHz ?? 48000), channels:1, gain_setting:null, enhancements_verified_disabled:null, geometry_id:null, provenance:'unverified' } }) });
+    progress({ stage:'session', status:'completed', message:'Rehearsal session ready.', session_id:snapshot.session_id });
     this.activateSession(snapshot.session_id);
     this.acceptSnapshot(snapshot);
     this.connect(snapshot.session_id, snapshot.event_sequence);
@@ -127,7 +141,12 @@ export class RuntimeAdapter {
       }
       return response;
     } catch (error) {
-      if (generation === this.generation && error.status === 409 && error.payload?.snapshot) this.acceptSnapshot(error.payload.snapshot);
+      if (generation === this.generation && error.status === 409 && error.payload?.snapshot) {
+        this.acceptSnapshot(error.payload.snapshot);
+        if (error.payload.snapshot.state_version !== previousVersion) {
+          try { await this.probeState(command.session_id, generation); } catch { /* keep the authoritative conflict as the reported command failure */ }
+        }
+      }
       throw error;
     }
   }
@@ -151,7 +170,7 @@ export class RuntimeAdapter {
     this.socket = null;
     oldSocket?.close();
     this.stopped = false;
-    this.onConnection(false);
+    this.onConnection(false, 'connecting');
   }
 
   acceptSnapshot(snapshot) {
@@ -174,12 +193,12 @@ export class RuntimeAdapter {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(`${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/events?after_sequence=${cursor}`);
     this.socket = socket;
-    socket.onopen = () => { if (this.socket === socket) { this.onConnection(true); this.onStatus('Connected to local Runtime event stream.'); } };
+    socket.onopen = () => { if (this.socket === socket) { this.onConnection(true, 'active'); this.onStatus('Connected to local Runtime event stream.'); } };
     socket.onmessage = event => this.handleEvent(sessionId, JSON.parse(event.data), generation);
     socket.onerror = () => this.onStatus('Runtime event stream unavailable; corrective controls are gated.');
     socket.onclose = () => {
       if (this.socket !== socket || generation !== this.generation) return;
-      this.onConnection(false);
+      this.onConnection(false, 'disconnected');
       this.onStatus('Runtime event stream disconnected; corrective controls are gated.');
       if (!this.stopped) this.reconnectTimer = setTimeout(() => this.recover(sessionId, generation), 500);
     };
@@ -200,6 +219,7 @@ export class RuntimeAdapter {
 
   async recover(sessionId, generation = this.generation) {
     try {
+      this.onConnection(false, 'connecting');
       await this.refresh(sessionId, generation);
       if (sessionId !== this.activeSessionId || generation !== this.generation) return;
       await this.probeState(sessionId, generation);
@@ -207,7 +227,7 @@ export class RuntimeAdapter {
       this.connect(sessionId, this.cursor);
       this.onStatus('Runtime event stream reconnected from an authoritative snapshot.');
     } catch {
-      this.onConnection(false);
+      this.onConnection(false, 'disconnected');
       this.onStatus('Runtime reconnect failed; corrective controls remain gated.');
       if (!this.stopped && generation === this.generation) this.reconnectTimer = setTimeout(() => this.recover(sessionId, generation), 1000);
     }
@@ -217,5 +237,6 @@ export class RuntimeAdapter {
     this.stopped = true;
     clearTimeout(this.reconnectTimer);
     this.socket?.close();
+    this.onConnection(false, 'disconnected');
   }
 }
