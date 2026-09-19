@@ -44,11 +44,17 @@ test('setup follows the frozen L2 API order', () => {
 });
 test('derived fixture frames only contain declared families and correct profile bindings', async () => {
   const fixtures = JSON.parse(await readFile(new URL('../../contracts/examples/pa_shared_v1.json', import.meta.url)));
-  for (const snapshot of [fixtureScenario(fixtures), fixtureRehearsal(fixtures)]) {
+  const live = fixtureScenario(fixtures);
+  for (const snapshot of [live, fixtureRehearsal(fixtures)]) {
     const declared = new Set(snapshot.song.configured_families);
     assert.deepEqual(new Set(snapshot.latest_frame.instruments.map(item => item.instrument_id)), declared);
     assert.equal(snapshot.latest_frame.session_id, snapshot.session_id);
     assert.equal(snapshot.latest_frame.reference_id, snapshot.active_reference.reference_id);
     assert.equal(snapshot.latest_frame.baseline_id, snapshot.active_baseline?.baseline_id ?? null);
   }
+  const guitar = live.latest_frame.instruments.find(item => item.instrument_id === 'guitar');
+  const bass = live.latest_frame.instruments.find(item => item.instrument_id === 'bass');
+  assert.deepEqual(guitar.confidence.prediction_interval_db, [2.6, 5.6]);
+  assert.equal(bass.confidence.probability_event, 'normal_within_envelope');
+  assert.equal(live.recommendations[0].suggested_step_db, -2);
 });
