@@ -15,12 +15,12 @@ class FrameBuilder:
         self.anomaly_threshold_db = anomaly_threshold_db
 
     @staticmethod
-    def _confidence(*, abstained: bool, reasons: list[str], value: float | None) -> dict:
-        calibrated = not abstained
+    def _confidence(*, abstained: bool, reasons: list[str], value: float | None, example_only: bool) -> dict:
+        calibrated = example_only and not abstained
         return {
             "record_type": "ConfidenceState",
             "schema_version": "1.0",
-            "calibration_status": "calibrated" if calibrated else "out_of_envelope",
+            "calibration_status": "uncalibrated" if not example_only else "calibrated" if calibrated else "out_of_envelope",
             "calibration_id": "fake-simulated-calibration-v1" if calibrated else None,
             "probability_event": (
                 "normal_within_envelope"
@@ -73,11 +73,14 @@ class FrameBuilder:
             instrument_id = measurement["instrument_id"]
             activity = measurement["activity"]
             reasons = list(measurement["reason_codes"])
+            if not evidence["example_only"]:
+                reasons.append("empirical_calibration_unavailable")
             if measurement["validity"] == "valid" and not measurement["uncertainty_features"]:
                 reasons.append("uncalibrated_uncertainty")
             reasons.extend(reason for reason in gate_reasons if reason not in reasons)
             if measurement["validity"] == "valid" and not identifiable:
                 reasons.append("insufficient_stable_anchors")
+            reasons = list(dict.fromkeys(reasons))
             abstained = bool(reasons)
             if activity == "inactive":
                 status = "inactive"
@@ -108,7 +111,7 @@ class FrameBuilder:
                 "balance_deviation_db": balance,
                 "status": status,
                 "confidence": self._confidence(
-                    abstained=abstained, reasons=reasons, value=balance
+                    abstained=abstained, reasons=reasons, value=balance, example_only=evidence["example_only"]
                 ),
                 "tone": None,
             }
@@ -143,7 +146,7 @@ class FrameBuilder:
             "reference_id": evidence["target"]["reference"]["reference_id"],
             "quality": quality,
             "observed_mix_level_delta_db": None,
-            "common_mode_gain_db": common_mode if not gate_reasons and identifiable else None,
+            "common_mode_gain_db": common_mode if evidence["example_only"] and not gate_reasons and identifiable else None,
             "identifiability_assumption": (
                 "majority_active_sources_unchanged" if identifiable else "unresolved"
             ),

@@ -1,0 +1,913 @@
+{
+  "git_commit": "b95ce4f55d1211e620376b192e8d87d40737340c",
+  "git_dirty": false,
+  "source_hashes": {
+    "core\\audio\\inputs.py": "3635a324d226e34431718c74af09e3ea94347e77ffcebd4b7054b9490ae56497",
+    "core\\audio\\native.py": "a7fdf4fe9f446cbd78872f8a4aae87f42b0a7d46e96b51c8cb73b3badadf2d0a",
+    "core\\audio\\pipeline.py": "d9dd3530bb0fc3239b80d9e75c2a8f43657b0e7960b79a8e0b5b182772808dd3",
+    "core\\audio\\types.py": "af0f9394a1dcf00c3fc8811ae8dc47f910e25a7cf49707bdaeac9452d8fec5d0",
+    "core\\audio\\__init__.py": "357a2ccc31779d909b812eb16e5fc72e116ed988cb0083b805e12a960490b37c",
+    "core\\runtime\\deviation.py": "3b31d05809015db1149c7dc807d3097b3f376cd1b045d76c4184439003ff9c10",
+    "core\\runtime\\fake_analyzer.py": "8d508c5170ee5abf2968333742030ce3480345d287633bc9e473f1fe43310c67",
+    "core\\runtime\\quality.py": "ee5ae49fec5808702dc3f0691393a01ad05379d77c49d3e67641fc0c626b8240",
+    "core\\runtime\\real_analyzer.py": "6aa80309433825da589c40197b8c0be8ed893babe635b99698768ae4448f31ae",
+    "core\\runtime\\worker.py": "f26af29525ae20871e73a3d6a95282295028e2b4f407c6aca8254661459a091d",
+    "core\\runtime\\__init__.py": "372a67459b009074432db9c10d821211e658ff84375c6d4cf4336dcfe7817d69",
+    "core\\profiles\\baselines.py": "ad772cc56b85fbd32d63b087f2de4cccc9ad60a9a58e57cfb22081237b417fe9",
+    "core\\profiles\\references.py": "1175522ba2346a0e9525d1f4c849adba31a2a513975c0f24ceae42e5f659aa87",
+    "core\\profiles\\__init__.py": "c7d589d9c4987cf76401777c6e69535edfccaff8b77c99541a6fdbab45afdc31",
+    "roles\\pa\\policy.py": "c90f04f0623855dcff8d12fd2d487bf023f111a43b4cf9fcf530ef53066dd18e",
+    "roles\\pa\\session.py": "aedbca349628ab1cd3edec4a97b2b36641726263f56cc88e5b97745b2c607cfa",
+    "roles\\pa\\__init__.py": "ed85bed5724cbff2db92cb0a8b34e03eabc883c78a9718672a8c34363af5db0d",
+    "apps\\api\\commands.py": "aef53bf036f1515dc36d7583e43ffe6029488c5b19d47d46b256ff34f17a903e",
+    "apps\\api\\persistence.py": "f5641d4a4cf98efb300045979b6374c4ad1615d209476af2253e1312ae6740d0",
+    "apps\\api\\service.py": "b54e472b1c1f96e751b906fae05823a411eb8cb9287f432a3b8a6574dff969bd",
+    "apps\\api\\transport.py": "6e89f8006ae234521f047429ae954ae5925ecc7f9a91e6a0902901f60fac1a91",
+    "apps\\api\\__init__.py": "16fdd848eef96070b9ab5912a0f18f26ad3904f8e2ed815d7bda6053e55d133a",
+    "tests\\runtime\\native_probe.py": "af2d29ab3fe06bf5bd1d6a8284572459f6a1c129a5d01a6aa40cb5760527ce67",
+    "tests\\runtime\\sustained_probe.py": "27358a3be92aed5a0469980173ffd5f7c9f11dc9d50c005e70e77b682cb83779",
+    "tests\\runtime\\test_audio_and_state.py": "d9c5623f5d72faf16bf689c9f0765594689ea07124749722ede6704b3ef4a7c3",
+    "tests\\runtime\\test_streaming.py": "d911059b481ad6bcaf0c5990f6e9d30ab7b55d2d09abe1513669a8dee3e6bf9c",
+    "tests\\runtime\\__init__.py": "48e88aa8d56f57f1a82cfc0668bfe601c562d401cc31419bd6d269a6f733e26a"
+  },
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "config": {
+    "duration_s": 1200.0,
+    "rate_hz": 48000,
+    "window_samples": 192000,
+    "hop_samples": 48000,
+    "queue_capacity": 2,
+    "max_age_s": 2,
+    "chunk_samples": 4800,
+    "seed": 0,
+    "pcm_amplitude": 0.05,
+    "noise": "none",
+    "snr_db": null,
+    "model": "continuous-fake-abstaining",
+    "labels": "No instrument/gain labels. Constant mono PCM tests transport and retention only.",
+    "dataset": "Deterministic generated constant PCM; no external assets or train/test split."
+  },
+  "status": "completed",
+  "elapsed_s": 1200.1560000000027,
+  "metrics": {
+    "processed_windows": 1197,
+    "dropped_windows": 0,
+    "stale_windows": 0,
+    "discontinuities": 0,
+    "queue_depth": 0,
+    "max_queue_depth": 1,
+    "processing_p50_ms": 63.00000000192085,
+    "processing_p95_ms": 93.99999999732245,
+    "publication_age_p95_s": 0.125,
+    "error": null
+  },
+  "memory": [
+    {
+      "audio_seconds": 4.0,
+      "rss_bytes": 52449280,
+      "frames": 1,
+      "hashes": 1,
+      "events": 1
+    },
+    {
+      "audio_seconds": 14.0,
+      "rss_bytes": 54153216,
+      "frames": 11,
+      "hashes": 11,
+      "events": 11
+    },
+    {
+      "audio_seconds": 24.0,
+      "rss_bytes": 55058432,
+      "frames": 21,
+      "hashes": 21,
+      "events": 21
+    },
+    {
+      "audio_seconds": 34.0,
+      "rss_bytes": 53563392,
+      "frames": 31,
+      "hashes": 31,
+      "events": 31
+    },
+    {
+      "audio_seconds": 44.0,
+      "rss_bytes": 53882880,
+      "frames": 41,
+      "hashes": 41,
+      "events": 41
+    },
+    {
+      "audio_seconds": 54.0,
+      "rss_bytes": 53882880,
+      "frames": 51,
+      "hashes": 51,
+      "events": 51
+    },
+    {
+      "audio_seconds": 64.0,
+      "rss_bytes": 54136832,
+      "frames": 61,
+      "hashes": 61,
+      "events": 61
+    },
+    {
+      "audio_seconds": 74.0,
+      "rss_bytes": 53936128,
+      "frames": 71,
+      "hashes": 71,
+      "events": 71
+    },
+    {
+      "audio_seconds": 84.0,
+      "rss_bytes": 54128640,
+      "frames": 81,
+      "hashes": 81,
+      "events": 81
+    },
+    {
+      "audio_seconds": 94.0,
+      "rss_bytes": 53972992,
+      "frames": 91,
+      "hashes": 91,
+      "events": 91
+    },
+    {
+      "audio_seconds": 104.0,
+      "rss_bytes": 54263808,
+      "frames": 101,
+      "hashes": 101,
+      "events": 101
+    },
+    {
+      "audio_seconds": 114.0,
+      "rss_bytes": 54472704,
+      "frames": 111,
+      "hashes": 111,
+      "events": 111
+    },
+    {
+      "audio_seconds": 124.0,
+      "rss_bytes": 54792192,
+      "frames": 121,
+      "hashes": 121,
+      "events": 121
+    },
+    {
+      "audio_seconds": 134.0,
+      "rss_bytes": 54833152,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 144.0,
+      "rss_bytes": 55062528,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 154.0,
+      "rss_bytes": 55013376,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 164.0,
+      "rss_bytes": 54468608,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 174.0,
+      "rss_bytes": 55144448,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 184.0,
+      "rss_bytes": 54648832,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 194.0,
+      "rss_bytes": 55398400,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 204.0,
+      "rss_bytes": 55275520,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 214.0,
+      "rss_bytes": 55107584,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 224.0,
+      "rss_bytes": 58937344,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 234.0,
+      "rss_bytes": 54906880,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 244.0,
+      "rss_bytes": 55177216,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 254.0,
+      "rss_bytes": 55304192,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 264.0,
+      "rss_bytes": 59219968,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 274.0,
+      "rss_bytes": 54734848,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 284.0,
+      "rss_bytes": 59060224,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 294.0,
+      "rss_bytes": 59084800,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 304.0,
+      "rss_bytes": 59236352,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 314.0,
+      "rss_bytes": 59994112,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 324.0,
+      "rss_bytes": 59973632,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 334.0,
+      "rss_bytes": 59867136,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 344.0,
+      "rss_bytes": 59494400,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 354.0,
+      "rss_bytes": 59904000,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 364.0,
+      "rss_bytes": 59936768,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 374.0,
+      "rss_bytes": 60014592,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 384.0,
+      "rss_bytes": 59326464,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 394.0,
+      "rss_bytes": 59965440,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 404.0,
+      "rss_bytes": 58990592,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 414.0,
+      "rss_bytes": 58953728,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 424.0,
+      "rss_bytes": 59351040,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 434.0,
+      "rss_bytes": 59441152,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 444.0,
+      "rss_bytes": 59363328,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 454.0,
+      "rss_bytes": 55324672,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 464.0,
+      "rss_bytes": 59559936,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 474.0,
+      "rss_bytes": 59658240,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 484.0,
+      "rss_bytes": 59310080,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 494.0,
+      "rss_bytes": 59273216,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 504.0,
+      "rss_bytes": 58703872,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 514.0,
+      "rss_bytes": 60055552,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 524.0,
+      "rss_bytes": 59269120,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 534.0,
+      "rss_bytes": 59346944,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 544.0,
+      "rss_bytes": 59629568,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 554.0,
+      "rss_bytes": 59207680,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 564.0,
+      "rss_bytes": 60018688,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 574.0,
+      "rss_bytes": 59543552,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 584.0,
+      "rss_bytes": 60043264,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 594.0,
+      "rss_bytes": 60166144,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 604.0,
+      "rss_bytes": 55615488,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 614.0,
+      "rss_bytes": 59883520,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 624.0,
+      "rss_bytes": 59850752,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 634.0,
+      "rss_bytes": 60059648,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 644.0,
+      "rss_bytes": 59297792,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 654.0,
+      "rss_bytes": 59318272,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 664.0,
+      "rss_bytes": 59904000,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 674.0,
+      "rss_bytes": 60907520,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 684.0,
+      "rss_bytes": 60186624,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 694.0,
+      "rss_bytes": 60059648,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 704.0,
+      "rss_bytes": 60243968,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 714.0,
+      "rss_bytes": 59940864,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 724.0,
+      "rss_bytes": 60006400,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 734.0,
+      "rss_bytes": 59752448,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 744.0,
+      "rss_bytes": 59781120,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 754.0,
+      "rss_bytes": 56516608,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 764.0,
+      "rss_bytes": 60637184,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 774.0,
+      "rss_bytes": 60149760,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 784.0,
+      "rss_bytes": 60108800,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 794.0,
+      "rss_bytes": 60383232,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 804.0,
+      "rss_bytes": 60170240,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 814.0,
+      "rss_bytes": 60256256,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 824.0,
+      "rss_bytes": 58855424,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 834.0,
+      "rss_bytes": 59547648,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 844.0,
+      "rss_bytes": 59330560,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 854.0,
+      "rss_bytes": 59383808,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 864.0,
+      "rss_bytes": 59539456,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 874.0,
+      "rss_bytes": 59953152,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 884.0,
+      "rss_bytes": 56008704,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 894.0,
+      "rss_bytes": 60542976,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 904.0,
+      "rss_bytes": 60395520,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 914.0,
+      "rss_bytes": 60424192,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 924.0,
+      "rss_bytes": 60284928,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 934.0,
+      "rss_bytes": 60014592,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 944.0,
+      "rss_bytes": 60743680,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 954.0,
+      "rss_bytes": 59846656,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 964.0,
+      "rss_bytes": 60293120,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 974.0,
+      "rss_bytes": 60461056,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 984.0,
+      "rss_bytes": 59961344,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 994.0,
+      "rss_bytes": 60121088,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1004.0,
+      "rss_bytes": 60387328,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1014.0,
+      "rss_bytes": 60153856,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1024.0,
+      "rss_bytes": 61018112,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1034.0,
+      "rss_bytes": 59432960,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1044.0,
+      "rss_bytes": 60268544,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1054.0,
+      "rss_bytes": 60751872,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1064.0,
+      "rss_bytes": 60178432,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1074.0,
+      "rss_bytes": 61259776,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1084.0,
+      "rss_bytes": 61435904,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1094.0,
+      "rss_bytes": 60243968,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1104.0,
+      "rss_bytes": 61116416,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1114.0,
+      "rss_bytes": 61276160,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1124.0,
+      "rss_bytes": 61345792,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1134.0,
+      "rss_bytes": 62590976,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1144.0,
+      "rss_bytes": 60813312,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1154.0,
+      "rss_bytes": 61546496,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1164.0,
+      "rss_bytes": 61624320,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1174.0,
+      "rss_bytes": 60465152,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1184.0,
+      "rss_bytes": 59809792,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 1194.0,
+      "rss_bytes": 61431808,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    }
+  ],
+  "final_buffers": {
+    "frames": 128,
+    "hashes": 128,
+    "events": 128
+  },
+  "claims": "Local synthetic paced runtime only; not native microphone, PN54, calibration or ML accuracy evidence."
+}

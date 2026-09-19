@@ -43,6 +43,12 @@ class SQLiteRuntimeStore:
                     response TEXT NOT NULL,
                     PRIMARY KEY (session_id, idempotency_key)
                 );
+                CREATE TABLE IF NOT EXISTS session_audit (
+                    session_id TEXT NOT NULL,
+                    audit_index INTEGER NOT NULL,
+                    payload TEXT NOT NULL,
+                    PRIMARY KEY (session_id, audit_index)
+                );
                 CREATE TABLE IF NOT EXISTS baselines (
                     baseline_id TEXT NOT NULL,
                     version INTEGER NOT NULL,
@@ -76,6 +82,24 @@ class SQLiteRuntimeStore:
                 (profile["baseline_id"], profile["version"], encoded),
             )
 
+    @staticmethod
+    def _persist_audit(connection, state):
+        for index, record in enumerate(state.get("audit_records", []), 1):
+            audit_index = record.get("audit_index", index)
+            encoded = _encode(record)
+            row = connection.execute("SELECT payload FROM session_audit WHERE session_id=? AND audit_index=?",
+                                     (state["session_id"], audit_index)).fetchone()
+            if row is not None and row[0] != encoded:
+                raise ValueError("immutable audit record changed")
+            connection.execute("INSERT OR IGNORE INTO session_audit VALUES(?,?,?)",
+                               (state["session_id"], audit_index, encoded))
+
+    def load_audit(self, session_id):
+        with self.lock, closing(self._connect()) as connection:
+            rows = connection.execute("SELECT payload FROM session_audit WHERE session_id=? ORDER BY audit_index",
+                                      (session_id,)).fetchall()
+        return [_decode(row[0]) for row in rows]
+
     def load_runtime_state(self) -> dict | None:
         with self.lock, closing(self._connect()) as connection:
             row = connection.execute(
@@ -107,6 +131,7 @@ class SQLiteRuntimeStore:
                 (session_state["session_id"], _encode(session_state)),
             )
             self._persist_baseline(connection, session_state)
+            self._persist_audit(connection, session_state)
             connection.commit()
 
     def save_session(self, state: dict) -> None:
@@ -118,6 +143,7 @@ class SQLiteRuntimeStore:
                 (state["session_id"], _encode(state)),
             )
             self._persist_baseline(connection, state)
+            self._persist_audit(connection, state)
             connection.commit()
 
     def load_sessions(self) -> list[dict]:
@@ -166,6 +192,7 @@ class SQLiteRuntimeStore:
                 (session_id, _encode(session_state)),
             )
             self._persist_baseline(connection, session_state)
+            self._persist_audit(connection, session_state)
             connection.commit()
 
 

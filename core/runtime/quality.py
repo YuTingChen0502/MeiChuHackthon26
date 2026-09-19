@@ -3,6 +3,18 @@
 from __future__ import annotations
 
 
+def pcm_clipped_fraction(samples) -> float:
+    """Conservative digital-rail gate including PCM16's positive full-scale value.
+
+    PCM16 +32767 decodes below 1.0; testing only abs(x) >= 1 misses its rail.
+    This is a transport quality guard, not a measurement of analog clipping.
+    """
+    if not samples:
+        raise ValueError("clipping requires a nonempty PCM span")
+    rail = 32767 / 32768
+    return sum(abs(value) >= rail for value in samples) / len(samples)
+
+
 def quality_state(
     *,
     clipped_fraction: float = 0.0,

@@ -170,7 +170,7 @@ async def session_events(websocket: WebSocket):
         return
     session_id = websocket.path_params["session_id"]
     try:
-        _, snapshot = _api(websocket).get_session(session_id)
+        _, snapshot = await asyncio.to_thread(_api(websocket).get_session, session_id)
     except APIError:
         await websocket.close(code=4404, reason="unknown_session")
         return
@@ -189,7 +189,7 @@ async def session_events(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            _, batch = _api(websocket).connect_events(session_id, after_sequence=cursor)
+            _, batch = await asyncio.to_thread(_api(websocket).connect_events, session_id, after_sequence=cursor)
             for event in batch["events"]:
                 await websocket.send_json(event)
                 cursor = event["event_sequence"]
@@ -235,16 +235,10 @@ def create_app(
                     str(Path(tempfile.gettempdir()) / "pa-controller-runtime"),
                 )
             )
-            devices = {
-                value.strip()
-                for value in os.environ.get("PA_AUDIO_DEVICE_IDS", "").split(",")
-                if value.strip()
-            }
             application.state.runtime_api = RuntimeAPI(
                 storage_dir=storage,
                 window_size_samples=int(os.environ.get("PA_WINDOW_SIZE_SAMPLES", "192000")),
                 hop_size_samples=int(os.environ.get("PA_HOP_SIZE_SAMPLES", "48000")),
-                available_audio_devices=devices,
             )
         origins = os.environ.get("PA_ALLOWED_ORIGINS")
         application.state.allowed_origins = (
@@ -254,6 +248,7 @@ def create_app(
         )
         application.state.background_tasks = set()
         yield
+        await asyncio.to_thread(application.state.runtime_api.close)
         if application.state.background_tasks:
             await asyncio.gather(*application.state.background_tasks, return_exceptions=True)
 

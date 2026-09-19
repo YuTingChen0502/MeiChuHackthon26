@@ -49,14 +49,15 @@ class FakeInstrumentAnalyzer:
         }
 
     def prepare_reference(self, windows, instrument_config: dict) -> dict:
-        material = list(windows)
-        if not material:
+        iterator = iter(windows)
+        first = next(iterator, None)
+        if first is None:
             raise ValueError("reference preparation requires at least one audio window")
         return {
             "model_specific_context_asset": (
-                f"fake-simulated-reference-context:{material[0].analysis_run_id}"
+                f"fake-simulated-reference-context:{first.analysis_run_id}"
             ),
-            "window_count": len(material),
+            "window_count": 1 + sum(1 for _ in iterator),
             "example_only": True,
         }
 
@@ -150,3 +151,13 @@ class FakeInstrumentAnalyzer:
 
     def close(self) -> None:
         self.closed = True
+
+
+class ContinuousFakeInstrumentAnalyzer(FakeInstrumentAnalyzer):
+    """Unscripted acquisition yields explicit simulated abstention, never invented levels."""
+    def analyze(self, window, context):
+        if not self._specs:
+            self.queue(FakeEvidenceSpec(invalid_reasons={
+                item["instrument_id"]: "no_scripted_evidence"
+                for item in context["instrument_config"]["instruments"]}))
+        return super().analyze(window, context)

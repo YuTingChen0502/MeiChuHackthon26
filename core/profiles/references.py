@@ -31,10 +31,8 @@ class ReferenceBuilder:
         instrument_config: dict,
         source_asset_hash: str | None = None,
     ) -> dict:
-        windows = list(
-            self.pipeline.iter_windows(
-                audio_input, session_id=session_id, analysis_run_id=analysis_run_id
-            )
+        windows = self.pipeline.iter_windows(
+            audio_input, session_id=session_id, analysis_run_id=analysis_run_id
         )
         prepared = self.analyzer.prepare_reference(windows, instrument_config)
         duration_s = len(audio_input.samples) / audio_input.sample_rate_hz
@@ -42,11 +40,17 @@ class ReferenceBuilder:
             {
                 "instrument_id": item["instrument_id"],
                 "valid_active_seconds": duration_s,
-                "qualified_nonoverlap_windows": len(windows),
+                "qualified_nonoverlap_windows": len(audio_input.samples) // self.pipeline.window_size_samples,
                 "status": "adequate",
             }
             for item in instrument_config["instruments"]
         ]
+        example_only = self.analyzer.capabilities()["example_only"]
+        if not example_only:
+            # Configuration is not evidence that each source is active. Await the
+            # approved reference coverage/calibration bundle before claiming coverage.
+            for item in coverage:
+                item.update(valid_active_seconds=0.0, qualified_nonoverlap_windows=0, status="insufficient")
         model = self.analyzer.capabilities()["model"]
         profile = {
             "record_type": "ReferenceProfile",
@@ -62,7 +66,7 @@ class ReferenceBuilder:
             "coverage": coverage,
             "context_policy": "fixed_target_with_comparability_gate",
             "model_specific_context_asset": prepared["model_specific_context_asset"],
-            "limitations": ["Simulated fake-analyzer reference; example only."],
+            "limitations": ["Simulated fake-analyzer reference; example only."] if example_only else ["Per-source reference coverage is unvalidated."],
             "comparison_regime": "matched_excerpt",
         }
         validate_record(profile, PUBLIC, "ReferenceProfile")
