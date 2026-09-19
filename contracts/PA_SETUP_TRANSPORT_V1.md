@@ -1,5 +1,11 @@
 # PA setup and local transport V1
 
+**2026-09-20 amendment:** new product setup uses `workflow_policy=live_reference_v1`
+and enters Live against the uploaded reference, with optional source/fingerprint
+resolved by Runtime. Logical microphones and same-session switching follow
+[the Lead freeze](../docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md).
+The rehearsal setup described below applies only to the retained legacy policy.
+
 Lead decision: approved for implementation on 2026-09-19. This supplements L2 and
 `PA_SHARED_INTERFACES_V1.md`; it does not change existing public/session/analyzer
 record meanings. Runtime commit reviewed: `78a362ea184ec3f5302c0cef271c16a06299d316`.

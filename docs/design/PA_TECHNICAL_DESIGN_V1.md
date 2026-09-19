@@ -1,4 +1,10 @@
 # AI Performance Controller — PA Module
+
+> User-authorized amendment, 2026-09-20: the new product workflow is Live-only,
+> reference-targeted, with logical microphone selection and in-session switching.
+> [The shared freeze](../implementation/LIVE_REFERENCE_MIC_FREEZE.md) supersedes
+> conflicting rehearsal/baseline/source-immutability rules below for this policy.
+> Existing measurement, evidence and confidence gates remain unchanged.
 ## Technical Implementation Design V1
 
 **Date:** 2026-09-19  

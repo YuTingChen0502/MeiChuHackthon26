@@ -1,5 +1,13 @@
 # Repository Guardrails
 
+## Approved workflow amendment (2026-09-20)
+
+The user explicitly replaced public rehearsal/baseline workflow with Live against
+the uploaded reference and hot-swappable logical microphones. Follow
+`docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md` for `live_reference_v1`.
+Conflicting rehearsal/acceptance rules below apply only to retained legacy policy;
+measurement, confidence/abstention, ownership and competition rules are unchanged.
+
 These rules apply to the entire repository. If requirements conflict, stop and ask the project Lead; do not silently reinterpret scope or contracts.
 
 ## Authority

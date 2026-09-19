@@ -564,26 +564,6 @@
               }
             }
           }
-        },
-        {
-          "if": {
-            "properties": {
-              "observation_purpose": {
-                "const": "live"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "target": {
-                "properties": {
-                  "target_kind": {
-                    "const": "baseline"
-                  }
-                }
-              }
-            }
-          }
         }
       ]
     },
