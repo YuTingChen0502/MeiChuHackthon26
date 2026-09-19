@@ -4,11 +4,11 @@
   "current_decision": "docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md; inspected origin/main95fa5fe; existing Runtime/UI owners only",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "7f884e6",
-  "latest_integration_commit": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
+  "latest_integration_commit": "872ea07d74cf970e3003cf3dd8d6e9968760dde1",
   "lanes": {
     "ML": {
-      "commit": "795f179bde8bbae9b3e25b8a591e2d25735ddfde",
-      "status": "CHECKPOINT_ACCEPTED; merged df62ce9; raw bass candidate-only adapter, full226+34 validation passed",
+      "commit": "8e6922cd3070be001b50841d5023b687621796c1",
+      "status": "CHECKPOINT_ACCEPTED; merged872ea07;51 analyzer tests independently pass incl actual six-source file/mic replay parity; physical native/Live UI acceptance pending",
       "go_no_go": "NARROW matched-digital bass engineering candidate only; production NO_GO",
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
@@ -40,6 +40,9 @@
     }
   ],
   "events": {
+    "ML/LIVE_MIC_P1_COMPAT/8e6922cd3070be001b50841d5023b687621796c1": "Accepted/integrated872ea07; actual model parity replay is not physical capture evidence",
+    "UI/LIVE_PERCEPTION/fe368c0675ec4cea561511b24e7669bb81947a1c": "Corrections requested: stale perception wording and current source status precedence over historical switch result",
+    "CP2-UI/CORRECTION_COMPLETE/3697860689718452ac808f0a100b13db29cbbbc7": "Focused review underway; actual new-policy Runtime integration pending",
     "LEAD/REALTIME_MIC_CONTRACT/perception-actionability-v1": "User requires actual P1 physical microphone execution. Independent raw perception and calibrated actionability frozen; physical Windows candidate+Live UI acceptance pending, no Fake substitution",
     "LEAD/CONTRACT_FREEZE/live-reference-mic-v1": "User-authorized live/reference policy, logical mic inventory, source switch, capture and perception snapshot;33 shared tests plus canonical regression passed; Windows/Linux sustained acceptance remains pending",
     "UI/DEMO_WORKFLOW_READY/291780c409722b52c8c5bb195bd98f97f0ff93d1": "Preserved on existing clean UI branch; new user Live-only decision supersedes legacy rehearsal UX; do not merge wholesale",
