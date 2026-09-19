@@ -294,6 +294,21 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "workflow_policy": {
+          "enum": [
+            "legacy_baseline_v1",
+            "live_reference_v1"
+          ]
+        },
+        "capture": {
+          "$ref": "urn:pa-controller:session-wire:1.0#/$defs/CaptureStatus"
+        },
+        "perception": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:session-wire:1.0#/$defs/InstrumentPerception"
+          }
         }
       },
       "required": [
@@ -316,7 +331,35 @@
         "latest_verification",
         "suspension_reasons"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "workflow_policy"
+            ],
+            "properties": {
+              "workflow_policy": {
+                "const": "live_reference_v1"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "capture",
+              "perception"
+            ],
+            "properties": {
+              "session_mode": {
+                "const": "live"
+              },
+              "active_baseline": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "SelectedInterval": {
       "type": "object",
@@ -413,7 +456,8 @@
             "pause",
             "resume",
             "stop",
-            "start_live"
+            "start_live",
+            "switch_microphone"
           ]
         },
         "payload": {
@@ -598,6 +642,31 @@
               "additionalProperties": false
             }
           }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "switch_microphone"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "microphone_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "expected_source_generation": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "microphone_id",
+                "expected_source_generation"
+              ],
+              "additionalProperties": false
+            }
+          }
         }
       ]
     },
@@ -770,6 +839,199 @@
         "event_sequence",
         "state_version",
         "payload"
+      ],
+      "additionalProperties": false
+    },
+    "LogicalMicrophone": {
+      "type": "object",
+      "properties": {
+        "microphone_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "is_default": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "selection_kind": {
+          "enum": [
+            "system_default",
+            "logical_group",
+            "endpoint"
+          ]
+        },
+        "grouping": {
+          "enum": [
+            "system_route",
+            "verified_identity",
+            "name_heuristic",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "microphone_id",
+        "name",
+        "is_default",
+        "selection_kind",
+        "grouping"
+      ],
+      "additionalProperties": false
+    },
+    "CaptureStatus": {
+      "type": "object",
+      "properties": {
+        "requested_microphone_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "state": {
+          "enum": [
+            "starting",
+            "listening",
+            "active",
+            "switching",
+            "paused",
+            "stopped",
+            "unavailable"
+          ]
+        },
+        "source_generation": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "logical_microphone_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "native_device_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "analysis_run_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "frame_fresh": {
+          "type": "boolean"
+        },
+        "timestamp_mode": {
+          "enum": [
+            "unknown",
+            "sample_count",
+            "adc_sample_count"
+          ]
+        },
+        "operation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "switch_result": {
+          "enum": [
+            "none",
+            "pending",
+            "applied",
+            "rolled_back",
+            "failed"
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "requested_microphone_id",
+        "state",
+        "source_generation",
+        "logical_microphone_id",
+        "name",
+        "native_device_id",
+        "clock_id",
+        "analysis_run_id",
+        "frame_fresh",
+        "timestamp_mode",
+        "operation_id",
+        "switch_result",
+        "reason_codes"
+      ],
+      "additionalProperties": false
+    },
+    "InstrumentPerception": {
+      "type": "object",
+      "properties": {
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "enum": [
+            "listening",
+            "detected",
+            "not_heard",
+            "uncertain",
+            "unsupported"
+          ]
+        },
+        "frame_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "instrument_id",
+        "family",
+        "state",
+        "frame_id",
+        "reason_codes"
       ],
       "additionalProperties": false
     }

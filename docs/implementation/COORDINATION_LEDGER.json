@@ -1,6 +1,7 @@
 {
-  "milestone": "FINAL_MVP_PRODUCT_INTEGRATION",
-  "status": "MVP_CANDIDATE_ENGINEERING_INTEGRATION_COMPLETE",
+  "milestone": "LIVE_REFERENCE_HOTSWAP_CORRECTION",
+  "status": "SHARED_CONTRACT_FROZEN_IMPLEMENTATION_AND_PHYSICAL_ACCEPTANCE_PENDING",
+  "current_decision": "docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md; inspected origin/main95fa5fe; existing Runtime/UI owners only",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "7f884e6",
   "latest_integration_commit": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
@@ -20,7 +21,7 @@
       "status": "CHECKPOINT_ACCEPTED; Harmonix production presentation merged f4d8718; Runtime/API/evidence behavior preserved"
     }
   },
-  "pending_reviews": [],
+  "pending_reviews": ["Runtime ADC fallback5cea661; worker reports243Python/44UI and Windows60s+reopen physical evidence; not yet accepted or integrated"],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -39,6 +40,9 @@
     }
   ],
   "events": {
+    "LEAD/CONTRACT_FREEZE/live-reference-mic-v1": "User-authorized live/reference policy, logical mic inventory, source switch, capture and perception snapshot;33 shared tests plus canonical regression passed; Windows/Linux sustained acceptance remains pending",
+    "UI/DEMO_WORKFLOW_READY/291780c409722b52c8c5bb195bd98f97f0ff93d1": "Preserved on existing clean UI branch; new user Live-only decision supersedes legacy rehearsal UX; do not merge wholesale",
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/5cea661afdbf2760ecfc590fa339c25e4b7f25ca": "Recorded for focused review; independent ADC correction; worker awaiting shared commit before public integration",
     "CP2-ML/CHECKPOINT_COMMIT/096238a0ce5068d4e9a14971a3f66f7152d0bd11": "accepted and merged; follow-up correction integrated",
     "CP2-ML/CORRECTION_COMPLETE/1477275744f40faff95386986185d9e87d259622": "bounded accepted reference coverage reviewed and merged",
     "CP2-ML/CORRECTION_COMPLETE/a3a4695316d0bb5c33559df716b94b053434c6f1": "accepted; analyzer30 and release audit passed on main31c98c1",

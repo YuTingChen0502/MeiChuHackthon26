@@ -117,7 +117,10 @@ def validate_snapshot(snapshot):
     if baseline is not None:
         require(reference is not None and baseline["reference_id"] == reference["reference_id"],
                 "Baseline/reference mismatch")
-    if snapshot["session_mode"] == "live":
+    live_reference = snapshot.get("workflow_policy") == "live_reference_v1"
+    if live_reference:
+        require(reference is not None and baseline is None, "Live reference policy requires reference without baseline")
+    elif snapshot["session_mode"] == "live":
         require(baseline is not None, "Live requires an accepted baseline")
     workflow = song["workflow_state"]
     if workflow in ("LIVE_MONITORING", "LIVE_ANOMALY", "VERIFY_RECOVERY"):
@@ -127,6 +130,8 @@ def validate_snapshot(snapshot):
     incident = snapshot["incident"]
     if incident is not None:
         event, target = incident["event"], incident["target"]
+        if live_reference:
+            require(target["target_kind"] == "reference", "Live reference incident cannot target baseline")
         require(event["session_id"] == snapshot["session_id"], "Incident session mismatch")
         require(target["reference"] == reference_binding(reference), "Incident reference mismatch")
         require(event["reference_id"] == target["reference"]["reference_id"], "Event reference mismatch")
@@ -136,6 +141,8 @@ def validate_snapshot(snapshot):
                 "Event baseline mismatch")
     adjustment = snapshot["adjustment"]
     if adjustment is not None:
+        if live_reference:
+            require(adjustment["target"]["target_kind"] == "reference", "Live reference adjustment cannot target baseline")
         require(adjustment["clock_id"] == snapshot["source"]["clock_id"], "Adjustment clock mismatch")
         if adjustment["event"] is not None:
             current_event = event_binding(incident)
@@ -158,6 +165,38 @@ def validate_snapshot(snapshot):
     if frame is not None:
         _span(frame)
         require(frame["session_id"] == snapshot["session_id"], "Frame session mismatch")
+    if live_reference:
+        capture = snapshot["capture"]
+        require(capture["clock_id"] == snapshot["source"]["clock_id"], "Capture clock mismatch")
+        if capture["state"] in ("switching", "starting", "paused", "stopped", "unavailable"):
+            require(not capture["frame_fresh"], "Inactive capture cannot claim a fresh frame")
+        if capture["frame_fresh"]:
+            require(frame is not None, "Fresh frame flag requires a frame")
+        if frame is not None:
+            require(frame["baseline_id"] is None and frame["baseline_version"] is None,
+                    "Live reference frame cannot bind a baseline")
+            require(frame["reference_id"] == reference["reference_id"], "Frame reference mismatch")
+            for key in ("clock_id", "input_kind", "input_asset_or_device_id"):
+                require(frame[key] == snapshot["source"][key], f"Old source frame: {key}")
+            require(frame["analysis_run_id"] == capture["analysis_run_id"], "Old source frame: run")
+        seen = set()
+        states = {item["instrument_id"]: item for item in frame["instruments"]} if frame else {}
+        for item in snapshot["perception"]:
+            require(item["instrument_id"] not in seen, "Duplicate perception instrument")
+            seen.add(item["instrument_id"])
+            if item["frame_id"] is not None:
+                require(frame is not None and item["frame_id"] == frame["frame_id"], "Old perception frame")
+            if item["state"] in ("detected", "not_heard"):
+                require(capture["frame_fresh"] and item["frame_id"] is not None, "Perception requires fresh evidence")
+                require(not frame["quality"]["stale"] and not frame["quality"]["dropout"],
+                        "Stale/dropout audio cannot establish perception")
+                state = states.get(item["instrument_id"])
+                require(state is not None and state["family"] == item["family"], "Perception instrument mismatch")
+                if item["state"] == "detected":
+                    require(state["activity"] == "active" and not state["confidence"]["abstained"],
+                            "Detected cannot bypass activity/confidence gates")
+                else:
+                    require(state["activity"] == "inactive", "Not heard requires inactive evidence")
     for recommendation in snapshot["recommendations"]:
         require(incident is not None and recommendation["event_id"] == incident["event"]["event_id"],
                 "Recommendation must bind the snapshot incident")
@@ -176,6 +215,10 @@ This helper does not authorize an action or mutate session/baseline state.
     require(command["reference"] == reference_binding(snapshot["active_reference"]), "Stale reference")
     require(command["baseline"] == baseline_binding(snapshot["active_baseline"]), "Stale baseline")
     require(command["event"] == event_binding(snapshot["incident"]), "Stale incident")
+    if command["action"] == "switch_microphone":
+        require(snapshot.get("workflow_policy") == "live_reference_v1", "Switch requires live reference policy")
+        require(command["payload"]["expected_source_generation"] == snapshot["capture"]["source_generation"],
+                "Stale source generation")
     if command["action"] == "accept_baseline":
         _span(command["payload"]["interval"])
         require(command["payload"]["interval"]["clock_id"] == snapshot["source"]["clock_id"],

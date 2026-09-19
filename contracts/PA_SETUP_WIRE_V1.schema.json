@@ -4,16 +4,39 @@
   "title": "PA Setup Wire Contract V1",
   "description": "Endpoint-specific request/response definitions. Validate via the named $defs entry. Transport and migration details: PA_SETUP_TRANSPORT_V1.md.",
   "oneOf": [
-    { "$ref": "#/$defs/CreateProjectRequest" },
-    { "$ref": "#/$defs/ProjectResponse" },
-    { "$ref": "#/$defs/CreateSongRequest" },
-    { "$ref": "#/$defs/SongSetupResponse" },
-    { "$ref": "#/$defs/AudioAssetResponse" },
-    { "$ref": "#/$defs/StartReferenceRequest" },
-    { "$ref": "#/$defs/ReferenceJob" },
-    { "$ref": "#/$defs/CreateSessionRequest" },
-    { "$ref": "#/$defs/CreateSessionResponse" },
-    { "$ref": "#/$defs/SetupError" }
+    {
+      "$ref": "#/$defs/CreateProjectRequest"
+    },
+    {
+      "$ref": "#/$defs/ProjectResponse"
+    },
+    {
+      "$ref": "#/$defs/CreateSongRequest"
+    },
+    {
+      "$ref": "#/$defs/SongSetupResponse"
+    },
+    {
+      "$ref": "#/$defs/AudioAssetResponse"
+    },
+    {
+      "$ref": "#/$defs/StartReferenceRequest"
+    },
+    {
+      "$ref": "#/$defs/ReferenceJob"
+    },
+    {
+      "$ref": "#/$defs/CreateSessionRequest"
+    },
+    {
+      "$ref": "#/$defs/CreateSessionResponse"
+    },
+    {
+      "$ref": "#/$defs/SetupError"
+    },
+    {
+      "$ref": "#/$defs/AudioDevicesResponse"
+    }
   ],
   "$defs": {
     "CreateProjectRequest": {
@@ -331,15 +354,40 @@
         },
         "capture_fingerprint": {
           "$ref": "urn:pa-controller:contracts:1.0#/$defs/CaptureFingerprint"
+        },
+        "workflow_policy": {
+          "enum": [
+            "legacy_baseline_v1",
+            "live_reference_v1"
+          ]
         }
       },
       "required": [
         "song_id",
-        "reference_id",
-        "source",
-        "capture_fingerprint"
+        "reference_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "workflow_policy"
+            ],
+            "properties": {
+              "workflow_policy": {
+                "const": "live_reference_v1"
+              }
+            }
+          },
+          "then": {},
+          "else": {
+            "required": [
+              "source",
+              "capture_fingerprint"
+            ]
+          }
+        }
+      ]
     },
     "CreateSessionResponse": {
       "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionSnapshot"
@@ -353,6 +401,45 @@
       },
       "required": [
         "error"
+      ],
+      "additionalProperties": false
+    },
+    "AudioDevicesResponse": {
+      "type": "object",
+      "properties": {
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "discovery_status": {
+          "enum": [
+            "available",
+            "no_input_devices",
+            "native_backend_unavailable",
+            "injected_example_only"
+          ]
+        },
+        "microphones": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:session-wire:1.0#/$defs/LogicalMicrophone"
+          }
+        },
+        "default_microphone_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "devices",
+        "discovery_status",
+        "microphones",
+        "default_microphone_id"
       ],
       "additionalProperties": false
     }
