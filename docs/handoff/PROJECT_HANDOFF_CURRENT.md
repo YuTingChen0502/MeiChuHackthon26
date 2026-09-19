@@ -1,3 +1,17 @@
+# Latest acceptance corrections — 2026-09-20
+
+Reference preparation and microphone selection corrections are integrated at
+`252d8221fc85b8ca0537ef456e6359158d5b7513`: advancing long-job progress,
+durable input failure, bounded progress-sensitive UI polling, and friendly native
+input labels/default metadata. Full239Python/43UI/Fake smoke/release checks PASS.
+The actual long-file browser retest completed and reached native rehearsal; one
+transient driver error recovered via Resume with fresh frames. See
+`docs/implementation/ACCEPTANCE_REFERENCE_MIC_FIX.md` for evidence and exact scope.
+Restart existing Runtime processes and hard-refresh their UI to load the fixes.
+All model/capture-provenance gates described below remain unchanged.
+
+---
+
 # Current MVP candidate integration — 2026-09-20
 
 **Engineering candidate integration is complete.** Accepted ML
