@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { balanceText, buildProbePlan, canMutate, commandFor, confidenceText, deviceDiscoveryText, displayStatus, expandInstrumentConfiguration, fixtureLiveSnapshot, fixtureRehearsal, fixtureScenario, freshness, liveViewState, receiptIsFresh, restoreProbeView, runtimeErrorText, runtimeInstrumentGroups, runtimeReadiness, sessionCondition, SETUP_ENDPOINT_PLAN } from '../../apps/ui/app.js';
+import { balanceText, buildProbePlan, calibrationDraftFor, canMutate, commandFor, commandGuard, confidenceText, currentRecoveredVerification, deviceDiscoveryText, displayStatus, expandInstrumentConfiguration, fixtureLiveSnapshot, fixtureRehearsal, fixtureScenario, freshness, liveEvidenceState, liveViewState, normalizeCatalogRows, receiptIsFresh, restoreConfiguredInstances, restoreProbeView, runtimeErrorText, runtimeInstrumentGroups, runtimeReadiness, sessionCondition, SETUP_ENDPOINT_PLAN, verificationPresentation } from '../../apps/ui/app.js';
 import { RuntimeAdapter } from '../../apps/ui/runtime-adapter.js';
 
 const confidence = (abstained = false) => ({ abstained, reasons: abstained ? ['noise_overlap'] : [], calibration_status: abstained ? 'out_of_envelope' : 'calibrated', probability: abstained ? null : .9, magnitude_tolerance_db: 1.5 });
@@ -29,6 +29,15 @@ test('fixture mode never permits mutations and expired local receipt freshness i
   assert.equal(receiptIsFresh({ quality:{ stale:false } }, 1_000, true, 7_000), false);
   assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 6_000), true);
   assert.equal(receiptIsFresh({ quality:{ stale:true } }, 2_000, true, 2_100), false);
+});
+test('real command guards reject disconnected or stale actionable state but retain safe stop', () => {
+  const snapshot = { session_id:'s-1', latest_frame:{ quality:{ stale:false } } };
+  const adapter = { snapshot:{ session_id:'s-1' } };
+  assert.equal(commandGuard('start_adjustment','authoritative',adapter,snapshot,false,1_000,1_100).allowed, false);
+  assert.equal(commandGuard('recheck','authoritative',adapter,snapshot,true,1_000,7_000).allowed, false);
+  assert.equal(commandGuard('accept_baseline','authoritative',adapter,snapshot,true,1_000,2_000).allowed, true);
+  assert.equal(commandGuard('stop','authoritative',adapter,snapshot,false,null,99_000).allowed, true);
+  assert.equal(commandGuard('pause','fixture',adapter,snapshot,true,1_000,1_100).allowed, false);
 });
 test('renders tolerance as probability semantics and only renders an actual interval', () => {
   const withoutInterval = confidence(false);
@@ -81,6 +90,34 @@ test('authoritative anomaly outranks unrelated abstention in the Live presentati
     latest_frame:{ instruments:[active('too_loud', 3.5), active('unknown', null, confidence(true))] },
   };
   assert.equal(liveViewState(snapshot), 'anomaly');
+});
+test('Live never reports normal or recovered without fresh observable and relevant evidence', () => {
+  const base = { song:{ workflow_state:'LIVE_MONITORING' }, incident_state:'none', latest_verification:null, active_baseline:{baseline_id:'b-1',version:1} };
+  assert.equal(liveViewState(base), 'waiting');
+  const stale = { ...base, latest_frame:{ quality:{stale:true}, instruments:[active('normal',0)] } };
+  assert.equal(liveViewState(stale), 'unavailable');
+  const unsupported = { ...base, latest_frame:{ quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'}, instruments:[{...active('unsupported',null,confidence(true)),activity:'unsupported'}] } };
+  assert.equal(liveEvidenceState(unsupported), 'unsupported');
+  assert.equal(liveViewState(unsupported), 'abstain');
+  const oldRecovered = { ...base, incident_state:'active', song:{workflow_state:'LIVE_ANOMALY'}, incident:{event:{event_id:'new'}}, latest_frame:{ quality:{stale:false}, instruments:[active('too_loud',3)] }, latest_verification:{outcome:'recovered',event_id:'old',baseline_id:'b-1',baseline_version:1} };
+  assert.equal(liveViewState(oldRecovered), 'anomaly');
+  assert.equal(currentRecoveredVerification(oldRecovered), false);
+  const normal = { ...base, latest_frame:{ quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'}, instruments:[active('normal',0)] } };
+  assert.equal(liveViewState(normal,1_000,true,7_000), 'unavailable');
+  const pending = { ...normal, latest_frame:{...normal.latest_frame,instruments:[active('too_loud',2.5)]} };
+  assert.equal(liveViewState(pending), 'monitoring');
+  const resolvedButUnknown = { ...normal, incident_state:'resolved', incident:{event:{event_id:'e-1'}}, latest_frame:{...normal.latest_frame,instruments:[{...active('unknown',null,confidence(true)),activity:'unknown'}]}, latest_verification:{outcome:'recovered',event_id:'e-1',baseline_id:'b-1',baseline_version:1} };
+  assert.equal(currentRecoveredVerification(resolvedButUnknown), true);
+  assert.equal(liveViewState(resolvedButUnknown), 'abstain');
+});
+test('verification presentation exposes waiting, partial and inconclusive Runtime outcomes', () => {
+  assert.deepEqual(verificationPresentation({adjustment:{adjustment_id:'a-2',completed_monotonic_s:4},latest_verification:{adjustment_id:'a-1'}}).state, 'waiting');
+  const partial = verificationPresentation({adjustment:null,latest_verification:{outcome:'partial',source_observable:true,before_balance_db:4,after_balance_db:2,reason_codes:[]}});
+  assert.equal(partial.title, 'Partially improved');
+  assert.match(partial.detail, /Before 4.0 dB · after 2.0 dB/);
+  const inconclusive = verificationPresentation({adjustment:null,latest_verification:{outcome:'inconclusive',source_observable:false,before_balance_db:4,after_balance_db:null,reason_codes:['source_not_observable']}});
+  assert.equal(inconclusive.title, 'Verification inconclusive');
+  assert.match(inconclusive.detail, /source_not_observable/);
 });
 test('renders Runtime, model, and native discovery truth without promoting simulation', () => {
   assert.equal(runtimeReadiness({ provider:'fake-simulated', model_bundle_id:'fake-v1', example_only:true }), 'Simulation / fixture analyzer · fake-simulated · fake-v1');
@@ -244,6 +281,21 @@ test('fixture Live renders normal, anomaly, abstain, and recovered only as examp
   assert.equal(transitioned.song.name, 'Configured locally');
   assert.equal(transitioned.active_baseline.baseline_id, rehearsal.active_baseline.baseline_id);
 });
+test('calibration drafts survive fresh-frame rerenders for the same session', () => {
+  const first = { session_id:'s-1', latest_frame:{ analysis_run_id:'run-1', sample_rate_hz:48000, sample_start:10, sample_end:20 } };
+  const draft = calibrationDraftFor(first);
+  draft.acceptedBy = 'mei';
+  draft.start = '12';
+  const later = { session_id:'s-1', latest_frame:{ analysis_run_id:'run-2', sample_rate_hz:48000, sample_start:30, sample_end:40 } };
+  assert.equal(calibrationDraftFor(later,draft), draft);
+  assert.equal(calibrationDraftFor({...later,session_id:'s-2'},draft).run, 'run-2');
+});
+test('catalog recovery tolerates corruption and preserves validated rehearsal counts', () => {
+  assert.deepEqual(normalizeCatalogRows({broken:true}), []);
+  const rows = normalizeCatalogRows([{session_id:'s-1',song_name:'Song',reference_id:7,baseline_id:null,instrument_counts:{guitar:2,evil:0,'bad family':3,bass:99}}]);
+  assert.deepEqual(rows[0].instrument_counts, {guitar:2});
+  assert.deepEqual(restoreConfiguredInstances(['guitar','drums'],rows[0]).map(x=>x.instrument_id), ['guitar-1','guitar-2','drums-1']);
+});
 test('runtime adapter loads a selected authoritative session and gates controls until its socket connects', async () => {
   const originalFetch = globalThis.fetch;
   const originalWebSocket = globalThis.WebSocket;
@@ -308,6 +360,40 @@ test('setup requests native capture without claiming browser-verified physical p
     globalThis.location = originalLocation;
   }
 });
+test('replacement session reuses retained song/reference/source but never copies physical provenance claims', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWebSocket = globalThis.WebSocket;
+  const originalLocation = globalThis.location;
+  const requests = [];
+  globalThis.fetch = async (url, options={}) => {
+    requests.push([url,options]);
+    return {ok:true,status:200,json:async()=>({session_id:'replacement-1',state_version:0,event_sequence:0})};
+  };
+  globalThis.location = {protocol:'http:',host:'127.0.0.1:8000'};
+  globalThis.WebSocket = class { constructor(url){this.url=url;} close(){} };
+  try{
+    const adapter = new RuntimeAdapter({onSnapshot(){},onStatus(){}});
+    adapter.activateSession('old-1');
+    await adapter.recreateSession({
+      song:{song_id:'song-1'},active_reference:{reference_id:'reference-1'},
+      source:{input_kind:'live_microphone',input_asset_or_device_id:'portaudio:1'},
+      active_baseline:{capture:{profile_id:'capture-1',native_sample_rate_hz:44100,provenance:'physical_verified',gain_setting:'fixed',geometry_id:'secret-geometry'}},
+    });
+    const body=JSON.parse(requests[0][1].body);
+    assert.equal(body.song_id,'song-1');
+    assert.equal(body.reference_id,'reference-1');
+    assert.deepEqual(body.source,{input_kind:'live_microphone',input_asset_or_device_id:'portaudio:1'});
+    assert.equal(body.capture_fingerprint.profile_id,'capture-1');
+    assert.equal(body.capture_fingerprint.native_sample_rate_hz,44100);
+    assert.equal(body.capture_fingerprint.provenance,'unverified');
+    assert.equal(body.capture_fingerprint.gain_setting,null);
+    assert.equal(body.capture_fingerprint.geometry_id,null);
+  }finally{
+    globalThis.fetch=originalFetch;
+    globalThis.WebSocket=originalWebSocket;
+    globalThis.location=originalLocation;
+  }
+});
 test('isolated demo player has no Runtime transport or filename rendering path', async () => {
   const player = await readFile(new URL('../../demo_player/player.js', import.meta.url), 'utf8');
   assert.doesNotMatch(player, /\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/);
@@ -318,6 +404,10 @@ test('UI source contains no client-side audio inference or automatic mixer execu
   const source = await readFile(new URL('../../apps/ui/app.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /AudioContext|AnalyserNode|getUserMedia|automatic_execution\s*:\s*true/);
   assert.match(source, /Runtime remains the only evidence source/);
+  assert.match(source, /function button\(text,fn,cls='primary',type='button'\)/);
+  assert.match(source, /runtimeAdapter\?\.stopEvents\(\)/);
+  assert.match(source, /operationStatus=text/);
+  assert.match(source, /appendOperationNotice\(root\);restoreCalibrationFocus/);
 });
 test('responsive card grid supports variable counts without fixed four-card selectors', async () => {
   const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');

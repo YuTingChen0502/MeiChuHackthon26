@@ -86,6 +86,22 @@ export class RuntimeAdapter {
     return snapshot;
   }
 
+  async recreateSession(previous) {
+    if (!previous?.song?.song_id || !previous?.active_reference?.reference_id) throw new Error('Replacement session requires retained song and reference identities.');
+    const priorCapture = previous.active_baseline?.capture;
+    const sourceId = previous.source.input_asset_or_device_id;
+    const snapshot = await this.request('/sessions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      song_id:previous.song.song_id,
+      reference_id:previous.active_reference.reference_id,
+      source:{ input_kind:previous.source.input_kind, input_asset_or_device_id:sourceId },
+      capture_fingerprint:{ device_id:sourceId, profile_id:priorCapture?.profile_id ?? 'ui-replacement-v1', native_sample_rate_hz:Number(priorCapture?.native_sample_rate_hz ?? 48000), channels:1, gain_setting:null, enhancements_verified_disabled:null, geometry_id:null, provenance:'unverified' },
+    }) });
+    this.activateSession(snapshot.session_id);
+    this.acceptSnapshot(snapshot);
+    this.connect(snapshot.session_id, snapshot.event_sequence);
+    return snapshot;
+  }
+
   async command(command) {
     if (command.session_id !== this.activeSessionId) throw new Error('Command does not target the active session.');
     const generation = this.generation;
