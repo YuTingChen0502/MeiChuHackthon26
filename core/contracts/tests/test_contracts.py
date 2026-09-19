@@ -110,7 +110,8 @@ def python_shape(annotation):
 
 class SharedContractTests(unittest.TestCase):
     def test_all_schemas_are_valid_draft_2020_12(self):
-        self.assertEqual({PUBLIC, ANALYZER, WIRE, SETUP}, set(SCHEMAS))
+        self.assertEqual({PUBLIC, ANALYZER, WIRE, SETUP,
+                          "urn:pa-controller:guided-rehearsal:1.0"}, set(SCHEMAS))
         for schema in SCHEMAS.values():
             Draft202012Validator.check_schema(schema)
 

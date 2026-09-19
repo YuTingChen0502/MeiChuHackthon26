@@ -1,0 +1,179 @@
+{
+  "git_commit": "e619c7da2eaff68114b4ce7889edb8ef48835fe2",
+  "git_dirty": false,
+  "source_hashes": {
+    "core\\audio\\inputs.py": "3635a324d226e34431718c74af09e3ea94347e77ffcebd4b7054b9490ae56497",
+    "core\\audio\\native.py": "a7fdf4fe9f446cbd78872f8a4aae87f42b0a7d46e96b51c8cb73b3badadf2d0a",
+    "core\\audio\\pipeline.py": "d9dd3530bb0fc3239b80d9e75c2a8f43657b0e7960b79a8e0b5b182772808dd3",
+    "core\\audio\\types.py": "af0f9394a1dcf00c3fc8811ae8dc47f910e25a7cf49707bdaeac9452d8fec5d0",
+    "core\\audio\\__init__.py": "357a2ccc31779d909b812eb16e5fc72e116ed988cb0083b805e12a960490b37c",
+    "core\\runtime\\deviation.py": "3b31d05809015db1149c7dc807d3097b3f376cd1b045d76c4184439003ff9c10",
+    "core\\runtime\\fake_analyzer.py": "8d508c5170ee5abf2968333742030ce3480345d287633bc9e473f1fe43310c67",
+    "core\\runtime\\quality.py": "a3a27bcdfaf303d54c4a9a09e2e8a96eece6b52a7cacd61d93f722d3641d7f2c",
+    "core\\runtime\\real_analyzer.py": "6aa80309433825da589c40197b8c0be8ed893babe635b99698768ae4448f31ae",
+    "core\\runtime\\worker.py": "1e8a431fed45d325a44a2eb3950770b07cb5e0116c142814d6d12bba7415cecb",
+    "core\\runtime\\__init__.py": "372a67459b009074432db9c10d821211e658ff84375c6d4cf4336dcfe7817d69",
+    "core\\profiles\\baselines.py": "ad772cc56b85fbd32d63b087f2de4cccc9ad60a9a58e57cfb22081237b417fe9",
+    "core\\profiles\\references.py": "1175522ba2346a0e9525d1f4c849adba31a2a513975c0f24ceae42e5f659aa87",
+    "core\\profiles\\__init__.py": "c7d589d9c4987cf76401777c6e69535edfccaff8b77c99541a6fdbab45afdc31",
+    "roles\\pa\\policy.py": "c90f04f0623855dcff8d12fd2d487bf023f111a43b4cf9fcf530ef53066dd18e",
+    "roles\\pa\\session.py": "3276adc96825eefc6af8b04072ed490519a2cb1c88634ee6b5a98865efd289fb",
+    "roles\\pa\\__init__.py": "ed85bed5724cbff2db92cb0a8b34e03eabc883c78a9718672a8c34363af5db0d",
+    "apps\\api\\commands.py": "aef53bf036f1515dc36d7583e43ffe6029488c5b19d47d46b256ff34f17a903e",
+    "apps\\api\\persistence.py": "f5641d4a4cf98efb300045979b6374c4ad1615d209476af2253e1312ae6740d0",
+    "apps\\api\\service.py": "a77e97811c74187d28686ec7e209b0ca0f01929753e19b4717530b9203018eb7",
+    "apps\\api\\transport.py": "6e89f8006ae234521f047429ae954ae5925ecc7f9a91e6a0902901f60fac1a91",
+    "apps\\api\\__init__.py": "16fdd848eef96070b9ab5912a0f18f26ad3904f8e2ed815d7bda6053e55d133a",
+    "tests\\runtime\\native_continuity_probe.py": "7af18aa81203db8ac8df4bb9534c50fae85f9a306e971f4acd0b7f75edaa0cd0",
+    "tests\\runtime\\native_probe.py": "af2d29ab3fe06bf5bd1d6a8284572459f6a1c129a5d01a6aa40cb5760527ce67",
+    "tests\\runtime\\sustained_probe.py": "27358a3be92aed5a0469980173ffd5f7c9f11dc9d50c005e70e77b682cb83779",
+    "tests\\runtime\\test_audio_and_state.py": "d9c5623f5d72faf16bf689c9f0765594689ea07124749722ede6704b3ef4a7c3",
+    "tests\\runtime\\test_streaming.py": "457bd125b98a8ec0c491a66e7eb55d3159566f36d42a42d788bd4e83a0d64e04",
+    "tests\\runtime\\__init__.py": "48e88aa8d56f57f1a82cfc0668bfe601c562d401cc31419bd6d269a6f733e26a"
+  },
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "config": {
+    "duration_s": 150.0,
+    "rate_hz": 48000,
+    "window_samples": 192000,
+    "hop_samples": 48000,
+    "queue_capacity": 2,
+    "max_age_s": 2,
+    "chunk_samples": 4800,
+    "seed": 0,
+    "pcm_amplitude": 0.05,
+    "noise": "none",
+    "snr_db": null,
+    "model": "continuous-fake-abstaining",
+    "labels": "No instrument/gain labels. Constant mono PCM tests transport and retention only.",
+    "dataset": "Deterministic generated constant PCM; no external assets or train/test split."
+  },
+  "status": "completed",
+  "elapsed_s": 150.15600000000268,
+  "metrics": {
+    "processed_windows": 147,
+    "dropped_windows": 0,
+    "stale_windows": 0,
+    "discontinuities": 0,
+    "queue_depth": 0,
+    "max_queue_depth": 1,
+    "processing_p50_ms": 46.999999998661224,
+    "processing_p95_ms": 63.00000000192085,
+    "publication_age_p95_s": 0.0940000000045984,
+    "error": null
+  },
+  "memory": [
+    {
+      "audio_seconds": 4.0,
+      "rss_bytes": 53669888,
+      "frames": 1,
+      "hashes": 1,
+      "events": 1
+    },
+    {
+      "audio_seconds": 14.0,
+      "rss_bytes": 55250944,
+      "frames": 11,
+      "hashes": 11,
+      "events": 11
+    },
+    {
+      "audio_seconds": 24.0,
+      "rss_bytes": 55263232,
+      "frames": 21,
+      "hashes": 21,
+      "events": 21
+    },
+    {
+      "audio_seconds": 34.0,
+      "rss_bytes": 55549952,
+      "frames": 31,
+      "hashes": 31,
+      "events": 31
+    },
+    {
+      "audio_seconds": 44.0,
+      "rss_bytes": 54423552,
+      "frames": 41,
+      "hashes": 41,
+      "events": 41
+    },
+    {
+      "audio_seconds": 54.0,
+      "rss_bytes": 54530048,
+      "frames": 51,
+      "hashes": 51,
+      "events": 51
+    },
+    {
+      "audio_seconds": 64.0,
+      "rss_bytes": 54386688,
+      "frames": 61,
+      "hashes": 61,
+      "events": 61
+    },
+    {
+      "audio_seconds": 74.0,
+      "rss_bytes": 54263808,
+      "frames": 71,
+      "hashes": 71,
+      "events": 71
+    },
+    {
+      "audio_seconds": 84.0,
+      "rss_bytes": 54644736,
+      "frames": 81,
+      "hashes": 81,
+      "events": 81
+    },
+    {
+      "audio_seconds": 94.0,
+      "rss_bytes": 54579200,
+      "frames": 91,
+      "hashes": 91,
+      "events": 91
+    },
+    {
+      "audio_seconds": 104.0,
+      "rss_bytes": 55025664,
+      "frames": 101,
+      "hashes": 101,
+      "events": 101
+    },
+    {
+      "audio_seconds": 114.0,
+      "rss_bytes": 54824960,
+      "frames": 111,
+      "hashes": 111,
+      "events": 111
+    },
+    {
+      "audio_seconds": 124.0,
+      "rss_bytes": 55119872,
+      "frames": 121,
+      "hashes": 121,
+      "events": 121
+    },
+    {
+      "audio_seconds": 134.0,
+      "rss_bytes": 55320576,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 144.0,
+      "rss_bytes": 55635968,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    }
+  ],
+  "final_buffers": {
+    "frames": 128,
+    "hashes": 128,
+    "events": 128
+  },
+  "claims": "Local synthetic paced runtime only; not native microphone, PN54, calibration or ML accuracy evidence."
+}

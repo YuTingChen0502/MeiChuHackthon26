@@ -54,6 +54,19 @@ class PersistentAnomalyPolicy:
         if key != self._key:
             self._key = key
             self._frames = []
+        if self._frames:
+            previous = self._frames[-1]
+            start = frame["capture_end_monotonic_s"] - (frame["sample_end"] - frame["sample_start"]) / frame["sample_rate_hz"]
+            previous_end = previous["capture_end_monotonic_s"]
+            tolerance = 1e-8
+            if frame["clock_id"] != previous["clock_id"] or frame["sample_rate_hz"] != previous["sample_rate_hz"]:
+                self.reset()
+                self._key = key
+            elif start < previous_end - tolerance:
+                return None
+            elif start > previous_end + tolerance:
+                self.reset()
+                self._key = key
         self._frames.append(frame)
         if len(self._frames) < self.required_frames:
             return None

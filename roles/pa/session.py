@@ -24,7 +24,7 @@ from core.contracts.validation import (
 )
 from core.profiles.baselines import BaselineStore, build_baseline_profile
 from core.runtime.deviation import FrameBuilder
-from core.runtime.quality import quality_is_usable, quality_state
+from core.runtime.quality import pcm_clipped_fraction, quality_is_usable, quality_state
 
 from .policy import PersistentAnomalyPolicy, recommendation_for
 
@@ -81,6 +81,8 @@ class PASession:
         persistence_frames: int = 2,
         event_retention: int = 128,
         capture_runtime_verified: bool = True,
+        frame_retention: int = 128,
+        capture_profile_enforced: bool = True,
     ) -> None:
         validate_record(reference_profile, PUBLIC, "ReferenceProfile")
         self.session_id = session_id
@@ -89,6 +91,7 @@ class PASession:
         self.source = copy.deepcopy(source)
         self.capture_fingerprint = copy.deepcopy(capture_fingerprint)
         self.capture_runtime_verified = capture_runtime_verified
+        self.capture_profile_enforced = capture_profile_enforced
         self.analyzer = analyzer
         self.baseline_store = baseline_store or BaselineStore()
         self.monotonic_clock = monotonic_clock
@@ -96,6 +99,9 @@ class PASession:
         self.settling_policy_s = settling_policy_s
         self.persistence_frames = persistence_frames
         self.event_retention = event_retention
+        if frame_retention < 1:
+            raise ValueError("frame_retention must be positive")
+        self.frame_retention = frame_retention
         self._lock = RLock()
         self._persistence_callback = None
         model = analyzer.capabilities()["model"]
@@ -131,6 +137,7 @@ class PASession:
         self.suspension_reasons: list[str] = []
         self._events: list[dict] = []
         self._audit_records: list[dict] = []
+        self._audit_total = 0
         self._frames: list[dict] = []
         self._frame_audio_hashes: dict[str, str] = {}
         self._frame_sequence = 0
@@ -220,6 +227,7 @@ class PASession:
             "source": copy.deepcopy(self.source),
             "capture_fingerprint": copy.deepcopy(self.capture_fingerprint),
             "capture_runtime_verified": self.capture_runtime_verified,
+            "capture_profile_enforced": self.capture_profile_enforced,
             "baseline_records": self.baseline_store.records(),
             "execution": copy.deepcopy(self.execution),
             "song": copy.deepcopy(self.song),
@@ -236,6 +244,7 @@ class PASession:
             "suspension_reasons": list(self.suspension_reasons),
             "events": copy.deepcopy(self._events),
             "audit_records": copy.deepcopy(self._audit_records),
+            "audit_total": self._audit_total,
             "frames": copy.deepcopy(self._frames),
             "frame_audio_hashes": dict(self._frame_audio_hashes),
             "frame_sequence": self._frame_sequence,
@@ -249,6 +258,7 @@ class PASession:
             "settling_policy_s": self.settling_policy_s,
             "persistence_frames": self.persistence_frames,
             "event_retention": self.event_retention,
+            "frame_retention": self.frame_retention,
         }
 
     @classmethod
@@ -320,6 +330,9 @@ class PASession:
         self.suspension_reasons = list(state["suspension_reasons"])
         self._events = copy.deepcopy(state["events"])
         self._audit_records = copy.deepcopy(state.get("audit_records", []))
+        for index, record in enumerate(self._audit_records, 1):
+            record.setdefault("audit_index", index)
+        self._audit_total = state.get("audit_total", len(self._audit_records))
         self._frames = copy.deepcopy(state["frames"])
         self._frame_audio_hashes = dict(state["frame_audio_hashes"])
         self._frame_sequence = state["frame_sequence"]
@@ -332,6 +345,8 @@ class PASession:
         self.settling_policy_s = state["settling_policy_s"]
         self.persistence_frames = state["persistence_frames"]
         self.event_retention = state["event_retention"]
+        self.frame_retention = state.get("frame_retention", 128)
+        self.capture_profile_enforced = state.get("capture_profile_enforced", True)
         self._detector = PersistentAnomalyPolicy(required_frames=self.persistence_frames)
         self._detector.restore_state(state.get("detector_state", {}))
         validate_snapshot(self.snapshot())
@@ -340,15 +355,33 @@ class PASession:
     def audit_records(self) -> list[dict]:
         return copy.deepcopy(self._audit_records)
 
-    def _audit(self, kind: str, payload: dict) -> None:
-        self._audit_records.append(
-            {
-                "kind": kind,
-                "state_version": self.state_version,
-                "event_sequence": self.event_sequence,
-                "payload": copy.deepcopy(payload),
-            }
-        )
+    def _audit(self, kind: str, payload: dict, *, evidence_frames=None) -> None:
+        if evidence_frames is None:
+            bound = payload.get("event") or payload
+            ids = bound.get("evidence_frame_ids", [])
+            evidence_frames = [frame for frame in self._frames if frame["frame_id"] in ids]
+        self._audit_total += 1
+        self._audit_records.append(dict(
+            audit_index=self._audit_total, kind=kind, state_version=self.state_version,
+            event_sequence=self.event_sequence, payload=copy.deepcopy(payload),
+            evidence_frames=copy.deepcopy(evidence_frames),
+            audio_hashes={frame["frame_id"]: self._frame_audio_hashes[frame["frame_id"]]
+                          for frame in evidence_frames if frame["frame_id"] in self._frame_audio_hashes}))
+        # Durable APIs archive these immutable records in the same SQLite transaction.
+        # Standalone sessions retain their whole audit until a durable sink is attached.
+        if self._persistence_callback is not None:
+            self._audit_records = self._audit_records[-128:]
+
+    @_persisted
+    def suspend_for_input(self, reason: str) -> None:
+        if self.song["workflow_state"] == "STOPPED":
+            return
+        self.song["workflow_state"] = "SUSPENDED"
+        self.suspension_reasons = [reason]
+        self.recommendations = []
+        self._verification_armed = False
+        self._detector.reset()
+        self._transition()
 
     @_persisted
     def suspend_for_runtime_restart(self) -> None:
@@ -411,6 +444,8 @@ class PASession:
         purpose: str | None = None,
         probe_instrument_id: str | None = None,
         quality: dict | None = None,
+        max_age_s: float | None = None,
+        clock_uncertainty_s: float = 0.0,
     ) -> dict:
         if self.song["workflow_state"] == "STOPPED":
             raise SessionCommandError("session_stopped", "Stopped sessions cannot accept audio.")
@@ -423,22 +458,46 @@ class PASession:
             raise ValueError("window belongs to another session")
         if window.clock_id != self.source["clock_id"]:
             raise ValueError("window clock differs from the session clock")
+        if (window.input_kind != self.source["input_kind"] or
+                window.input_asset_or_device_id != self.source["input_asset_or_device_id"]):
+            raise ValueError("window source differs from the session source")
+        model = self.analyzer.capabilities()["model"]
+        if any(model[key] != self.execution[key] for key in ("model_bundle_id", "frontend_id", "execution_profile_id")):
+            raise ValueError("runtime model/profile changed; create a revalidated session")
+        if self.capture_profile_enforced and window.sample_rate_hz != self.capture_fingerprint["native_sample_rate_hz"]:
+            raise ValueError("capture sample rate changed; revalidate the input profile")
         if purpose is None:
             purpose = "verification" if self._verification_armed else ("live" if self.session_mode == "live" else "rehearsal")
         context = self._context(window, purpose=purpose, probe_instrument_id=probe_instrument_id)
+        begin = self.monotonic_clock()
         evidence = self.analyzer.analyze(window, context)
+        quality = copy.deepcopy(quality or quality_state())
+        # Recheck freshness after inference: a fast capture callback does not make
+        # a slow model result current at publication.
+        if max_age_s is not None and self.monotonic_clock() - window.capture_end_monotonic_s > max_age_s:
+            quality["stale"] = True
+            if "stale_evidence" not in quality["reason_codes"]:
+                quality["reason_codes"].append("stale_evidence")
+        clipped = pcm_clipped_fraction(window.samples)
+        quality["clipped_fraction"] = max(quality["clipped_fraction"], clipped)
+        if not any(window.samples):
+            quality["comparability"] = "weak"
         self._frame_sequence += 1
         frame = self._frame_builder.build(
             context=context,
             evidence=evidence,
-            quality=quality or quality_state(),
+            quality=quality,
             frame_id=f"frame:{self.session_id}:{self._frame_sequence}",
             sequence=self._frame_sequence,
             published_monotonic_s=self.monotonic_clock(),
+            inference_wall_ms=max(0, (self.monotonic_clock() - begin) * 1000),
         )
         self.latest_frame = copy.deepcopy(frame)
         self._frames.append(copy.deepcopy(frame))
         self._frame_audio_hashes[frame["frame_id"]] = self._audio_hash(window)
+        while len(self._frames) > self.frame_retention:
+            retired = self._frames.pop(0)
+            self._frame_audio_hashes.pop(retired["frame_id"], None)
         self._append_event(frame)
 
         if self.song["workflow_state"] == "SUSPENDED":
@@ -451,9 +510,9 @@ class PASession:
             return copy.deepcopy(frame)
         if self._verification_armed and self.adjustment is not None:
             if self.incident is None:
-                self._consider_proactive_recheck(frame, window.start_monotonic_s)
+                self._consider_proactive_recheck(frame, window.start_monotonic_s, clock_uncertainty_s=clock_uncertainty_s)
             else:
-                self._consider_verification(frame, window.start_monotonic_s)
+                self._consider_verification(frame, window.start_monotonic_s, clock_uncertainty_s=clock_uncertainty_s)
             return copy.deepcopy(frame)
         if (
             self.incident is not None
@@ -508,9 +567,9 @@ class PASession:
         self._append_event(event)
         self._append_event(recommendation)
 
-    def _consider_verification(self, frame: dict, window_start_monotonic_s: float) -> None:
+    def _consider_verification(self, frame: dict, window_start_monotonic_s: float, *, clock_uncertainty_s: float = 0.0) -> None:
         cutoff = self.adjustment["verification_not_before_monotonic_s"]
-        if cutoff is None or window_start_monotonic_s < cutoff:
+        if cutoff is None or window_start_monotonic_s - clock_uncertainty_s < cutoff:
             return
         instrument_id = self.incident["event"]["instrument_ids"][0]
         state = next(item for item in frame["instruments"] if item["instrument_id"] == instrument_id)
@@ -575,9 +634,9 @@ class PASession:
         self._transition()
         self._append_event(verification)
 
-    def _consider_proactive_recheck(self, frame: dict, window_start_monotonic_s: float) -> None:
+    def _consider_proactive_recheck(self, frame: dict, window_start_monotonic_s: float, *, clock_uncertainty_s: float = 0.0) -> None:
         cutoff = self.adjustment["verification_not_before_monotonic_s"]
-        if cutoff is None or window_start_monotonic_s < cutoff:
+        if cutoff is None or window_start_monotonic_s - clock_uncertainty_s < cutoff:
             return
         # A proactive rehearsal adjustment has no anomaly event and therefore must
         # not invent a VerificationResult. It still waits for a fully post-cutoff,
@@ -717,7 +776,7 @@ class PASession:
         if not selected or selected[0]["sample_start"] != interval["sample_start"] or selected[-1]["sample_end"] != interval["sample_end"]:
             raise SessionCommandError("invalid_baseline_interval", "Selected interval lacks complete fresh frame coverage.", http_status=422)
         for left, right in zip(selected, selected[1:]):
-            if right["sample_start"] != left["sample_end"]:
+            if right["sample_start"] > left["sample_end"]:
                 raise SessionCommandError("invalid_baseline_interval", "Selected interval crosses a gap.", http_status=422)
         next_version = 1 if self.baseline is None else self.baseline["version"] + 1
         baseline_id = self.baseline["baseline_id"] if self.baseline else f"baseline:{self.session_id}"
@@ -742,7 +801,7 @@ class PASession:
         except ValueError as exc:
             raise SessionCommandError("baseline_quality_rejected", str(exc), http_status=422) from exc
         self.baseline = self.baseline_store.get(baseline_id, next_version)
-        self._audit("baseline_accepted", self.baseline)
+        self._audit("baseline_accepted", self.baseline, evidence_frames=selected)
         self.song["baseline_id"] = baseline_id
         self.song["workflow_state"] = "REHEARSAL"
         self.incident = None
@@ -835,27 +894,29 @@ class PASession:
         self._transition()
 
     @_persisted
+    def _resync_event(self) -> list[dict]:
+        self.event_sequence += 1
+        payload = self.snapshot()
+        event = {
+            "record_type": "SessionEvent", "schema_version": "1.0",
+            "session_id": self.session_id, "event_sequence": self.event_sequence,
+            "state_version": self.state_version, "payload": payload,
+        }
+        validate_event(event)
+        self._events.append(event)
+        self._events = self._events[-self.event_retention:]
+        return [copy.deepcopy(event)]
+
+    @_synchronized
     def events_after(self, after_sequence: int) -> list[dict]:
         if after_sequence < 0:
             raise ValueError("event cursor cannot be negative")
         if self._events and after_sequence < self._events[0]["event_sequence"] - 1:
-            # Retention gap: publish one authoritative snapshot event instead of
-            # silently returning a discontinuous suffix.
-            self.event_sequence += 1
-            payload = self.snapshot()
-            event = {
-                "record_type": "SessionEvent",
-                "schema_version": "1.0",
-                "session_id": self.session_id,
-                "event_sequence": self.event_sequence,
-                "state_version": self.state_version,
-                "payload": payload,
-            }
-            validate_event(event)
-            self._events.append(event)
-            self._events = self._events[-self.event_retention :]
-            return [copy.deepcopy(event)]
+            return self._resync_event()
+        # Ordinary subscriptions are read-only. Only a retention-gap resync mutates
+        # the cursor and requires a durable transaction.
         return [copy.deepcopy(item) for item in self._events if item["event_sequence"] > after_sequence]
+
 
 
 def canonical_command(command: dict) -> str:

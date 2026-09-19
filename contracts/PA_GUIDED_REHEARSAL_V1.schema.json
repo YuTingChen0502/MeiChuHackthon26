@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pa-controller:guided-rehearsal:1.0",
+  "title": "Guided rehearsal companion V1",
+  "oneOf": [
+    {
+      "$ref": "urn:pa-controller:guided-rehearsal:1.0#/$defs/RehearsalProbeCommand"
+    },
+    {
+      "$ref": "urn:pa-controller:guided-rehearsal:1.0#/$defs/RehearsalProbeState"
+    },
+    {
+      "$ref": "urn:pa-controller:guided-rehearsal:1.0#/$defs/RehearsalProbeResponse"
+    }
+  ],
+  "$defs": {
+    "RehearsalProbeCommand": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_state_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reference": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ReferenceBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/BaselineBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/EventBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_type": {
+          "const": "RehearsalProbeCommand"
+        },
+        "mode": {
+          "enum": [
+            "idle",
+            "instrument",
+            "full_band"
+          ]
+        },
+        "instrument_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "session_id",
+        "idempotency_key",
+        "expected_state_version",
+        "reference",
+        "baseline",
+        "event",
+        "record_type",
+        "mode",
+        "instrument_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "instrument"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "instrument_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "instrument_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "RehearsalProbeState": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "RehearsalProbeState"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "idle",
+            "instrument",
+            "full_band"
+          ]
+        },
+        "instrument_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "probe_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "not_before_monotonic_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "session_id",
+        "state_version",
+        "mode",
+        "instrument_id",
+        "probe_id",
+        "not_before_monotonic_s"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "instrument"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "instrument_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "instrument_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "idle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "probe_id": {
+                "type": "null"
+              },
+              "not_before_monotonic_s": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "probe_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "not_before_monotonic_s": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "RehearsalProbeResponse": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "RehearsalProbeResponse"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "command": {
+          "$ref": "urn:pa-controller:session-wire:1.0#/$defs/CommandResponse"
+        },
+        "probe": {
+          "$ref": "urn:pa-controller:guided-rehearsal:1.0#/$defs/RehearsalProbeState"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "command",
+        "probe"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
