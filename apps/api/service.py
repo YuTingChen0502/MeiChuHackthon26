@@ -34,7 +34,7 @@ class APIError(Exception):
         self.code = code
 
 
-def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int]:
+def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int, list[float]]:
     try:
         with wave.open(io.BytesIO(content), "rb") as reader:
             channels = reader.getnchannels()
@@ -55,7 +55,15 @@ def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int]:
     )
     if not mono:
         raise APIError(422, "empty_audio", "Uploaded WAV contains no samples.")
-    return sample_rate, mono, channels
+    # Retain conservative per-1024-frame raw-channel clipping before downmix,
+    # matching native acquisition. Storage grows by blocks, not per PCM sample.
+    block_values = 1024 * channels
+    clipping_blocks = [
+        sum(abs(value) >= 32767/32768 for value in values[start:start+block_values])
+        / len(values[start:start+block_values])
+        for start in range(0, len(values), block_values)
+    ]
+    return sample_rate, mono, channels, clipping_blocks
 
 
 class RuntimeAPI:
@@ -115,6 +123,7 @@ class RuntimeAPI:
         self.assets: dict[str, dict] = {}
         self.jobs: dict[str, dict] = {}
         self.references: dict[str, dict] = {}
+        self.reference_models: dict[str, dict] = {}
         self.sessions: dict[str, PASession] = {}
         self.handlers: dict[str, CommandHandler] = {}
         self._counters = {
@@ -132,6 +141,7 @@ class RuntimeAPI:
             "assets": self.assets,
             "jobs": self.jobs,
             "references": self.references,
+            "reference_models": self.reference_models,
         }
 
     def _save_state(self) -> None:
@@ -155,6 +165,7 @@ class RuntimeAPI:
             self.assets = state["assets"]
             self.jobs = state["jobs"]
             self.references = state["references"]
+            self.reference_models = state.get("reference_models", {})
         interrupted = False
         for job in self.jobs.values():
             if job["status"] in ("queued", "running"):
@@ -313,7 +324,7 @@ class RuntimeAPI:
             raise APIError(422, "empty_upload", "Audio upload is empty.")
         if len(content) > self.max_upload_bytes:
             raise APIError(413, "audio_too_large", "Audio upload exceeds the configured byte limit.")
-        sample_rate, samples, channels = _decode_pcm16_wav(content)
+        sample_rate, samples, channels, clipping_blocks = _decode_pcm16_wav(content)
         duration_s = len(samples) / sample_rate
         if duration_s > self.max_audio_duration_s:
             raise APIError(413, "audio_too_long", "Audio upload exceeds the configured duration limit.")
@@ -326,6 +337,7 @@ class RuntimeAPI:
             "sample_rate_hz": sample_rate,
             "channels": channels,
             "samples": samples,
+            "clipping_blocks": clipping_blocks,
         }
         self._save_state()
         response = {
@@ -379,10 +391,12 @@ class RuntimeAPI:
             clock_id=f"job-clock:{job_id}",
             sample_rate_hz=asset["sample_rate_hz"],
             samples=asset["samples"],
+            clipping_blocks=asset.get("clipping_blocks"),
             origin_monotonic_s=0.0,
         )
         try:
             with self._temporary_analyzer() as analyzer:
+                reference_model = copy.deepcopy(analyzer.capabilities()["model"])
                 profile = ReferenceBuilder(pipeline=self.pipeline, analyzer=analyzer).build(
                     audio_input=audio_input,
                     session_id=f"reference-job:{job_id}",
@@ -398,6 +412,7 @@ class RuntimeAPI:
             self._validate("ReferenceJob", job)
             return 200, dict(job)
         self.references[profile["reference_id"]] = profile
+        self.reference_models[profile["reference_id"]] = reference_model
         if song.get("pending_reference_job_id") == job_id:
             song["reference_id"] = profile["reference_id"]
         job.update(status="completed", progress=1.0, error=None, retryable=False)
@@ -424,8 +439,8 @@ class RuntimeAPI:
         if reference["song_id"] != song["song_id"] or song["reference_id"] != reference_id:
             raise APIError(409, "reference_not_selected", "Reference is not the selected completed revision.")
         model = self.analyzer_capabilities()["model"]
-        if any(reference[key] != model[key] for key in ("model_bundle_id", "frontend_id", "taxonomy_id")):
-            raise APIError(409, "incompatible_reference", "Reanalyze the reference with the active model/frontend/taxonomy.")
+        if self.reference_models.get(reference_id) != model or any(reference[key] != model[key] for key in ("model_bundle_id", "frontend_id", "taxonomy_id")):
+            raise APIError(409, "incompatible_reference", "Reanalyze the reference with the exact active model/frontend/taxonomy/execution/level-scale identity.")
         source = request.get("source")
         capture = copy.deepcopy(request.get("capture_fingerprint"))
         source_id = source["input_asset_or_device_id"]
@@ -535,7 +550,8 @@ class RuntimeAPI:
                 asset = self.assets[source["input_asset_or_device_id"]]
                 audio = FileAudioInput(input_asset_or_device_id=asset["asset_id"],
                     clock_id=source["clock_id"], sample_rate_hz=asset["sample_rate_hz"],
-                    samples=asset["samples"], origin_monotonic_s=clock(),
+                    samples=asset["samples"],
+            clipping_blocks=asset.get("clipping_blocks"), origin_monotonic_s=clock(),
                     chunk_size_samples=min(1024, self.pipeline.hop_size_samples))
             else:
                 audio = NativeMicAudioInput(backend=self._native(),

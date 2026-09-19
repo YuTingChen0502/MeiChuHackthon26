@@ -166,3 +166,20 @@ class ModelLifecycleTests(unittest.TestCase):
                 self.assertIsNot(first,api.workers[sid])
                 self.assertEqual("REHEARSAL",api.get_session(sid)[1]["song"]["workflow_state"])
             finally:api.close()
+
+
+class HostArchiveLoaderTests(unittest.TestCase):
+    def test_archive_allowed_only_for_explicit_host_loader(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive=Path(directory)/"model_bundle.tar.gz"
+            archive.write_bytes(b"host loader validates actual archive")
+            calls=[]
+            def loader(path,**kwargs):
+                calls.append(path)
+                return Tracked()
+            env={"PA_MODEL_BUNDLE":str(archive)}
+            analyzer=runtime_options(environment=env,loader=loader)["analyzer_factory"]()
+            analyzer.close()
+            self.assertEqual([archive],calls)
+            with self.assertRaisesRegex(RuntimeError,"model_bundle_missing"):
+                runtime_options(environment=env)["analyzer_factory"]()

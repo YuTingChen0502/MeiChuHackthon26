@@ -28,7 +28,7 @@ def runtime_options(*, environment=None, registry=None, loader=None):
     def factory():
         if review_error is not None:
             raise RuntimeError("host_review_unavailable") from review_error
-        if not bundle_path or not Path(bundle_path).is_dir():
+        if not bundle_path or not (Path(bundle_path).is_dir() or (loader is not None and Path(bundle_path).is_file())):
             raise RuntimeError("model_bundle_missing")
         selected_loader = loader
         selected_registry = allowed
