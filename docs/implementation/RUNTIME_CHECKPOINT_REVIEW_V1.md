@@ -4,6 +4,33 @@ Reviewed commit: `78a362ea184ec3f5302c0cef271c16a06299d316`.
 Parent freeze: `f22f1e161bb69964765ba58305f7f169950f945c`.
 Date: 2026-09-19. Reviewer: engineering Lead.
 
+## Integration clearance: e143474
+
+Accepted `e143474cd6d3ad1b4f95acbabcc98d848ba6f381` for the Fake-driven Runtime/API
+checkpoint. The Lead reviewed the correction diff and repeated all 51 tests:
+24 shared, 4 Runtime and 23 integration, including actual HTTP/WS behavior.
+Suspended/restarted commands now obey centralized authorization; paused audio cannot
+verify recovery; acceptance and Live promotion cannot erase unresolved adjustments.
+Commands hold the session lock through durable commit/rollback, using the same
+session-then-store lock order as observations. Detector state is restored on rollback.
+The concurrent-reader failure regression withholds the uncommitted version.
+Chunked upload limits, idle WS disconnect handling and the restricted UI static mount
+also have passing regression coverage. These resolve the integration hold below.
+Combined validation after merge resolution passed 70/70 shared, Runtime, integration
+and existing ML tests. The original public-schema SHA-256 is unchanged. Review-document
+conflicts retained main's newer Lead findings; lane implementation required no edits.
+
+Clearance permits UI to connect to the frozen setup/session endpoints. It does not
+claim a completed browser correction loop: UI must consume authoritative responses,
+select qualified baseline intervals and handle reconnect/staleness. The existing
+fixture UI also loads shared example files outside apps/ui; its integration must use
+the API or UI-owned fixtures, not broaden the static mount to expose the repository.
+
+Native microphone acquisition, sustained/overlapping-window performance, measured
+capture validation, fitted confidence and adapted-model integration remain later
+acceptance gates. Environment-listed device IDs and example_only Fake evidence do
+not establish physical capture or ML feasibility. This clearance changes no schema.
+
 ## Correction review: 1ae54f1
 
 Reviewed `1ae54f19426e999d0060b14b3e0316b043aa9cea`. All changes relative to the
