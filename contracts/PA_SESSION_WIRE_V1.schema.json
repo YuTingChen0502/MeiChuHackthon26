@@ -888,7 +888,10 @@
       "type": "object",
       "properties": {
         "requested_microphone_id": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 1
         },
         "state": {
@@ -1024,6 +1027,40 @@
             "minLength": 1
           },
           "uniqueItems": true
+        },
+        "activity": {
+          "enum": [
+            "active",
+            "inactive",
+            "unknown",
+            "unsupported"
+          ]
+        },
+        "observability": {
+          "enum": [
+            "observable",
+            "not_observable",
+            "unknown"
+          ]
+        },
+        "validity": {
+          "enum": [
+            "valid",
+            "invalid"
+          ]
+        },
+        "calibration_status": {
+          "enum": [
+            "calibrated",
+            "uncalibrated",
+            "out_of_envelope"
+          ]
+        },
+        "action_abstained": {
+          "type": "boolean"
+        },
+        "numerical_advice_allowed": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -1031,7 +1068,13 @@
         "family",
         "state",
         "frame_id",
-        "reason_codes"
+        "reason_codes",
+        "activity",
+        "observability",
+        "validity",
+        "calibration_status",
+        "action_abstained",
+        "numerical_advice_allowed"
       ],
       "additionalProperties": false
     }

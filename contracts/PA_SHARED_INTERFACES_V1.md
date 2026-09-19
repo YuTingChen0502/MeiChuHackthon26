@@ -7,6 +7,10 @@ supersedes the live-implies-baseline, immutable-source and raw-endpoint presenta
 rules below for `live_reference_v1`. The older rules remain historical/legacy policy.
 New wire fields and switch command are defined in the session/setup schemas.
 Analyzer quantities, calibrated confidence and abstention meanings are unchanged.
+The urgent amendment in that freeze requires real microphone inference and separates
+valid source perception from PA actionability: detected may be uncalibrated with
+advice withheld. Lack of room validation is not an execution guard. The P1 demo uses
+relative synchronized 44.1 kHz / 4-second spans with 1-second offered hops.
 
 Status: frozen for the first parallel implementation checkpoint, 2026-09-19.
 Owner: engineering Lead. Changes follow the escalation procedure in
