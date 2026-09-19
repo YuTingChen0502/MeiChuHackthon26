@@ -108,6 +108,10 @@ class NativeMicAudioInput:
         self.clock, self.timeout_s = clock, timeout_s
         self.clock_tolerance_s = clock_tolerance_s
         self.max_adc_residual_s = 0.0
+        self.clock_mode = "unanchored"
+        self.adc_packets = 0
+        self.fallback_packets = 0
+        self._last_callback_time = None
         self._queue = queue.Queue(maxsize=queue_capacity)
         self._stop = Event()
         self._stream = None
@@ -126,25 +130,43 @@ class NativeMicAudioInput:
             now = self.clock()
             if frames <= 0 or frames > self.block_size or len(data) != frames * 4 * self.channels:
                 raise ValueError('invalid_native_packet')
-            adc = float(timing.inputBufferAdcTime)
-            current = float(timing.currentTime)
-            if not all(math.isfinite(value) for value in (adc, current, now)) or adc <= 0:
-                raise ValueError('native_adc_clock_unavailable')
-            measured_start = now + adc - current
-            expected_adc = None if self._adc_origin is None else self._adc_origin + self._next_sample / self.sample_rate_hz
+            if not math.isfinite(now):
+                raise ValueError('native_monotonic_clock_unavailable')
+            def timestamp(name):
+                try:
+                    value = float(getattr(timing, name))
+                    return value if math.isfinite(value) and value > 0 else None
+                except (AttributeError, TypeError, ValueError, OverflowError):
+                    return None
+            adc, current = timestamp('inputBufferAdcTime'), timestamp('currentTime')
+            adc_usable = adc is not None and current is not None and adc <= current
+            if adc_usable:
+                self.adc_packets += 1
+            else:
+                self.fallback_packets += 1
+            measured_start = now + adc - current if adc_usable else now - frames / self.sample_rate_hz
+            expected_adc = (None if self._adc_origin is None or not adc_usable else
+                            self._adc_origin + self._next_sample / self.sample_rate_hz)
             residual = 0.0 if expected_adc is None else abs(adc - expected_adc)
             self.max_adc_residual_s = max(self.max_adc_residual_s, residual)
-            # WASAPI/PortAudio callback ADC timestamps can have millisecond jitter.
-            # Sample counts own the timeline; status flags always break continuity,
-            # while gross ADC drift/restart exceeds the declared 50 ms clock budget.
-            gap = bool(status) or residual > self.clock_tolerance_s
+            # Sample counts own each segment. Missing ADC metadata alone is not a
+            # gap. A late fallback callback still marks missing/uncertain continuity;
+            # it must not fill elapsed time with invented samples.
+            late = (not adc_usable and self._last_callback_time is not None and
+                    now - self._last_callback_time > frames / self.sample_rate_hz + self.clock_tolerance_s)
+            gap = bool(status) or residual > self.clock_tolerance_s or late
             if gap:
                 self._next_sample += 1
                 self._origin = self._adc_origin = None
                 self.discontinuities += 1
             if self._origin is None:
                 self._origin = measured_start - self._next_sample / self.sample_rate_hz
+                self.clock_mode = 'adc' if adc_usable else 'monotonic_fallback'
+            # A later usable ADC initializes diagnostics, never moves an established
+            # fallback sample timeline. Existing ADC anchors survive missing metadata.
+            if adc_usable and self._adc_origin is None:
                 self._adc_origin = adc - self._next_sample / self.sample_rate_hz
+            self._last_callback_time = now
             start = self._next_sample
             self._next_sample += frames
             packet = (start, self._origin + self._next_sample / self.sample_rate_hz, bytes(data))

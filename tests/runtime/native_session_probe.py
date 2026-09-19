@@ -42,6 +42,8 @@ def run(device_id, seconds, output, analysis_rate=48000, window_seconds=1, hop_s
                     raise RuntimeError(f"native session did not stream: {current['suspension_reasons']}")
                 runs.append({"metrics":worker.metrics(),"analysis_run_id":current["latest_frame"]["analysis_run_id"],
                     "callback_max_queue":worker.audio_input.max_queue_depth,
+                    "clock_mode":worker.audio_input.clock_mode,"adc_packets":worker.audio_input.adc_packets,
+                    "fallback_packets":worker.audio_input.fallback_packets,
                     "callback_drops":worker.audio_input.dropped_packets,"adc_residual_s":worker.audio_input.max_adc_residual_s,
                     "rss_bytes":memory_bytes(),"all_abstained":all(x["confidence"]["abstained"] for x in current["latest_frame"]["instruments"])})
                 api.post_action(sid,command(api.get_session(sid)[1],f"pause-{iteration}","pause"))

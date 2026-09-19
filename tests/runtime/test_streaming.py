@@ -140,11 +140,16 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual((.125,-.25),third.samples)
         mic.close();stream.close()
 
-    def test_callback_invalid_clock_fails_closed(self):
-        mic=NativeMicAudioInput(backend=None,device_id='m',clock_id='c',sample_rate_hz=10,block_size=2)
+    def test_missing_adc_uses_sample_count_fallback(self):
+        mic=NativeMicAudioInput(backend=None,device_id='mic',clock_id='clock',sample_rate_hz=10,
+            block_size=2,clock=lambda:10)
         mic._callback(struct.pack('=2f',.1,.2),2,SimpleNamespace(inputBufferAdcTime=0,currentTime=1),False)
-        with self.assertRaisesRegex(RuntimeError,'native_adc_clock'):
-            list(mic.chunks())
+        stream=mic.chunks();chunk=next(stream)
+        self.assertEqual((0,2),(chunk.sample_start,chunk.sample_end))
+        self.assertEqual(10,chunk.capture_end_monotonic_s)
+        self.assertEqual('monotonic_fallback',mic.clock_mode)
+        self.assertIsNone(mic.error)
+        mic.close();stream.close()
 
     def test_capture_gap_produces_new_run_and_no_straddling_window(self):
         done=threading.Event();seen=[]
