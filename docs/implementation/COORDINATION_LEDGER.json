@@ -1,23 +1,23 @@
 {
-  "milestone": "MVP_PRE_MODEL_READY",
-  "status": "MVP_PRE_MODEL_READY",
+  "milestone": "FINAL_MVP_PRODUCT_INTEGRATION",
+  "status": "MVP_BASE_READY",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_integration_commit": "af342d89b0504d51af3319061dd8ce7b18527899",
+  "latest_integration_commit": "80f6df0103c3cd436a919b92db9fb82e8e703536",
   "lanes": {
     "ML": {
-      "commit": "fa7068155461e42ece413235347a6bd5f43667ee",
-      "status": "ML_INTEGRATION_READY accepted and integrated with final report",
-      "go_no_go": "NOT_ISSUED",
+      "commit": "d31caa0ba76410658c28074e3c175e2fe46c7705",
+      "status": "candidate adapter in progress in existing worktree; merge new Lead base before checkpoint",
+      "go_no_go": "NARROW matched-digital bass engineering candidate only; production NO_GO",
       "empirical_claim": "No trained artifact or real-audio capability accepted"
     },
     "Runtime": {
-      "commit": "eaf5b73dd6bc398498771ebd38b26b8e8f7e501b",
-      "status": "RUNTIME_PRE_MODEL_READY accepted; final integration54 passed; native and300s evidence verified"
+      "commit": "a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed",
+      "status": "existing native runtime accepted; candidate identity/gates work in progress, preserve dirty owned changes before sync"
     },
     "UI": {
-      "commit": "947dae26f2410023d71f0b4a024e14f5e7e75592",
-      "status": "UI_PRE_MODEL_READY accepted and integrated; final UI34 and whole-main validation passed"
+      "commit": "a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed",
+      "status": "existing UI accepted; clean worktree ready to sync candidate base"
     }
   },
   "pending_reviews": [],
@@ -52,14 +52,16 @@
     "CP2-RUNTIME/CROSS_LANE_REQUEST/e4884bdacf2ab0a17e4ad8cb43a0f38804f78ffb": "ML merge acknowledged; actual-loader validation continuing",
     "CP2-UI/CHECKPOINT_COMMIT/947dae26f2410023d71f0b4a024e14f5e7e75592": "accepted; clean ownership/ancestry verified, UI34 independently passed; merged at6e49fb2",
     "CP2-UI/CORRECTION_COMPLETE/947dae26f2410023d71f0b4a024e14f5e7e75592": "read-only old IAB origin cache diagnosis; fresh origin correct; no source issue",
-    "CP2-RUNTIME/CORRECTION_COMPLETE/eaf5b73dd6bc398498771ebd38b26b8e8f7e501b": "accepted; launcher2 independently passed; merged af342d8; integration54 passed"
+    "CP2-RUNTIME/CORRECTION_COMPLETE/eaf5b73dd6bc398498771ebd38b26b8e8f7e501b": "accepted; launcher2 independently passed; merged af342d8; integration54 passed",
+    "NANO4/CANDIDATE_PUBLICATION/01eaf5ddcc439efe799be61e54589d331c8556c6": "accepted and merged at80f6df0;45 hashes and209Python/34UI/fullFake smoke pass",
+    "CP2-ML/CROSS_LANE_REQUEST/a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed": "resolved: candidate raw bass evidence may be implemented; unsupported invalid/null and Core valid-source identifiability rules unchanged"
   },
   "integration_validation": {
-    "commit": "af342d89b0504d51af3319061dd8ce7b18527899",
+    "commit": "80f6df0103c3cd436a919b92db9fb82e8e703536",
     "python_tests": 209,
     "ui_tests": 34,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS zero eligible-source findings; clean-commit source archive checked before readiness push",
+    "release_scan": "PASS no findings; frozen candidate research media excluded from public source export",
     "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
     "browser": "PASS actual setup/upload/reference/rehearsal/EOF/resume/saved-song reopen; UI owner actual probe cancellation/resume PASS"
   },
@@ -70,11 +72,22 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "af342d89b0504d51af3319061dd8ce7b18527899",
+  "latest_approved_main_implementation": "80f6df0103c3cd436a919b92db9fb82e8e703536",
   "remaining": [
-    "TRAINED_MODEL",
-    "EMPIRICAL_CALIBRATION",
-    "PN54_MODEL_DEPLOYMENT",
-    "PHYSICAL_VALIDATION"
-  ]
+    "candidate-specific ML adapter",
+    "Runtime candidate orchestration/identity gates",
+    "UI candidate states/frontend-owned sample rate",
+    "empirical calibration",
+    "MI300 final adaptation lineage",
+    "PN54 deployment",
+    "physical validation"
+  ],
+  "candidate": {
+    "publication": "01eaf5ddcc439efe799be61e54589d331c8556c6",
+    "status": "ACCEPTED_ENGINEERING_MATERIAL_ONLY",
+    "support": "bass matched-digital only",
+    "confidence": "UNCALIBRATED",
+    "production_authorized": false,
+    "checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+  }
 }
