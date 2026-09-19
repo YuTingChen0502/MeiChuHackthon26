@@ -626,16 +626,16 @@ test('isolated demo player has no Runtime transport or filename rendering path',
 test('UI source contains no client-side audio inference or automatic mixer execution', async () => {
   const source = await readFile(new URL('../../apps/ui/app.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /AudioContext|AnalyserNode|getUserMedia|automatic_execution\s*:\s*true/);
-  assert.match(source, /Measurements come from the audio analysis/);
+  assert.match(source, /Listen to the full band/);
   assert.match(source, /function button\(text,fn,cls='primary',type='button'\)/);
   assert.match(source, /runtimeAdapter\?\.stopEvents\(\)/);
   assert.match(source, /operationStatus=text/);
-  assert.match(source, /appendOperationNotice\(root\);restoreCalibrationFocus/);
+  assert.match(source, /restoreCalibrationFocus\(focused\)/);
   assert.match(source, /setupRows=\[\['guitar',2\],\['vocals',1\]/);
   assert.doesNotMatch(source, /\['vocal',1\]/);
   assert.match(source, /\['keys',0\]/);
   assert.doesNotMatch(source, /Requested sample rate/);
-  assert.match(source, /Analyze reference and start rehearsal/);
+  assert.match(source, /Prepare reference/);
   assert.match(source, /Use latest observation/);
   assert.match(source, /clock_id:d\.get\('clock'\)/);
 });
