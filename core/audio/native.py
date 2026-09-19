@@ -66,6 +66,10 @@ class SoundDeviceBackend:
                                        None if default_index is None else index == default_index))
         return devices
 
+    def default_inputs(self):
+        indices={host.get("default_input_device",-1) for host in self.module.query_hostapis()}
+        return [d.device_id for d in self.discover() if d.index in indices or d.is_default]
+
     def negotiate(self, *, device_id, sample_rate_hz):
         device = next((item for item in self.discover() if item.device_id == device_id), None)
         if device is None:
@@ -99,15 +103,21 @@ class NativeMicAudioInput:
     that marker is never synthesized as silence or sent across an analysis window.
     """
     def __init__(self, *, backend, device_id, clock_id, sample_rate_hz,
-                 block_size=1024, queue_capacity=8, clock=time.monotonic, timeout_s=2.0, clock_tolerance_s=0.05, channels=1):
+                 block_size=1024, queue_capacity=8, clock=time.monotonic, timeout_s=2.0, clock_tolerance_s=0.05, channels=1, cancellation=None):
         if min(sample_rate_hz, block_size, queue_capacity, channels) <= 0 or min(timeout_s, clock_tolerance_s) <= 0:
             raise ValueError('positive capture settings required')
         self.backend, self.device_id, self.clock_id = backend, device_id, clock_id
+        self.cancellation = cancellation
         self.sample_rate_hz, self.block_size = sample_rate_hz, block_size
         self.channels = channels
         self.clock, self.timeout_s = clock, timeout_s
         self.clock_tolerance_s = clock_tolerance_s
         self.max_adc_residual_s = 0.0
+        self.clock_mode = "unanchored"
+        self.timestamp_mode = "unknown"
+        self.adc_packets = 0
+        self.fallback_packets = 0
+        self._last_callback_time = None
         self._queue = queue.Queue(maxsize=queue_capacity)
         self._stop = Event()
         self._stream = None
@@ -126,25 +136,46 @@ class NativeMicAudioInput:
             now = self.clock()
             if frames <= 0 or frames > self.block_size or len(data) != frames * 4 * self.channels:
                 raise ValueError('invalid_native_packet')
-            adc = float(timing.inputBufferAdcTime)
-            current = float(timing.currentTime)
-            if not all(math.isfinite(value) for value in (adc, current, now)) or adc <= 0:
-                raise ValueError('native_adc_clock_unavailable')
-            measured_start = now + adc - current
-            expected_adc = None if self._adc_origin is None else self._adc_origin + self._next_sample / self.sample_rate_hz
+            if not math.isfinite(now):
+                raise ValueError('native_monotonic_clock_unavailable')
+            def timestamp(name):
+                try:
+                    value = float(getattr(timing, name))
+                    return value if math.isfinite(value) and value > 0 else None
+                except (AttributeError, TypeError, ValueError, OverflowError):
+                    return None
+            adc, current = timestamp('inputBufferAdcTime'), timestamp('currentTime')
+            adc_usable = adc is not None and current is not None and adc <= current
+            self.timestamp_mode = "adc_sample_count" if adc_usable else "sample_count"
+            if adc_usable:
+                self.adc_packets += 1
+            else:
+                self.fallback_packets += 1
+            measured_start = now + adc - current if adc_usable else now - frames / self.sample_rate_hz
+            expected_adc = (None if self._adc_origin is None or not adc_usable else
+                            self._adc_origin + self._next_sample / self.sample_rate_hz)
             residual = 0.0 if expected_adc is None else abs(adc - expected_adc)
             self.max_adc_residual_s = max(self.max_adc_residual_s, residual)
-            # WASAPI/PortAudio callback ADC timestamps can have millisecond jitter.
-            # Sample counts own the timeline; status flags always break continuity,
-            # while gross ADC drift/restart exceeds the declared 50 ms clock budget.
-            gap = bool(status) or residual > self.clock_tolerance_s
+            # Sample counts own each segment. Missing ADC metadata alone is not a
+            # gap. A late fallback callback still marks missing/uncertain continuity;
+            # it must not fill elapsed time with invented samples.
+            late = (not adc_usable and self._last_callback_time is not None and
+                    now - self._last_callback_time > frames / self.sample_rate_hz + self.clock_tolerance_s)
+            gap = bool(status) or residual > self.clock_tolerance_s or late
             if gap:
                 self._next_sample += 1
                 self._origin = self._adc_origin = None
                 self.discontinuities += 1
             if self._origin is None:
                 self._origin = measured_start - self._next_sample / self.sample_rate_hz
+                self.clock_mode = 'adc' if adc_usable else 'monotonic_fallback'
+            # A later usable ADC initializes diagnostics, never moves an established
+            # fallback sample timeline. Existing ADC anchors survive missing metadata.
+            if adc_usable and self._adc_origin is None:
                 self._adc_origin = adc - self._next_sample / self.sample_rate_hz
+            if not adc_usable:
+                self._adc_origin = None
+            self._last_callback_time = now
             start = self._next_sample
             self._next_sample += frames
             packet = (start, self._origin + self._next_sample / self.sample_rate_hz, bytes(data))
@@ -158,13 +189,15 @@ class NativeMicAudioInput:
             self._stop.set()
 
     def start(self):
-        if self._stream is not None or self._stop.is_set():
+        if self._stream is not None or self._stop.is_set() or (self.cancellation and self.cancellation.is_set()):
             raise RuntimeError('capture_instance_cannot_restart')
         options = {"channels": self.channels} if self.channels != 1 else {}
         stream = self.backend.open(device_id=self.device_id, sample_rate_hz=self.sample_rate_hz,
                                    block_size=self.block_size, callback=self._callback, **options)
         self._stream = stream
         try:
+            if self._stop.is_set() or (self.cancellation and self.cancellation.is_set()):
+                raise RuntimeError("capture_start_cancelled")
             stream.start()
         except Exception:
             stream.close()

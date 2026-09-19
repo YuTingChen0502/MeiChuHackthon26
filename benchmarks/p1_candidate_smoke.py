@@ -1,5 +1,6 @@
 """Bounded CPU integration smoke; published restricted validation fixture only, no research."""
 import argparse
+from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
@@ -49,12 +50,26 @@ def run_smoke(candidate, *, cache_dir, device="cpu"):
                               "source_asset_hash": "sha256:" + sha256_file(candidate / "runtime_smoke/reference.wav")},
                 "baseline": None}, "comparison_regime": "matched_excerpt",
             "model_specific_context_asset": prepared["model_specific_context_asset"],
-            "observation_purpose": "rehearsal", "probe_instrument_id": None,
+            "observation_purpose": "live", "probe_instrument_id": None,
         }
         before = time.perf_counter()
         first = analyzer.analyze(observation, context)
         seconds = time.perf_counter() - before
+        file_diagnostics = analyzer.execution_diagnostics()
         second = analyzer.analyze(observation, context)
+        mic = replace(observation, window_id="mic-observation", input_kind="live_microphone",
+                      input_asset_or_device_id="replayed-mic-identity", clock_id="mic-clock",
+                      analysis_run_id="mic-run")
+        mic_context = dict(context, observation=mic.identity())
+        mic_evidence = analyzer.analyze(mic, mic_context)
+        validate_analyzer_pair(mic_context, mic_evidence)
+        mic_diagnostics = analyzer.execution_diagnostics()
+        six_source_parity = all(
+            file_diagnostics["last_inference"][key] == mic_diagnostics["last_inference"][key]
+            for key in ("source_order", "source_shape", "source_waveform_sha256", "source_levels_dbfs"))
+        execution_proven = (file_diagnostics["model_calls_completed"] == 2
+                            and mic_diagnostics["model_calls_completed"] == 4
+                            and mic_diagnostics["model_calls_started"] == 4)
         validate_analyzer_pair(context, first)
         published = json.loads((candidate / "runtime_smoke/inference-run-1.json").read_text())
         expected = published["logical_output"]["family_evidence"][0]
@@ -81,6 +96,13 @@ def run_smoke(candidate, *, cache_dir, device="cpu"):
             "parity_errors_db": errors, "parity_passed": max(errors.values()) <= 0.01,
             "timing_seconds": {"model_load": model_seconds, "reference": reference_seconds, "observation": seconds},
             "context": context, "evidence": first, "python": platform.python_version(),
+            "file_mic_execution_parity": {
+                "actual_frozen_model": True, "physical_capture": False,
+                "input_description": "Identical restricted fixture PCM; only acquisition identities changed.",
+                "file_diagnostics": file_diagnostics, "mic_diagnostics": mic_diagnostics,
+                "six_source_waveforms_identical": six_source_parity,
+                "execution_proven": execution_proven, "mic_context": mic_context, "mic_evidence": mic_evidence,
+            },
             "limitations": ["Restricted validation-excerpt smoke only; no real-room/PN54/MI300/production acceptance.",
                             "Raw source levels only; unsupported anchors never enter evidence.",
                             "Cross-profile tolerance is an integration check, not an accuracy or calibration claim."],
@@ -105,7 +127,9 @@ def main(argv=None):
     report["origin_git_sha"] = "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-    return 0 if report["parity_passed"] and report["deterministic_repeat_exact"] else 2
+    return 0 if (report["parity_passed"] and report["deterministic_repeat_exact"]
+                 and report["file_mic_execution_parity"]["six_source_waveforms_identical"]
+                 and report["file_mic_execution_parity"]["execution_proven"]) else 2
 
 
 if __name__ == "__main__":
