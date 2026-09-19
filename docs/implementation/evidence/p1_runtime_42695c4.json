@@ -1,0 +1,383 @@
+{
+  "transport": {
+    "health_http": 200,
+    "session_http": 200,
+    "ws_reconnect_same_event": true
+  },
+  "status": "passed",
+  "git_commit": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
+  "git_dirty": false,
+  "duration_s": 20.051972100001876,
+  "health": {
+    "status": "ok",
+    "provider": "htdemucs6s-p1-output-projections-v1",
+    "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+    "example_only": false,
+    "session_count": 0
+  },
+  "reference_job": {
+    "job_id": "job-1",
+    "kind": "reference_analysis",
+    "status": "completed",
+    "song_id": "song-1",
+    "asset_id": "asset-1",
+    "reference_id": "reference-1",
+    "progress": 1.0,
+    "error": null,
+    "retryable": false
+  },
+  "frames": {
+    "uploaded_file": {
+      "record_type": "AnalysisFrame",
+      "schema_version": "1.0",
+      "example_only": false,
+      "frame_id": "frame:session-1:1",
+      "session_id": "session-1",
+      "analysis_run_id": "candidate-probe",
+      "sequence": 1,
+      "input_kind": "uploaded_file",
+      "input_asset_or_device_id": "asset-1",
+      "clock_id": "clock-1",
+      "sample_rate_hz": 44100,
+      "sample_start": 0,
+      "sample_end": 176400,
+      "capture_end_monotonic_s": 72774.6544601,
+      "published_monotonic_s": 72776.4325463,
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "execution_profile_id": "p1-dc557d5adaeb59a625e1d7367cf216fcba3d9b85c8703cb7f9c3da68afec1321",
+      "baseline_id": null,
+      "baseline_version": null,
+      "reference_id": "reference-1",
+      "quality": {
+        "clipped_fraction": 0.0,
+        "dropout": false,
+        "stale": false,
+        "comparability": "comparable",
+        "capture_compatible": true,
+        "reason_codes": [],
+        "snr_estimate_db": null,
+        "snr_is_ground_truth": false
+      },
+      "observed_mix_level_delta_db": null,
+      "common_mode_gain_db": null,
+      "identifiability_assumption": "unresolved",
+      "inference_wall_ms": 5743.889500008663,
+      "instruments": [
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "bass",
+          "family": "bass",
+          "activity": "active",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unknown",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "uncalibrated_candidate",
+              "empirical_calibration_unavailable",
+              "uncalibrated_uncertainty",
+              "insufficient_stable_anchors"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "guitar",
+          "family": "guitar",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "drums",
+          "family": "drums",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "vocals",
+          "family": "vocals",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "keys",
+          "family": "keys",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        }
+      ]
+    },
+    "live_microphone": {
+      "record_type": "AnalysisFrame",
+      "schema_version": "1.0",
+      "example_only": false,
+      "frame_id": "frame:session-2:1",
+      "session_id": "session-2",
+      "analysis_run_id": "candidate-probe",
+      "sequence": 1,
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "synthetic-mic",
+      "clock_id": "clock-2",
+      "sample_rate_hz": 44100,
+      "sample_start": 0,
+      "sample_end": 176400,
+      "capture_end_monotonic_s": 72781.2276343,
+      "published_monotonic_s": 72777.3036932,
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "execution_profile_id": "p1-dc557d5adaeb59a625e1d7367cf216fcba3d9b85c8703cb7f9c3da68afec1321",
+      "baseline_id": null,
+      "baseline_version": null,
+      "reference_id": "reference-1",
+      "quality": {
+        "clipped_fraction": 0.0,
+        "dropout": false,
+        "stale": false,
+        "comparability": "comparable",
+        "capture_compatible": true,
+        "reason_codes": [],
+        "snr_estimate_db": null,
+        "snr_is_ground_truth": false
+      },
+      "observed_mix_level_delta_db": null,
+      "common_mode_gain_db": null,
+      "identifiability_assumption": "unresolved",
+      "inference_wall_ms": 28.072200002497993,
+      "instruments": [
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "bass",
+          "family": "bass",
+          "activity": "unknown",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unknown",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "real_room_not_validated",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "guitar",
+          "family": "guitar",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "drums",
+          "family": "drums",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "vocals",
+          "family": "vocals",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        },
+        {
+          "record_type": "InstrumentState",
+          "schema_version": "1.0",
+          "instrument_id": "keys",
+          "family": "keys",
+          "activity": "unsupported",
+          "presence_probability": null,
+          "source_level_delta_db": null,
+          "balance_deviation_db": null,
+          "status": "unsupported",
+          "confidence": {
+            "record_type": "ConfidenceState",
+            "schema_version": "1.0",
+            "calibration_status": "uncalibrated",
+            "calibration_id": null,
+            "probability_event": "not_available",
+            "magnitude_tolerance_db": 2.0,
+            "probability": null,
+            "prediction_interval_db": null,
+            "abstained": true,
+            "reasons": [
+              "unsupported_family",
+              "empirical_calibration_unavailable"
+            ]
+          },
+          "tone": null
+        }
+      ]
+    }
+  },
+  "material": "Deterministic generated 110 Hz sine, amplitude 0.15, 44100 Hz, four seconds, PCM16",
+  "claim": "Actual CPU candidate injection/reference/cache/downstream gating only; no instrument labels, accuracy, native candidate inference, or calibration claim."
+}
