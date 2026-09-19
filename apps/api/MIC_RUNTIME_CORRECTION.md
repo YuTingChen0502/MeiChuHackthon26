@@ -31,7 +31,12 @@ No microphone PCM was saved.
 - RuntimeAPI lifecycle16.578s:two eight-second runs,8fresh windows,distinct runIDs,
   explicit pause/close/reopen/stop,748fallback packets,zero faults. Final STOPPED.
   Fake outputs abstained. This is capture/lifecycle evidence, not perception.
-- Reports: `tests/runtime/reports/native-default-*-5cea661.json`.
+- WASAPI comparison60.453s:Realtek endpoint `portaudio:b0f45d7b7c5f04d95e39`,
+  negotiated48000Hz mono,2812ADC packets,0fallback packets,56fresh windows,
+  zero drops/stale/discontinuities. Maximum ADC residual2.416ms,callbackqueue1/8,
+  inferencequeue1/2,publicationagep95 .010s. Clock mode remained ADC-backed.
+- Reports: `tests/runtime/reports/native-default-*-5cea661.json` and
+  `tests/runtime/reports/native-wasapi-adc-5cea661.json`.
 
 ## Validation and incomplete gates
 
