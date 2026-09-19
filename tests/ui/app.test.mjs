@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { balanceText, canMutate, commandFor, confidenceText, displayStatus, fixtureRehearsal, fixtureScenario, freshness, receiptIsFresh, SETUP_ENDPOINT_PLAN } from '../../apps/ui/app.js';
+import { balanceText, buildProbePlan, calibrationDraftFor, canMutate, commandFor, commandGuard, confidenceText, currentRecoveredVerification, deviceDiscoveryText, displayStatus, expandInstrumentConfiguration, fixtureLiveSnapshot, fixtureRehearsal, fixtureScenario, freshness, liveEvidenceState, liveViewState, normalizeCatalogRows, receiptIsFresh, restoreConfiguredInstances, restoreProbeView, runtimeErrorText, runtimeInstrumentGroups, runtimeReadiness, sessionCondition, SETUP_ENDPOINT_PLAN, verificationPresentation } from '../../apps/ui/app.js';
 import { RuntimeAdapter } from '../../apps/ui/runtime-adapter.js';
 
 const confidence = (abstained = false) => ({ abstained, reasons: abstained ? ['noise_overlap'] : [], calibration_status: abstained ? 'out_of_envelope' : 'calibrated', probability: abstained ? null : .9, magnitude_tolerance_db: 1.5 });
 const active = (status, balance, c = confidence()) => ({ activity:'active', status, balance_deviation_db:balance, confidence:c });
 
 test('shows numeric balance only for valid active non-abstained states', () => {
-  assert.equal(balanceText(active('too_loud', 4.1)), 'About +4.1 dB balance');
-  assert.equal(balanceText(active('normal', 0)), 'About +0.0 dB balance');
+  assert.equal(balanceText(active('too_loud', 4.1)), '+4.1 dB');
+  assert.equal(balanceText(active('normal', 0)), '+0.0 dB');
   assert.equal(balanceText(active('unknown', null, confidence(true))), 'Balance unavailable');
 });
 test('renders explicit inactive and abstained states', () => {
@@ -30,6 +30,15 @@ test('fixture mode never permits mutations and expired local receipt freshness i
   assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 6_000), true);
   assert.equal(receiptIsFresh({ quality:{ stale:true } }, 2_000, true, 2_100), false);
 });
+test('real command guards reject disconnected or stale actionable state but retain safe stop', () => {
+  const snapshot = { session_id:'s-1', latest_frame:{ quality:{ stale:false } } };
+  const adapter = { snapshot:{ session_id:'s-1' } };
+  assert.equal(commandGuard('start_adjustment','authoritative',adapter,snapshot,false,1_000,1_100).allowed, false);
+  assert.equal(commandGuard('recheck','authoritative',adapter,snapshot,true,1_000,7_000).allowed, false);
+  assert.equal(commandGuard('accept_baseline','authoritative',adapter,snapshot,true,1_000,2_000).allowed, true);
+  assert.equal(commandGuard('stop','authoritative',adapter,snapshot,false,null,99_000).allowed, true);
+  assert.equal(commandGuard('pause','fixture',adapter,snapshot,true,1_000,1_100).allowed, false);
+});
 test('renders tolerance as probability semantics and only renders an actual interval', () => {
   const withoutInterval = confidence(false);
   withoutInterval.probability_event = 'joint_anomaly_numeric_correct';
@@ -49,6 +58,81 @@ test('command binds exactly to currently displayed snapshot identities', () => {
 });
 test('setup follows the frozen L2 API order', () => {
   assert.deepEqual(SETUP_ENDPOINT_PLAN.map(line => line.split('  ')[0]), ['POST /v1/projects','POST /v1/songs','POST /v1/audio-assets','POST /v1/songs/{id}/reference','GET /v1/jobs/{id}','POST /v1/sessions']);
+});
+test('quantity setup creates duplicate performer identities but one honest Runtime family group', () => {
+  const instances = expandInstrumentConfiguration([['guitar',2],['vocal',1],['keyboard',0]]);
+  assert.deepEqual(instances.map(x => x.instrument_id), ['guitar-1','guitar-2','vocal-1']);
+  assert.deepEqual(runtimeInstrumentGroups(instances), [
+    { instrument_id:'guitar', family:'guitar' },
+    { instrument_id:'vocal', family:'vocal' },
+  ]);
+});
+test('guided rehearsal is dynamic and ends with quiet, loud, then explicit review', () => {
+  const plan = buildProbePlan(expandInstrumentConfiguration([['guitar',2],['drums',1]]));
+  assert.deepEqual(plan.map(x => x.kind), ['instrument','instrument','instrument','full_band_quiet','full_band_loud','review']);
+  assert.equal(plan[0].label, 'Please play Guitar 1');
+  assert.equal(plan.at(-1).label, 'Calibration review');
+});
+test('reconnect restores only the probe detail Runtime actually persisted', () => {
+  const plan = buildProbePlan(expandInstrumentConfiguration([['guitar',2],['drums',1]]));
+  const instrument = restoreProbeView(plan, { mode:'instrument', instrument_id:'guitar', probe_id:'probe-1' });
+  assert.equal(instrument.index, 0);
+  assert.equal(instrument.step.label, 'Resume Guitar family probe');
+  assert.doesNotMatch(instrument.step.label, /Guitar [12]/);
+  const fullBand = restoreProbeView(plan, { mode:'full_band', instrument_id:null, probe_id:'probe-2' });
+  assert.equal(fullBand.step.label, 'Resume the active full-band probe');
+  assert.doesNotMatch(fullBand.step.label, /quiet|loud/i);
+  assert.equal(restoreProbeView(plan, { mode:'idle' }), null);
+});
+test('authoritative anomaly outranks unrelated abstention in the Live presentation', () => {
+  const snapshot = {
+    song:{ workflow_state:'LIVE_ANOMALY' }, incident_state:'active', latest_verification:null,
+    latest_frame:{ instruments:[active('too_loud', 3.5), active('unknown', null, confidence(true))] },
+  };
+  assert.equal(liveViewState(snapshot), 'anomaly');
+});
+test('Live never reports normal or recovered without fresh observable and relevant evidence', () => {
+  const base = { song:{ workflow_state:'LIVE_MONITORING' }, incident_state:'none', latest_verification:null, active_baseline:{baseline_id:'b-1',version:1} };
+  assert.equal(liveViewState(base), 'waiting');
+  const stale = { ...base, latest_frame:{ quality:{stale:true}, instruments:[active('normal',0)] } };
+  assert.equal(liveViewState(stale), 'unavailable');
+  const unsupported = { ...base, latest_frame:{ quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'}, instruments:[{...active('unsupported',null,confidence(true)),activity:'unsupported'}] } };
+  assert.equal(liveEvidenceState(unsupported), 'unsupported');
+  assert.equal(liveViewState(unsupported), 'abstain');
+  const oldRecovered = { ...base, incident_state:'active', song:{workflow_state:'LIVE_ANOMALY'}, incident:{event:{event_id:'new'}}, latest_frame:{ quality:{stale:false}, instruments:[active('too_loud',3)] }, latest_verification:{outcome:'recovered',event_id:'old',baseline_id:'b-1',baseline_version:1} };
+  assert.equal(liveViewState(oldRecovered), 'anomaly');
+  assert.equal(currentRecoveredVerification(oldRecovered), false);
+  const normal = { ...base, latest_frame:{ quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'}, instruments:[active('normal',0)] } };
+  assert.equal(liveViewState(normal,1_000,true,7_000), 'unavailable');
+  const pending = { ...normal, latest_frame:{...normal.latest_frame,instruments:[active('too_loud',2.5)]} };
+  assert.equal(liveViewState(pending), 'monitoring');
+  const resolvedButUnknown = { ...normal, incident_state:'resolved', incident:{event:{event_id:'e-1'}}, latest_frame:{...normal.latest_frame,instruments:[{...active('unknown',null,confidence(true)),activity:'unknown'}]}, latest_verification:{outcome:'recovered',event_id:'e-1',baseline_id:'b-1',baseline_version:1} };
+  assert.equal(currentRecoveredVerification(resolvedButUnknown), true);
+  assert.equal(liveViewState(resolvedButUnknown), 'abstain');
+});
+test('verification presentation exposes waiting, partial and inconclusive Runtime outcomes', () => {
+  assert.deepEqual(verificationPresentation({adjustment:{adjustment_id:'a-2',completed_monotonic_s:4},latest_verification:{adjustment_id:'a-1'}}).state, 'waiting');
+  const partial = verificationPresentation({adjustment:null,latest_verification:{outcome:'partial',source_observable:true,before_balance_db:4,after_balance_db:2,reason_codes:[]}});
+  assert.equal(partial.title, 'Partially improved');
+  assert.match(partial.detail, /Before 4.0 dB · after 2.0 dB/);
+  const inconclusive = verificationPresentation({adjustment:null,latest_verification:{outcome:'inconclusive',source_observable:false,before_balance_db:4,after_balance_db:null,reason_codes:['source_not_observable']}});
+  assert.equal(inconclusive.title, 'Verification inconclusive');
+  assert.match(inconclusive.detail, /source_not_observable/);
+});
+test('renders Runtime, model, and native discovery truth without promoting simulation', () => {
+  assert.equal(runtimeReadiness({ provider:'fake-simulated', model_bundle_id:'fake-v1', example_only:true }), 'Simulation / fixture analyzer · fake-simulated · fake-v1');
+  assert.equal(runtimeReadiness({ provider:'CPUExecutionProvider', model_bundle_id:'adapted-v1', example_only:false }), 'Runtime analyzer · CPUExecutionProvider · adapted-v1');
+  assert.equal(deviceDiscoveryText({ discovery_status:'available', devices:[{device_id:'device-1'}] }), '1 native microphone input available');
+  assert.equal(deviceDiscoveryText({ discovery_status:'native_backend_unavailable', devices:[] }), 'Native microphone backend unavailable');
+  assert.match(deviceDiscoveryText({ discovery_status:'injected_example_only', devices:[{device_id:'mic-fixture'}] }), /not physical capture evidence/);
+  assert.match(runtimeErrorText({ payload:{ error:{ code:'model_unavailable' } } }), /HTTP 503/);
+});
+test('renders suspended, degraded, waiting, simulated, and authoritative session conditions from Runtime fields', () => {
+  assert.deepEqual(sessionCondition({ song:{workflow_state:'SUSPENDED'}, suspension_reasons:['audio_device_lost'] }), { label:'Suspended', detail:'audio_device_lost' });
+  assert.equal(sessionCondition({ song:{workflow_state:'REHEARSAL'}, latest_frame:null }).label, 'Waiting for evidence');
+  assert.equal(sessionCondition({ song:{workflow_state:'REHEARSAL'}, latest_frame:{example_only:true,quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'}} }).label, 'Simulation evidence only');
+  assert.equal(sessionCondition({ song:{workflow_state:'REHEARSAL'}, latest_frame:{example_only:false,quality:{stale:true,dropout:false,capture_compatible:true,comparability:'comparable',reason_codes:['stale_analysis']}} }).label, 'Unavailable / degraded evidence');
+  assert.equal(sessionCondition({ song:{workflow_state:'REHEARSAL'}, latest_frame:{example_only:false,quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'}} }).label, 'Authoritative Runtime evidence');
 });
 test('derived fixture frames only contain declared families and correct profile bindings', async () => {
   const fixtures = JSON.parse(await readFile(new URL('../../contracts/examples/pa_shared_v1.json', import.meta.url)));
@@ -105,7 +189,14 @@ test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
   const originalWebSocket = globalThis.WebSocket;
   const originalLocation = globalThis.location;
   const sockets = [];
-  globalThis.fetch = async () => ({ ok:true, status:200, json:async () => ({ session_id:'s-1', state_version:4, event_sequence:9 }) });
+  const urls = [];
+  globalThis.fetch = async url => {
+    urls.push(url);
+    const payload = url.endsWith('/probes')
+      ? { record_type:'RehearsalProbeState', schema_version:'1.0', session_id:'s-1', state_version:4, mode:'idle', instrument_id:null, probe_id:null, not_before_monotonic_s:null }
+      : { session_id:'s-1', state_version:4, event_sequence:9 };
+    return { ok:true, status:200, json:async () => payload };
+  };
   globalThis.location = { protocol:'http:', host:'127.0.0.1:8000' };
   globalThis.WebSocket = class { constructor(url) { this.url = url; sockets.push(this); } close() {} };
   try {
@@ -113,6 +204,7 @@ test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
     adapter.activateSession('s-1');
     await adapter.recover('s-1');
     assert.match(sockets[0].url, /after_sequence=9$/);
+    assert.deepEqual(urls, ['/v1/sessions/s-1', '/v1/sessions/s-1/probes']);
     adapter.stopEvents();
   } finally {
     globalThis.fetch = originalFetch;
@@ -121,15 +213,279 @@ test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
   }
 });
 test('runtime adapter isolates cursor and late responses across deliberate session switches', async () => {
-  const snapshots = [];
-  const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
-  adapter.activateSession('old');
-  adapter.acceptSnapshot({ session_id:'old', state_version:4, event_sequence:50 });
-  adapter.activateSession('new');
-  adapter.acceptSnapshot({ session_id:'new', state_version:0, event_sequence:0 });
-  await adapter.handleEvent('new', { session_id:'new', event_sequence:1, payload:{ record_type:'SessionSnapshot', session_id:'new', state_version:1, event_sequence:1 } });
-  assert.equal(adapter.cursor, 1);
-  assert.equal(adapter.acceptSnapshot({ session_id:'old', state_version:5, event_sequence:51 }), false);
-  assert.equal(adapter.snapshot.session_id, 'new');
-  assert.deepEqual(snapshots.map(snapshot => snapshot.session_id), ['old', 'new', 'new']);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ok:true,status:200,json:async()=>({record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'new',state_version:1,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null})});
+  try{
+    const snapshots = [];
+    const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
+    adapter.activateSession('old');
+    adapter.acceptSnapshot({ session_id:'old', state_version:4, event_sequence:50 });
+    adapter.activateSession('new');
+    adapter.acceptSnapshot({ session_id:'new', state_version:0, event_sequence:0 });
+    await adapter.handleEvent('new', { session_id:'new', event_sequence:1, payload:{ record_type:'SessionSnapshot', session_id:'new', state_version:1, event_sequence:1 } });
+    assert.equal(adapter.cursor, 1);
+    assert.equal(adapter.acceptSnapshot({ session_id:'old', state_version:5, event_sequence:51 }), false);
+    assert.equal(adapter.snapshot.session_id, 'new');
+    assert.deepEqual(snapshots.map(snapshot => snapshot.session_id), ['old', 'new', 'new']);
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('successful session commands reconcile server-canceled probe intent', async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = [];
+  const probes = [];
+  globalThis.fetch = async (url,options={}) => {
+    urls.push(url);
+    const payload = options.method === 'POST'
+      ? {snapshot:{session_id:'s-1',state_version:2,event_sequence:2}}
+      : {record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:2,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null};
+    return {ok:true,status:200,json:async()=>payload};
+  };
+  try{
+    const adapter = new RuntimeAdapter({onSnapshot(){},onStatus(){},onProbe:value=>probes.push(value)});
+    adapter.activateSession('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:1,event_sequence:1});
+    await adapter.command({session_id:'s-1',action:'pause'});
+    assert.deepEqual(urls,['/v1/sessions/s-1/actions','/v1/sessions/s-1/probes']);
+    assert.equal(probes[0].mode,'idle');
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('runtime adapter refreshes probe intent once on state transitions and not on frame-only refreshes', async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = [];
+  const probes = [];
+  globalThis.fetch = async url => {
+    urls.push(url);
+    const payload = url.endsWith('/probes')
+      ? {record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:2,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null}
+      : {session_id:'s-1',state_version:2,event_sequence:3};
+    return {ok:true,status:200,json:async()=>payload};
+  };
+  try{
+    const adapter = new RuntimeAdapter({onSnapshot(){},onStatus(){},onProbe:value=>probes.push(value)});
+    adapter.activateSession('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:1,event_sequence:1});
+    await adapter.handleEvent('s-1',{session_id:'s-1',event_sequence:2,payload:{record_type:'SessionSnapshot',session_id:'s-1',state_version:2,event_sequence:2}});
+    await adapter.handleEvent('s-1',{session_id:'s-1',event_sequence:3,payload:{record_type:'AnalysisFrame'}});
+    assert.deepEqual(urls,['/v1/sessions/s-1/probes','/v1/sessions/s-1']);
+    assert.equal(probes.length,1);
+    assert.equal(probes[0].mode,'idle');
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('delayed probe GET cannot overwrite newer same-session probe state', async () => {
+  const originalFetch = globalThis.fetch;
+  let resolveFetch;
+  globalThis.fetch = async () => new Promise(resolve => { resolveFetch=resolve; });
+  try{
+    const seen=[];
+    const adapter=new RuntimeAdapter({onSnapshot(){},onStatus(){},onProbe:value=>seen.push(value.state_version)});
+    adapter.activateSession('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:6,event_sequence:6});
+    const delayed=adapter.probeState('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:7,event_sequence:7});
+    assert.equal(adapter.acceptProbe({record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:7,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null}),true);
+    resolveFetch({ok:true,status:200,json:async()=>({record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:6,mode:'instrument',instrument_id:'guitar',probe_id:'old',not_before_monotonic_s:1})});
+    await delayed;
+    assert.equal(adapter.probe.state_version,7);
+    assert.equal(adapter.probe.mode,'idle');
+    assert.deepEqual(seen,[7]);
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('runtime adapter binds guided probe requests exactly and restores probe state on GET', async () => {
+  const originalFetch = globalThis.fetch;
+  const received = [];
+  const nextSnapshot = { session_id:'s-1', state_version:8, event_sequence:8 };
+  const probe = { record_type:'RehearsalProbeState', schema_version:'1.0', session_id:'s-1', state_version:8, mode:'instrument', instrument_id:'guitar', probe_id:'probe-1', not_before_monotonic_s:12.5 };
+  globalThis.fetch = async (url, options={}) => {
+    received.push([url, options]);
+    const payload = options.method === 'POST'
+      ? { record_type:'RehearsalProbeResponse', schema_version:'1.0', command:{ snapshot:nextSnapshot }, probe }
+      : probe;
+    return { ok:true, status:200, json:async () => payload };
+  };
+  try {
+    const snapshots = [];
+    const adapter = new RuntimeAdapter({ onSnapshot:value => snapshots.push(value), onStatus() {} });
+    adapter.activateSession('s-1');
+    const displayed = {
+      session_id:'s-1', state_version:7,
+      active_reference:{ reference_id:'reference-1', source_asset_hash:'hash-1' },
+      active_baseline:{ baseline_id:'baseline-1', version:2 },
+      incident:{ event:{ event_id:'event-1' }, event_version:3 },
+    };
+    await adapter.requestProbe(displayed, 'instrument', 'guitar');
+    const body = JSON.parse(received[0][1].body);
+    assert.equal(received[0][0], '/v1/sessions/s-1/probes');
+    assert.equal(body.record_type, 'RehearsalProbeCommand');
+    assert.equal(body.expected_state_version, 7);
+    assert.deepEqual(body.reference, { reference_id:'reference-1', source_asset_hash:'hash-1' });
+    assert.deepEqual(body.baseline, { baseline_id:'baseline-1', baseline_version:2 });
+    assert.deepEqual(body.event, { event_id:'event-1', event_version:3 });
+    assert.equal(body.mode, 'instrument');
+    assert.equal(body.instrument_id, 'guitar');
+    assert.deepEqual(snapshots, [nextSnapshot]);
+    assert.deepEqual(await adapter.probeState(), probe);
+    assert.equal(received[1][0], '/v1/sessions/s-1/probes');
+    assert.equal(adapter.probe, probe);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('fixture Live renders normal, anomaly, abstain, and recovered only as example evidence', async () => {
+  const base = JSON.parse(await readFile(new URL('../../contracts/examples/pa_shared_v1.json', import.meta.url)));
+  for (const state of ['normal','anomaly','abstain','recovered']) {
+    const current = fixtureLiveSnapshot(base, state);
+    assert.equal(current.latest_frame.example_only, true);
+    assert.equal(liveViewState(current), state);
+  }
+  const abstain = fixtureLiveSnapshot(base, 'abstain');
+  assert.ok(abstain.latest_frame.instruments.every(x => x.balance_deviation_db === null && x.confidence.abstained));
+  const rehearsal = fixtureRehearsal(base);
+  rehearsal.song.name = 'Configured locally';
+  rehearsal.active_baseline = structuredClone(base.live_snapshot.active_baseline);
+  const transitioned = fixtureLiveSnapshot(base, 'normal', rehearsal);
+  assert.equal(transitioned.song.name, 'Configured locally');
+  assert.equal(transitioned.active_baseline.baseline_id, rehearsal.active_baseline.baseline_id);
+});
+test('calibration drafts survive fresh-frame rerenders for the same session', () => {
+  const first = { session_id:'s-1', latest_frame:{ analysis_run_id:'run-1', sample_rate_hz:48000, sample_start:10, sample_end:20 } };
+  const draft = calibrationDraftFor(first);
+  draft.acceptedBy = 'mei';
+  draft.start = '12';
+  const later = { session_id:'s-1', latest_frame:{ analysis_run_id:'run-2', sample_rate_hz:48000, sample_start:30, sample_end:40 } };
+  assert.equal(calibrationDraftFor(later,draft), draft);
+  assert.equal(calibrationDraftFor({...later,session_id:'s-2'},draft).run, 'run-2');
+});
+test('catalog recovery tolerates corruption and preserves validated rehearsal counts', () => {
+  assert.deepEqual(normalizeCatalogRows({broken:true}), []);
+  const rows = normalizeCatalogRows([{session_id:'s-1',song_name:'Song',reference_id:7,baseline_id:null,instrument_counts:{guitar:2,evil:0,'bad family':3,bass:99}}]);
+  assert.deepEqual(rows[0].instrument_counts, {guitar:2});
+  assert.deepEqual(restoreConfiguredInstances(['guitar','drums'],rows[0]).map(x=>x.instrument_id), ['guitar-1','guitar-2','drums-1']);
+});
+test('runtime adapter loads a selected authoritative session and gates controls until its socket connects', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWebSocket = globalThis.WebSocket;
+  const originalLocation = globalThis.location;
+  const connections = [];
+  globalThis.fetch = async url => {
+    const payload = url.endsWith('/probes')
+      ? { record_type:'RehearsalProbeState', schema_version:'1.0', session_id:'session-2', state_version:2, mode:'idle', instrument_id:null, probe_id:null, not_before_monotonic_s:null }
+      : { session_id:'session-2', state_version:2, event_sequence:7 };
+    return { ok:true, status:200, json:async () => payload };
+  };
+  globalThis.location = { protocol:'http:', host:'127.0.0.1:8000' };
+  globalThis.WebSocket = class { constructor(url) { this.url=url; } close() {} };
+  try {
+    const adapter = new RuntimeAdapter({ onSnapshot() {}, onStatus() {}, onConnection:value => connections.push(value) });
+    const snapshot = await adapter.openSession('session-2');
+    assert.equal(snapshot.session_id, 'session-2');
+    assert.equal(adapter.activeSessionId, 'session-2');
+    assert.equal(adapter.probe.mode, 'idle');
+    assert.match(adapter.socket.url, /after_sequence=7$/);
+    assert.deepEqual(connections, [false]);
+    adapter.stopEvents();
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.WebSocket = originalWebSocket;
+    globalThis.location = originalLocation;
+  }
+});
+test('setup requests native capture without claiming browser-verified physical properties', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWebSocket = globalThis.WebSocket;
+  const originalLocation = globalThis.location;
+  const requests = [];
+  const responses = [
+    { project_id:'project-1' },
+    { song_id:'song-1' },
+    { asset_id:'asset-1' },
+    { job_id:'job-1', status:'queued' },
+    { job_id:'job-1', status:'completed', reference_id:'reference-1' },
+    { session_id:'session-1', state_version:0, event_sequence:0 },
+  ];
+  globalThis.fetch = async (url, options={}) => {
+    requests.push([url, options]);
+    return { ok:true, status:200, json:async () => responses.shift() };
+  };
+  globalThis.location = { protocol:'http:', host:'127.0.0.1:8000' };
+  globalThis.WebSocket = class { constructor(url) { this.url=url; } close() {} };
+  try {
+    const adapter = new RuntimeAdapter({ onSnapshot() {}, onStatus() {} });
+    await adapter.setup({ project:'Demo', song:'Song', families:['guitar'], reference:{name:'reference.wav'}, source:'live_microphone', sourceId:'native-1' });
+    const sessionBody = JSON.parse(requests.at(-1)[1].body);
+    assert.deepEqual(sessionBody.source, { input_kind:'live_microphone', input_asset_or_device_id:'native-1' });
+    assert.equal(sessionBody.capture_fingerprint.gain_setting, null);
+    assert.equal(sessionBody.capture_fingerprint.enhancements_verified_disabled, null);
+    assert.equal(sessionBody.capture_fingerprint.geometry_id, null);
+    assert.equal(sessionBody.capture_fingerprint.provenance, 'unverified');
+    assert.equal(sessionBody.capture_fingerprint.profile_id, 'ui-request-v1');
+    assert.equal(sessionBody.capture_fingerprint.native_sample_rate_hz, 48000);
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.WebSocket = originalWebSocket;
+    globalThis.location = originalLocation;
+  }
+});
+test('replacement session reuses retained song/reference/source but never copies physical provenance claims', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWebSocket = globalThis.WebSocket;
+  const originalLocation = globalThis.location;
+  const requests = [];
+  globalThis.fetch = async (url, options={}) => {
+    requests.push([url,options]);
+    return {ok:true,status:200,json:async()=>({session_id:'replacement-1',state_version:0,event_sequence:0})};
+  };
+  globalThis.location = {protocol:'http:',host:'127.0.0.1:8000'};
+  globalThis.WebSocket = class { constructor(url){this.url=url;} close(){} };
+  try{
+    const adapter = new RuntimeAdapter({onSnapshot(){},onStatus(){}});
+    adapter.activateSession('old-1');
+    await adapter.recreateSession({
+      song:{song_id:'song-1'},active_reference:{reference_id:'reference-1'},
+      source:{input_kind:'live_microphone',input_asset_or_device_id:'portaudio:1'},
+      active_baseline:{capture:{profile_id:'capture-1',native_sample_rate_hz:44100,provenance:'physical_verified',gain_setting:'fixed',geometry_id:'secret-geometry'}},
+    });
+    const body=JSON.parse(requests[0][1].body);
+    assert.equal(body.song_id,'song-1');
+    assert.equal(body.reference_id,'reference-1');
+    assert.deepEqual(body.source,{input_kind:'live_microphone',input_asset_or_device_id:'portaudio:1'});
+    assert.equal(body.capture_fingerprint.profile_id,'capture-1');
+    assert.equal(body.capture_fingerprint.native_sample_rate_hz,44100);
+    assert.equal(body.capture_fingerprint.provenance,'unverified');
+    assert.equal(body.capture_fingerprint.gain_setting,null);
+    assert.equal(body.capture_fingerprint.geometry_id,null);
+  }finally{
+    globalThis.fetch=originalFetch;
+    globalThis.WebSocket=originalWebSocket;
+    globalThis.location=originalLocation;
+  }
+});
+test('isolated demo player has no Runtime transport or filename rendering path', async () => {
+  const player = await readFile(new URL('../../demo_player/player.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(player, /\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b/);
+  assert.doesNotMatch(player, /\.name\b/);
+  assert.match(player, /prepared clip \$\{selectedIndex \+ 1\} of \$\{selectedUrls\.length\}/);
+});
+test('UI source contains no client-side audio inference or automatic mixer execution', async () => {
+  const source = await readFile(new URL('../../apps/ui/app.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /AudioContext|AnalyserNode|getUserMedia|automatic_execution\s*:\s*true/);
+  assert.match(source, /Runtime remains the only evidence source/);
+  assert.match(source, /function button\(text,fn,cls='primary',type='button'\)/);
+  assert.match(source, /runtimeAdapter\?\.stopEvents\(\)/);
+  assert.match(source, /operationStatus=text/);
+  assert.match(source, /appendOperationNotice\(root\);restoreCalibrationFocus/);
+  assert.match(source, /setupRows=\[\['guitar',2\],\['vocals',1\]/);
+  assert.doesNotMatch(source, /\['vocal',1\]/);
+});
+test('responsive card grid supports variable counts without fixed four-card selectors', async () => {
+  const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /repeat\(auto-fit,minmax/);
+  assert.doesNotMatch(css, /nth-child\(4\)/);
 });

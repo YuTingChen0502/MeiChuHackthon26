@@ -1,260 +1,122 @@
 import { RuntimeAdapter } from './runtime-adapter.js';
 
 const FIXTURE_PATH = '../../contracts/examples/pa_shared_v1.json';
-let runtimeAdapter = null;
-let viewMode = 'fixture';
-let runtimeConnected = false;
-let authoritativeReceiptMs = null;
-let lastFrameId = null;
-let fixtureLocked = false;
+const CATALOG_KEY = 'pa-controller-demo-session-catalog-v1';
 export const RECEIPT_FRESHNESS_MAX_MS = 5000;
+export const SETUP_ENDPOINT_PLAN = ['POST /v1/projects','POST /v1/songs','POST /v1/audio-assets','POST /v1/songs/{id}/reference','GET /v1/jobs/{id}','POST /v1/sessions'];
 
-export const SETUP_ENDPOINT_PLAN = [
-  'POST /v1/projects  — project and setlist metadata',
-  'POST /v1/songs  — song and declared instrument families',
-  'POST /v1/audio-assets  — upload mixed audio bytes',
-  'POST /v1/songs/{id}/reference  — associate asset; receive job ID',
-  'GET /v1/jobs/{id}  — await reference profile',
-  'POST /v1/sessions  — choose rehearsal/file/live source and profile IDs',
-];
+let runtimeAdapter=null, runtimeHealth=null, runtimeStartupError=null, deviceDiscovery=null, snapshot=null, fixtures=null;
+let viewMode='fixture', runtimeConnected=false, receiptMs=null, lastFrameId=null, lastSessionId=null;
+let page='selection', setupRows=[['guitar',2],['vocals',1],['bass',1],['drums',1],['keyboard',0]];
+let configuredInstances=[], probePlan=[], probeIndex=-1, probePhase='idle', probeTimer=null, freshnessTimer=null, restoredProbeStep=null;
+let evidenceHistory=[], fixtureLiveMode='normal', calibrationDraft=null, operationStatus=null;
 
-export function displayStatus(instrument) {
-  if (instrument.activity === 'inactive') return instrument.confidence.abstained ? 'Inactive · Abstained' : 'Inactive';
-  if (instrument.activity === 'unsupported' || instrument.status === 'unsupported') return instrument.confidence.abstained ? 'Unsupported · Abstained' : 'Unsupported';
-  if (instrument.activity === 'unknown' || instrument.status === 'unknown') return instrument.confidence.abstained ? 'Unknown / Not Observable · Abstained' : 'Unknown / Not Observable';
-  if (instrument.confidence.abstained) return 'Abstained / Unknown';
-  return ({ normal: 'Normal', too_loud: 'Too Loud', too_quiet: 'Too Quiet' })[instrument.status] || 'Not Observable';
-}
+export function displayStatus(i){if(i.activity==='inactive')return i.confidence.abstained?'Inactive · Abstained':'Inactive';if(i.activity==='unsupported'||i.status==='unsupported')return i.confidence.abstained?'Unsupported · Abstained':'Unsupported';if(i.activity==='unknown'||i.status==='unknown')return i.confidence.abstained?'Unknown / Not Observable · Abstained':'Unknown / Not Observable';if(i.confidence.abstained)return'Abstained / Unknown';return({normal:'Normal',too_loud:'Too Loud',too_quiet:'Too Quiet'})[i.status]||'Not Observable';}
+export function balanceText(i){const ok=!i.confidence.abstained&&i.activity==='active'&&['normal','too_loud','too_quiet'].includes(i.status)&&typeof i.balance_deviation_db==='number';return ok?`${i.balance_deviation_db>=0?'+':''}${i.balance_deviation_db.toFixed(1)} dB`:'Balance unavailable';}
+export function freshness(f,now=null){if(!f)return'No observation received';if(f.quality.stale)return f.example_only?'Stale fixture frame — do not act':'Stale frame — do not act';if(typeof now!=='number')return f.example_only?'Fixture/static frame — data age unavailable':'Data age unavailable';return`${Math.max(0,now-f.published_monotonic_s).toFixed(1)} s old`;}
+export function receiptFreshness(f,at,connected){if(!f)return'No observation received';if(f.quality.stale)return'Stale frame — controls gated';if(!connected||at===null)return'Data freshness unknown — controls gated';const age=Math.max(0,Date.now()-at);return age>RECEIPT_FRESHNESS_MAX_MS?`Local receipt age ${(age/1000).toFixed(1)} s — controls gated`:`Received ${(age/1000).toFixed(1)} s ago (local receipt age)`;}
+export function receiptIsFresh(f,at,connected,now=Date.now()){return Boolean(f)&&!f.quality.stale&&connected&&at!==null&&now-at<=RECEIPT_FRESHNESS_MAX_MS;}
+export function canMutate(view,adapter,s,connected){return view==='authoritative'&&Boolean(adapter)&&adapter.snapshot?.session_id===s?.session_id&&connected;}
+export function commandGuard(action,view,adapter,s,connected,receivedAt,now=Date.now()){const bound=view==='authoritative'&&Boolean(adapter)&&adapter.snapshot?.session_id===s?.session_id;if(!bound)return{allowed:false,reason:'The displayed session is not bound to Runtime.'};if(['pause','stop'].includes(action))return{allowed:true,reason:null};if(action==='resume')return connected?{allowed:true,reason:null}:{allowed:false,reason:'Reconnect to Runtime before resuming.'};if(!canMutate(view,adapter,s,connected))return{allowed:false,reason:'Reconnect to Runtime before sending this action.'};if(!receiptIsFresh(s?.latest_frame,receivedAt,connected,now))return{allowed:false,reason:'Wait for a fresh authoritative frame before sending this action.'};return{allowed:true,reason:null};}
+export function commandFor(s,action,payload={},key=`ui-${action}-fixture`){return{record_type:'SessionCommand',schema_version:'1.0',session_id:s.session_id,idempotency_key:key,expected_state_version:s.state_version,reference:s.active_reference&&{reference_id:s.active_reference.reference_id,source_asset_hash:s.active_reference.source_asset_hash},baseline:s.active_baseline&&{baseline_id:s.active_baseline.baseline_id,baseline_version:s.active_baseline.version},event:s.incident&&{event_id:s.incident.event.event_id,event_version:s.incident.event_version},action,payload};}
+export function confidenceText(c){const cal=c.calibration_status.replaceAll('_',' ');if(c.abstained)return`Abstained · ${cal}: ${c.reasons.join(', ')}`;const p=c.probability===null?'Probability unavailable':`${Math.round(c.probability*100)}% probability of ${c.probability_event.replaceAll('_',' ')}`;const interval=c.prediction_interval_db&&`Prediction interval: ${c.prediction_interval_db[0]} to ${c.prediction_interval_db[1]} dB`;return[cal,p,`Magnitude tolerance: ±${c.magnitude_tolerance_db} dB`,interval].filter(Boolean).join(' · ');}
+export function runtimeReadiness(h,s=null){if(!h)return'Runtime unavailable';const p=s?.execution?.provider??h.provider??'provider unavailable',m=s?.execution?.model_bundle_id??h.model_bundle_id??'model unavailable',x=s?.latest_frame?.example_only??h.example_only;return x===true?`Simulation / fixture analyzer · ${p} · ${m}`:x===false?`Runtime analyzer · ${p} · ${m}`:`Runtime connected · ${p} · ${m} · analyzer readiness unavailable`;}
+export function deviceDiscoveryText(d){if(!d)return'Microphone discovery not requested';const n=Array.isArray(d.devices)?d.devices.length:0;return({available:`${n} native microphone input${n===1?'':'s'} available`,no_input_devices:'No native microphone inputs found',native_backend_unavailable:'Native microphone backend unavailable',injected_example_only:`${n} simulated/injected device ID${n===1?'':'s'} (not physical capture evidence)`,not_connected_in_checkpoint:'Native microphone capture is not connected in this Runtime'})[d.discovery_status]??`Microphone discovery: ${String(d.discovery_status??'unknown').replaceAll('_',' ')}`;}
+export function runtimeErrorText(e){const c=e?.payload?.error?.code;return c==='model_unavailable'?'Runtime model unavailable (HTTP 503); real analysis cannot start.':c?`Runtime unavailable: ${c.replaceAll('_',' ')}.`:'Local Runtime unavailable.';}
+export function sessionCondition(s){if(!s)return{label:'No session',detail:'Create or load an authoritative session.'};const w=s.song?.workflow_state??'UNKNOWN';if(w==='SUSPENDED')return{label:'Suspended',detail:(s.suspension_reasons??[]).join(', ')||'No suspension reason supplied.'};if(w==='ERROR')return{label:'Runtime error',detail:'Inspect Runtime diagnostics.'};if(w==='STOPPED')return{label:'Stopped',detail:'Capture is stopped.'};const q=s.latest_frame?.quality;if(q&&(q.dropout||q.stale||q.capture_compatible===false||q.comparability==='unsupported'))return{label:'Unavailable / degraded evidence',detail:(q.reason_codes??[]).join(', ')||'Evidence is not actionable.'};if(!s.latest_frame)return{label:'Waiting for evidence',detail:'Runtime has not published a frame.'};if(s.latest_frame.example_only)return{label:'Simulation evidence only',detail:'Not real-ML or physical-demo evidence.'};return{label:'Authoritative Runtime evidence',detail:'Values come from the active Runtime snapshot.'};}
 
-export function balanceText(instrument) {
-  const usable = !instrument.confidence.abstained && instrument.activity === 'active' &&
-    ['normal', 'too_loud', 'too_quiet'].includes(instrument.status) &&
-    typeof instrument.balance_deviation_db === 'number';
-  return usable ? `About ${instrument.balance_deviation_db >= 0 ? '+' : ''}${instrument.balance_deviation_db.toFixed(1)} dB balance` : 'Balance unavailable';
-}
+export function expandInstrumentConfiguration(rows){return rows.flatMap(([family,count])=>Array.from({length:Math.max(0,Number(count)||0)},(_,i)=>({instrument_id:`${family}-${i+1}`,family,display_name:`${family[0].toUpperCase()+family.slice(1)}${count>1?` ${i+1}`:''}`})));}
+export function runtimeInstrumentGroups(instances){return[...new Set(instances.map(x=>x.family))].map(family=>({instrument_id:family,family}));}
+export function normalizeCatalogRows(value){if(!Array.isArray(value))return[];return value.filter(row=>row&&typeof row.session_id==='string'&&row.session_id&&typeof row.song_name==='string').map(row=>{const counts={};if(row.instrument_counts&&typeof row.instrument_counts==='object'&&!Array.isArray(row.instrument_counts))for(const [family,count] of Object.entries(row.instrument_counts))if(/^[a-z0-9-]+$/.test(family)&&Number.isInteger(count)&&count>0&&count<=32)counts[family]=count;return{session_id:row.session_id,song_name:row.song_name,reference_id:typeof row.reference_id==='string'?row.reference_id:null,baseline_id:typeof row.baseline_id==='string'?row.baseline_id:null,instrument_counts:counts};}).slice(0,12);}
+export function restoreConfiguredInstances(families,catalogRow){const counts=catalogRow?.instrument_counts??{};return expandInstrumentConfiguration(families.map(family=>[family,counts[family]??1]));}
+export function buildProbePlan(instances){return[...instances.map(x=>({kind:'instrument',id:x.instrument_id,family:x.family,label:`Please play ${x.display_name}`})),{kind:'full_band_quiet',id:'full-band-quiet',label:'Play a quiet / low-intensity passage'},{kind:'full_band_loud',id:'full-band-loud',label:'Play the loudest / highest-intensity passage'},{kind:'review',id:'calibration-review',label:'Calibration review'}];}
+export function restoreProbeView(plan,probe){if(!probe||probe.mode==='idle')return null;if(probe.mode==='instrument'){const index=plan.findIndex(step=>step.kind==='instrument'&&step.family===probe.instrument_id);if(index<0)return null;const family=probe.instrument_id[0].toUpperCase()+probe.instrument_id.slice(1);return{index,step:{kind:'instrument',id:probe.probe_id,family:probe.instrument_id,label:`Resume ${family} family probe`,restored:true}};}const index=plan.findIndex(step=>step.kind==='full_band_quiet');return index<0?null:{index,step:{kind:'full_band_restored',id:probe.probe_id,label:'Resume the active full-band probe',restored:true}};}
+export function liveEvidenceState(s,receivedAt=undefined,connected=true,now=Date.now()){const f=s?.latest_frame;if(!f)return'waiting';if(receivedAt!==undefined&&(!connected||receivedAt===null||now-receivedAt>RECEIPT_FRESHNESS_MAX_MS))return'unavailable';const q=f.quality??{};if(q.stale||q.dropout||q.capture_compatible===false||['unsupported','not_comparable'].includes(q.comparability))return'unavailable';const instruments=f.instruments??[];if(!instruments.length)return'unavailable';if(instruments.some(i=>i.activity==='unsupported'||i.status==='unsupported'))return'unsupported';if(instruments.some(i=>i.activity==='unknown'||i.status==='unknown'))return'unknown';if(instruments.some(i=>i.activity==='inactive'))return'inactive';if(instruments.some(i=>i.confidence?.abstained))return'abstain';return'observable';}
+export function currentRecoveredVerification(s){const v=s?.latest_verification,event=s?.incident?.event;return Boolean(v&&v.outcome==='recovered'&&s.incident_state==='resolved'&&event&&v.event_id===event.event_id&&v.baseline_id===s.active_baseline?.baseline_id&&v.baseline_version===s.active_baseline?.version);}
+export function liveViewState(s,receivedAt=undefined,connected=true,now=Date.now()){if(!s)return'waiting';if(s.song.workflow_state==='SUSPENDED')return'suspended';const evidence=liveEvidenceState(s,receivedAt,connected,now);if(evidence==='waiting'||evidence==='unavailable')return evidence;if(['active','adjusting','verifying'].includes(s.incident_state)||s.song.workflow_state==='LIVE_ANOMALY')return'anomaly';if(['unsupported','unknown','inactive','abstain'].includes(evidence))return'abstain';if(currentRecoveredVerification(s))return'recovered';return(s.latest_frame?.instruments??[]).every(i=>i.status==='normal')?'normal':'monitoring';}
+export function verificationPresentation(s){const a=s?.adjustment,v=s?.latest_verification;if(a?.completed_monotonic_s&&v?.adjustment_id!==a.adjustment_id)return{state:'waiting',title:'Waiting for fresh verification evidence',detail:'Only evidence captured after the completed adjustment can verify the result.'};if(!v)return null;const title={recovered:'Recovered',partial:'Partially improved',not_recovered:'Not recovered',inconclusive:'Verification inconclusive'}[v.outcome]??'Verification update',reasons=(v.reason_codes??[]).join(', '),values=v.source_observable&&typeof v.before_balance_db==='number'&&typeof v.after_balance_db==='number'?`Before ${v.before_balance_db.toFixed(1)} dB · after ${v.after_balance_db.toFixed(1)} dB`:'';return{state:v.outcome,title,detail:[values,reasons].filter(Boolean).join(' · ')||'Runtime supplied no additional reason.'};}
 
-export function freshness(frame, authoritativeNowMonotonicS = null) {
-  if (!frame) return 'No observation received';
-  if (frame.quality.stale) return frame.example_only ? 'Stale fixture frame — do not act' : 'Stale frame — do not act';
-  if (typeof authoritativeNowMonotonicS !== 'number') return frame.example_only ? 'Fixture/static frame — data age unavailable' : 'Data age unavailable';
-  const age = Math.max(0, authoritativeNowMonotonicS - frame.published_monotonic_s);
-  return `${age.toFixed(1)} s old`;
-}
+function makeConfidence(abstained,reasons,prob=.91,event='joint_anomaly_numeric_correct',interval=[2.6,5.6]){return{record_type:'ConfidenceState',schema_version:'1.0',calibration_status:abstained?'out_of_envelope':'calibrated',calibration_id:abstained?null:'fixture-calibration',probability_event:abstained?'not_available':event,magnitude_tolerance_db:1.5,probability:abstained?null:prob,prediction_interval_db:abstained?null:interval,abstained,reasons};}
+function showcaseFrame(s,mode='anomaly'){const item=(id,activity,status,d,c)=>({record_type:'InstrumentState',schema_version:'1.0',instrument_id:id,family:id,activity,presence_probability:activity==='active'?.92:null,source_level_delta_db:d,balance_deviation_db:d,status,confidence:c,tone:null});const families=s.song.configured_families;const instruments=families.map((id,i)=>mode==='abstain'?item(id,'unknown','unknown',null,makeConfidence(true,['fixture_low_evidence'])):mode==='anomaly'&&i===0?item(id,'active','too_loud',4.1,makeConfidence(false,[])):item(id,'active','normal',0.2,makeConfidence(false,[],.9,'normal_within_envelope',[-1.3,1.5])));return{record_type:'AnalysisFrame',schema_version:'1.0',example_only:true,frame_id:`fixture-${mode}-${Date.now()}`,session_id:s.session_id,analysis_run_id:'fixture-run',sequence:9,input_kind:s.source.input_kind,input_asset_or_device_id:s.source.input_asset_or_device_id,clock_id:s.source.clock_id,sample_rate_hz:48000,sample_start:2016000,sample_end:2208000,capture_end_monotonic_s:46,published_monotonic_s:47,model_bundle_id:s.execution.model_bundle_id,frontend_id:s.execution.frontend_id,execution_profile_id:s.execution.execution_profile_id,baseline_id:s.active_baseline?.baseline_id??null,baseline_version:s.active_baseline?.version??null,reference_id:s.active_reference.reference_id,quality:{clipped_fraction:0,dropout:false,stale:false,comparability:'comparable',capture_compatible:true,reason_codes:[],snr_estimate_db:null,snr_is_ground_truth:false},observed_mix_level_delta_db:.2,common_mode_gain_db:.1,identifiability_assumption:'majority_active_sources_unchanged',inference_wall_ms:28,instruments};}
+export function fixtureScenario(base){const s=structuredClone(base.live_snapshot);s.latest_frame=showcaseFrame(s,'anomaly');s.incident_state='active';s.song.workflow_state='LIVE_ANOMALY';const target={target_kind:'baseline',reference:{reference_id:s.active_reference.reference_id,source_asset_hash:s.active_reference.source_asset_hash},baseline:{baseline_id:s.active_baseline.baseline_id,baseline_version:s.active_baseline.version}};const c=s.latest_frame.instruments[0].confidence,e={record_type:'AnomalyEvent',schema_version:'1.0',event_id:'fixture-event-1',session_id:s.session_id,instrument_ids:[s.latest_frame.instruments[0].instrument_id],direction:'too_loud',onset_monotonic_s:43,confirmed_monotonic_s:46,baseline_id:s.active_baseline.baseline_id,reference_id:s.active_reference.reference_id,evidence_frame_ids:[s.latest_frame.frame_id],state:'active',confidence:c};s.incident={event:e,event_version:1,target};s.recommendations=[{record_type:'Recommendation',schema_version:'1.0',recommendation_id:'fixture-rec',event_id:e.event_id,instrument_id:e.instrument_ids[0],action:'reduce_level',suggested_step_db:-2,human_control_hint:'Make a small manual level correction, then recheck.',message_template_id:'reduce-v1',evidence_frame_ids:[s.latest_frame.frame_id],expires_monotonic_s:60,automatic_execution:false}];return s;}
+export function fixtureRehearsal(base){const s=structuredClone(base.rehearsal_snapshot);s.latest_frame=showcaseFrame(s,'normal');return s;}
+export function fixtureLiveSnapshot(base,mode,prior=null){const s=['anomaly','recovered'].includes(mode)?fixtureScenario(base):structuredClone(base.live_snapshot);if(mode!=='anomaly')s.latest_frame=showcaseFrame(s,mode==='abstain'?'abstain':'normal');if(prior){s.song={...s.song,...prior.song,workflow_state:'LIVE_MONITORING'};s.active_reference=prior.active_reference??s.active_reference;s.active_baseline=prior.active_baseline??s.active_baseline;s.latest_frame.reference_id=s.active_reference?.reference_id??null;s.latest_frame.baseline_id=s.active_baseline?.baseline_id??null;}s.incident_state=mode==='anomaly'?'active':mode==='recovered'?'resolved':'none';s.song.workflow_state=mode==='anomaly'?'LIVE_ANOMALY':'LIVE_MONITORING';if(mode==='recovered'){s.incident.event.state='resolved';s.recommendations=[];}else if(mode!=='anomaly'){s.incident=null;s.recommendations=[];}s.latest_verification=mode==='recovered'?{record_type:'VerificationResult',schema_version:'1.0',verification_id:'fixture-recovered',event_id:s.incident.event.event_id,adjustment_id:'fixture-adjustment',baseline_id:s.active_baseline.baseline_id,baseline_version:s.active_baseline.version,adjustment_completed_monotonic_s:45,first_evidence_sample_start_monotonic_s:48,evidence_frame_ids:[s.latest_frame.frame_id],instrument_id:s.latest_frame.instruments[0].instrument_id,before_balance_db:4.1,after_balance_db:.2,source_observable:true,outcome:'recovered',reason_codes:[]}:null;return s;}
 
-export function receiptFreshness(frame, receiptMs, connected) {
-  if (!frame) return 'No observation received';
-  if (frame.quality.stale) return 'Stale frame — corrective controls are gated';
-  if (!connected || receiptMs === null) return 'Data freshness unknown — corrective controls are gated';
-  const ageMs = Math.max(0, Date.now() - receiptMs);
-  if (ageMs > RECEIPT_FRESHNESS_MAX_MS) return `Local receipt age ${(ageMs / 1000).toFixed(1)} s — freshness unknown; corrective controls are gated`;
-  return `Received ${(ageMs / 1000).toFixed(1)} s ago (local receipt age)`;
-}
-
-export function receiptIsFresh(frame, receiptMs, connected, nowMs = Date.now()) {
-  return Boolean(frame) && !frame.quality.stale && connected && receiptMs !== null && nowMs - receiptMs <= RECEIPT_FRESHNESS_MAX_MS;
-}
-
-export function canMutate(view, adapter, snapshot, connected) {
-  return view === 'authoritative' && Boolean(adapter) && adapter.snapshot?.session_id === snapshot?.session_id && connected;
-}
-
-export function commandFor(snapshot, action, payload = {}, idempotencyKey = `ui-${action}-fixture`) {
-  const reference = snapshot.active_reference && { reference_id: snapshot.active_reference.reference_id, source_asset_hash: snapshot.active_reference.source_asset_hash };
-  const baseline = snapshot.active_baseline && { baseline_id: snapshot.active_baseline.baseline_id, baseline_version: snapshot.active_baseline.version };
-  const event = snapshot.incident && { event_id: snapshot.incident.event.event_id, event_version: snapshot.incident.event_version };
-  return { record_type: 'SessionCommand', schema_version: '1.0', session_id: snapshot.session_id,
-    idempotency_key: idempotencyKey, expected_state_version: snapshot.state_version,
-    reference, baseline, event, action, payload };
-}
-
-export function confidenceText(confidence) {
-  const calibration = confidence.calibration_status.replaceAll('_', ' ');
-  if (confidence.abstained) return `Abstained · ${calibration}: ${confidence.reasons.join(', ')}`;
-  const probability = confidence.probability === null ? 'Probability unavailable' :
-    `${Math.round(confidence.probability * 100)}% probability of ${confidence.probability_event.replaceAll('_', ' ')}`;
-  const tolerance = `Magnitude tolerance: ±${confidence.magnitude_tolerance_db} dB`;
-  const interval = confidence.prediction_interval_db === null ? null :
-    `Prediction interval: ${confidence.prediction_interval_db[0]} to ${confidence.prediction_interval_db[1]} dB`;
-  return [calibration, probability, tolerance, interval].filter(Boolean).join(' · ');
-}
-
-function showcaseFrame(snapshot, fixtureMode = 'live') {
-  const makeConfidence = (abstained, reasons, probability = .91, probabilityEvent = 'joint_anomaly_numeric_correct', interval = [2.6, 5.6]) => ({ record_type:'ConfidenceState', schema_version:'1.0', calibration_status: abstained ? 'out_of_envelope':'calibrated', calibration_id: abstained ? null:'fixture-calibration', probability_event: abstained ? 'not_available':probabilityEvent, magnitude_tolerance_db: 1.5, probability: abstained ? null:probability, prediction_interval_db: abstained ? null:interval, abstained, reasons });
-  const item = (instrument_id, activity, status, deviation, confidence) => ({ record_type:'InstrumentState', schema_version:'1.0', instrument_id, family:instrument_id, activity, presence_probability:activity === 'active' ? .92:null, source_level_delta_db:deviation, balance_deviation_db:deviation, status, confidence, tone:null });
-  return { record_type:'AnalysisFrame', schema_version:'1.0', example_only:true, frame_id:'fixture-frame-operator', session_id:snapshot.session_id, analysis_run_id:'fixture-run-operator', sequence:9, input_kind:snapshot.source.input_kind, input_asset_or_device_id:snapshot.source.input_asset_or_device_id, clock_id:snapshot.source.clock_id, sample_rate_hz:48000, sample_start:2016000, sample_end:2208000, capture_end_monotonic_s:46, published_monotonic_s:47, model_bundle_id:snapshot.execution.model_bundle_id, frontend_id:snapshot.execution.frontend_id, execution_profile_id:snapshot.execution.execution_profile_id, baseline_id:snapshot.active_baseline?.baseline_id ?? null, baseline_version:snapshot.active_baseline?.version ?? null, reference_id:snapshot.active_reference.reference_id, quality:{clipped_fraction:0,dropout:false,stale:false,comparability:'comparable',capture_compatible:true,reason_codes:[],snr_estimate_db:null,snr_is_ground_truth:false}, observed_mix_level_delta_db:.2,common_mode_gain_db:.1,identifiability_assumption:'majority_active_sources_unchanged',inference_wall_ms:28,
-    instruments: fixtureMode === 'rehearsal' ? [item('guitar','active','normal',.2,makeConfidence(false,[],.92,'normal_within_envelope',[-1.3, 1.5])), item('bass','inactive','inactive',null,makeConfidence(true,['source_inactive'])), item('drums','unknown','unknown',null,makeConfidence(true,['noise_overlap','not_observable']))] : [item('guitar','active','too_loud',4.1,makeConfidence(false,[],.92,'joint_anomaly_numeric_correct',[2.6, 5.6])), item('bass','active','normal',.2,makeConfidence(false,[],.88,'normal_within_envelope',[-1.3, 1.5])), item('drums','inactive','inactive',null,makeConfidence(true,['source_inactive']))] };
-}
-
-export function fixtureScenario(base) {
-  const snapshot = structuredClone(base.live_snapshot);
-  snapshot.latest_frame = showcaseFrame(snapshot);
-  snapshot.incident_state = 'active'; snapshot.song.workflow_state = 'LIVE_ANOMALY';
-  const target = { target_kind:'baseline', reference:{reference_id:snapshot.active_reference.reference_id,source_asset_hash:snapshot.active_reference.source_asset_hash}, baseline:{baseline_id:snapshot.active_baseline.baseline_id,baseline_version:snapshot.active_baseline.version} };
-  const event = { record_type:'AnomalyEvent', schema_version:'1.0', event_id:'fixture-event-1', session_id:snapshot.session_id, instrument_ids:['guitar'], direction:'too_loud', onset_monotonic_s:43, confirmed_monotonic_s:46, baseline_id:snapshot.active_baseline.baseline_id, reference_id:snapshot.active_reference.reference_id, evidence_frame_ids:[snapshot.latest_frame.frame_id], state:'active', confidence:snapshot.latest_frame.instruments[0].confidence };
-  snapshot.incident = { event, event_version:1, target };
-  snapshot.recommendations = [{ record_type:'Recommendation', schema_version:'1.0', recommendation_id:'fixture-recommendation-1', event_id:event.event_id, instrument_id:'guitar', action:'reduce_level', suggested_step_db:-2, human_control_hint:'Make a small manual guitar-level correction, then recheck.', message_template_id:'reduce-level-v1', evidence_frame_ids:[snapshot.latest_frame.frame_id], expires_monotonic_s:60, automatic_execution:false }];
-  snapshot.latest_verification = { record_type:'VerificationResult', schema_version:'1.0', verification_id:'fixture-verification-1', event_id:event.event_id, adjustment_id:'fixture-adjustment-1', baseline_id:snapshot.active_baseline.baseline_id, baseline_version:snapshot.active_baseline.version, adjustment_completed_monotonic_s:47, first_evidence_sample_start_monotonic_s:48, evidence_frame_ids:[], instrument_id:'guitar', before_balance_db:4.1, after_balance_db:null, source_observable:false, outcome:'inconclusive', reason_codes:['awaiting_post_adjustment_audio'] };
-  return snapshot;
-}
-
-export function fixtureRehearsal(base) {
-  const snapshot = structuredClone(base.rehearsal_snapshot);
-  snapshot.latest_frame = showcaseFrame(snapshot, 'rehearsal');
-  return snapshot;
-}
-
-function node(tag, text, className = '') {
-  const result = document.createElement(tag);
-  result.textContent = text;
-  if (className) result.className = className;
-  return result;
-}
-
-function summaryItem(label, value) {
-  const container = document.createElement('div');
-  container.append(node('span', label, 'eyebrow'), node('strong', value));
-  return container;
-}
-
-function profileItem(label, value, detail) {
-  const container = document.createElement('div');
-  container.append(node('p', label, 'profile-name'), node('strong', value), node('p', detail, 'muted'));
-  return container;
-}
-
-function render(snapshot) {
-  const frame = snapshot.latest_frame;
-  document.querySelector('#mode').textContent = `${snapshot.session_mode === 'live' ? 'LIVE' : 'REHEARSAL'} · ${snapshot.incident_state}`;
-  document.querySelector('#summary').replaceChildren(
-    summaryItem('SONG / SESSION', `${snapshot.song.name} · ${snapshot.session_id}`),
-    summaryItem('CAPTURE', `${snapshot.source.input_kind.replaceAll('_',' ')} · ${snapshot.source.input_asset_or_device_id}`),
-    summaryItem('RUNTIME', `${snapshot.execution.provider} · ${snapshot.execution.model_bundle_id}`),
-  );
-  document.querySelector('#profiles').replaceChildren(
-    profileItem('IDEAL REFERENCE', snapshot.active_reference?.reference_id ?? 'Not ready', 'Immutable uploaded mixed reference'),
-    profileItem('ACCEPTED BASELINE', snapshot.active_baseline ? `${snapshot.active_baseline.baseline_id} v${snapshot.active_baseline.version}` : 'Not accepted', 'Human acceptance only; never automatic'),
-  );
-  document.querySelector('#freshness').textContent = viewMode === 'authoritative' ? receiptFreshness(frame, authoritativeReceiptMs, runtimeConnected) : freshness(frame);
-  const cards = (frame?.instruments ?? []).map(instrument => {
-    const card = document.createElement('article');
-    const stateClass = ['normal', 'too_loud', 'too_quiet', 'unknown', 'inactive', 'unsupported'].includes(instrument.status) ? instrument.status : 'unknown';
-    card.className = `instrument ${stateClass}`;
-    card.append(node('span', displayStatus(instrument), `status ${stateClass}`), node('h3', instrument.family), node('p', balanceText(instrument), 'metric'), node('p', confidenceText(instrument.confidence), 'muted'));
-    return card;
-  });
-  document.querySelector('#instrument-cards').replaceChildren(...(cards.length ? cards : [node('p', 'Awaiting analysis frame.', 'muted')]));
-  const rec = snapshot.recommendations?.[0];
-  const recommendation = document.querySelector('#recommendation');
-  const expired = rec && frame && rec.expires_monotonic_s <= frame.published_monotonic_s;
-  const freshnessUnknown = viewMode === 'authoritative' && !receiptIsFresh(frame, authoritativeReceiptMs, runtimeConnected);
-  recommendation.replaceChildren(...(!rec ? [node('p', 'No current recommendation.', 'muted')] : expired ? [node('strong', 'Recommendation expired', 'negative'), node('p', 'Do not act on expired recommendation data.', 'muted')] : freshnessUnknown ? [node('strong', 'Recommendation withheld', 'negative'), node('p', 'Data freshness is unknown; wait for a fresh authoritative frame.', 'muted')] : [node('strong', `${rec.instrument_id}: ${rec.action.replaceAll('_',' ')}`), node('p', rec.human_control_hint ?? 'No operator hint supplied.'), node('p', `${rec.suggested_step_db === null ? 'No numeric step is available.' : `Suggested bounded step: ${rec.suggested_step_db} dB`} · Human executes; automatic execution is false. Expires at session t=${rec.expires_monotonic_s}s.`, 'muted')]));
-  const verification = snapshot.latest_verification;
-  const verificationPanel = document.querySelector('#verification');
-  verificationPanel.replaceChildren(...(!verification ? [node('p', 'No verification result yet.', 'muted')] : [node('strong', verification.outcome.replaceAll('_',' '), verification.outcome === 'recovered' ? '' : 'negative'), node('p', verification.source_observable ? 'Post-adjustment source was observable.' : 'No recovery claim: fresh, observable post-adjustment audio is still required.', 'muted'), node('p', verification.reason_codes.join(', '), 'muted')]));
-  renderControls(snapshot);
-}
-
-function renderControls(snapshot) {
-  if (!snapshot) { document.querySelector('#controls').replaceChildren(node('p', 'Create or load an authoritative session to enable controls.', 'muted')); return; }
-  const recheckPayload = { adjustment_id: snapshot.adjustment?.adjustment_id ?? null };
-  const qualified = document.querySelector('#qualified-interval').checked;
-  const differenceChoice = document.querySelector('input[name="reference-difference"]:checked')?.value;
-  const acceptedBy = document.querySelector('#accepted-by').value.trim();
-  const interval = { analysis_run_id:document.querySelector('#acceptance-run').value.trim(), clock_id:snapshot.source.clock_id, sample_rate_hz:Number(document.querySelector('#acceptance-rate').value), sample_start:Number(document.querySelector('#acceptance-start').value), sample_end:Number(document.querySelector('#acceptance-end').value) };
-  const acceptPayload = { interval, accepted_by:acceptedBy, reference_difference_accepted:differenceChoice === 'true', acceptance_note:null };
-  const acceptanceReady = qualified && differenceChoice !== undefined && acceptedBy.length > 0 && interval.analysis_run_id && Number.isInteger(interval.sample_rate_hz) && interval.sample_rate_hz > 0 && Number.isInteger(interval.sample_start) && Number.isInteger(interval.sample_end) && interval.sample_start >= 0 && interval.sample_end > interval.sample_start;
-  const authoritative = canMutate(viewMode, runtimeAdapter, snapshot, runtimeConnected);
-  const correctiveFresh = authoritative && receiptIsFresh(snapshot.latest_frame, authoritativeReceiptMs, runtimeConnected);
-  const actions = [ ['recheck','Recheck',recheckPayload,!correctiveFresh], ['accept_baseline','Accept as Baseline',acceptPayload,!correctiveFresh || snapshot.session_mode !== 'rehearsal' || !acceptanceReady], ['start_adjustment','Start adjustment',{},!correctiveFresh], ['complete_adjustment','Complete adjustment',{ adjustment_id:snapshot.adjustment?.adjustment_id ?? 'unavailable' },!correctiveFresh || !snapshot.adjustment], ['start_live','Enter Live',{},!authoritative || !snapshot.active_baseline], ['pause','Pause',{},!authoritative], ['resume','Resume',{},!authoritative], ['stop','Stop session',{},!authoritative] ];
-  const controlPanel = document.querySelector('#controls');
-  controlPanel.replaceChildren(...actions.map(([action, label, payload, disabled]) => {
-    const button = node('button', label);
-    button.disabled = disabled;
-    button.addEventListener('click', () => {
-      const command = commandFor(snapshot, action, payload, `${runtimeAdapter ? 'ui' : 'fixture'}-${action}-${crypto.randomUUID()}`);
-      if (!authoritative) {
-        document.querySelector('#command-status').textContent = 'Fixture display is non-mutating.';
-        return;
-      }
-      runtimeAdapter.command(command).then(() => {
-        document.querySelector('#command-status').textContent = `${command.action} accepted by Runtime.`;
-      }).catch(error => {
-        document.querySelector('#command-status').textContent = `Runtime rejected ${command.action}: ${error.message}`;
-      });
-    });
-    return button;
-  }));
-}
-
-async function start() {
-  let snapshot = null;
-  const adapter = new RuntimeAdapter({
-    onSnapshot(next) {
-      if (fixtureLocked) return;
-      viewMode = 'authoritative';
-      snapshot = next;
-      if (next.latest_frame?.frame_id && next.latest_frame.frame_id !== lastFrameId) {
-        lastFrameId = next.latest_frame.frame_id;
-        authoritativeReceiptMs = Date.now();
-      }
-      render(snapshot);
-    },
-    onStatus(message) { document.querySelector('#command-status').textContent = message; },
-    onConnection(connected) {
-      runtimeConnected = connected;
-      if (viewMode === 'authoritative' && snapshot) render(snapshot);
-    },
-  });
-  try {
-    await adapter.health();
-    runtimeAdapter = adapter;
-    viewMode = 'authoritative';
-    document.querySelector('#source-mode').textContent = 'Local Runtime connected. Live records are authoritative; fixture buttons remain illustrative.';
-    document.querySelector('#command-status').textContent = 'Local Runtime available. Complete setup to start an authoritative session.';
-    document.querySelector('#mode').textContent = 'SETUP · no session';
-    document.querySelector('#summary').replaceChildren(summaryItem('SESSION', 'No authoritative session loaded.'));
-    document.querySelector('#profiles').replaceChildren(profileItem('REFERENCE / BASELINE', 'Awaiting setup', 'Create a song and uploaded ideal reference to begin.'));
-    document.querySelector('#freshness').textContent = 'No observation received';
-    document.querySelector('#instrument-cards').replaceChildren(node('p', 'Awaiting authoritative session.', 'muted'));
-    document.querySelector('#recommendation').replaceChildren(node('p', 'No current recommendation.', 'muted'));
-    document.querySelector('#verification').replaceChildren(node('p', 'No verification result yet.', 'muted'));
-    renderControls(null);
-  } catch {
-    viewMode = 'fixture';
-    try {
-      const response = await fetch(FIXTURE_PATH);
-      const fixtures = await response.json();
-      const liveSnapshot = fixtureScenario(fixtures);
-      const rehearsalSnapshot = fixtureRehearsal(fixtures);
-      snapshot = liveSnapshot;
-      render(snapshot);
-      document.querySelector('#fixture-live').addEventListener('click', () => { fixtureLocked = true; viewMode = 'fixture'; snapshot = liveSnapshot; render(snapshot); });
-      document.querySelector('#fixture-rehearsal').addEventListener('click', () => { fixtureLocked = true; viewMode = 'fixture'; snapshot = rehearsalSnapshot; render(snapshot); });
-      document.querySelector('#command-status').textContent = 'Fixture mode: local Runtime is unavailable.';
-    } catch {
-      document.querySelector('#source-mode').textContent = 'Runtime unavailable and no local fixture asset is served.';
-      document.querySelector('#command-status').textContent = 'Fixture fallback is unavailable; start the approved Runtime listener or local static development server.';
-      renderControls(null);
-    }
+const app=()=>document.querySelector('#app');
+function node(tag,text='',cls=''){const n=document.createElement(tag);if(text)n.textContent=text;if(cls)n.className=cls;return n;}
+function button(text,fn,cls='primary',type='button'){const b=node('button',text,cls);b.type=type;b.addEventListener('click',fn);return b;}
+function clearTimer(){clearTimeout(probeTimer);probeTimer=null;}
+function clearFreshnessTimer(){clearInterval(freshnessTimer);freshnessTimer=null;}
+function ensureFreshnessTimer(){if(freshnessTimer||viewMode!=='authoritative'||page!=='console')return;freshnessTimer=setInterval(()=>{if(viewMode==='authoritative'&&page==='console'&&snapshot)renderConsole();else clearFreshnessTimer();},1000);}
+function guardedButton(label,action,payload={},cls='secondary'){const guard=commandGuard(action,viewMode,runtimeAdapter,snapshot,runtimeConnected,receiptMs),b=button(label,()=>sendCommand(action,payload),cls);b.disabled=!guard.allowed;if(guard.reason)b.title=guard.reason;return b;}
+function captureCalibrationFocus(){const active=document.activeElement;if(!active?.closest?.('.accept-form')||!active.name)return null;return{name:active.name,start:active.selectionStart,end:active.selectionEnd};}
+function restoreCalibrationFocus(saved){if(!saved)return;const target=document.querySelector(`.accept-form [name="${saved.name}"]`);if(!target)return;target.focus();if(typeof target.setSelectionRange==='function'&&saved.start!==null)target.setSelectionRange(saved.start,saved.end);}
+export function calibrationDraftFor(s,previous=null){if(previous?.sessionId===s.session_id)return previous;const f=s.latest_frame;return{sessionId:s.session_id,acceptedBy:'operator',run:f?.analysis_run_id??'',rate:f?.sample_rate_hz??48000,start:f?.sample_start??0,end:f?.sample_end??1,difference:false};}
+function setSnapshot(next){if(viewMode!=='authoritative')return;if(next.session_id!==lastSessionId){lastSessionId=next.session_id;lastFrameId=null;receiptMs=null;evidenceHistory=[];calibrationDraft=null;clearTimer();}snapshot=next;if(next.latest_frame?.frame_id!==lastFrameId){lastFrameId=next.latest_frame?.frame_id??null;if(lastFrameId){receiptMs=Date.now();evidenceHistory.push(next.latest_frame);evidenceHistory=evidenceHistory.slice(-24);const p=runtimeAdapter?.probe,frameStart=next.latest_frame.capture_end_monotonic_s-(next.latest_frame.sample_end-next.latest_frame.sample_start)/next.latest_frame.sample_rate_hz;if(page==='console'&&probeIndex>=0&&probePhase==='listening'&&p?.probe_id&&frameStart>=p.not_before_monotonic_s)probePhase='result';}}if(page==='console')renderConsole();}
+function setProbeState(probe){if(viewMode!=='authoritative'||page!=='console'||!snapshot||probe.session_id!==snapshot.session_id||probe.state_version!==snapshot.state_version)return;const current=probePlan[probeIndex],hadActiveProbe=probeIndex>=0||Boolean(restoredProbeStep);if(probe.mode==='idle'){if(current?.kind==='review'&&snapshot.song.workflow_state==='REHEARSAL'){restoredProbeStep=null;probePhase='review';}else{restoredProbeStep=null;probeIndex=-1;probePhase='idle';clearTimer();if(hadActiveProbe)operationStatus='Guided probe was canceled by Runtime.';}}else{const matches=probe.mode==='instrument'?current?.kind==='instrument'&&current.family===probe.instrument_id:current?.kind?.startsWith('full_band');if(!matches){const restored=restoreProbeView(probePlan,probe);restoredProbeStep=restored?.step??null;probeIndex=restored?.index??-1;probePhase=restored?'listening':'idle';}}renderConsole();}
+function header(step){const h=node('header','','app-header');h.append(node('div','AI Performance Controller','brand'),node('div',step,'mode-pill'));return h;}
+function notice(){const text=viewMode==='fixture'?`Fixture/demo mode · illustrative values only; never physical or empirical evidence.${runtimeStartupError?` ${runtimeErrorText(runtimeStartupError)}`:''}`:runtimeReadiness(runtimeHealth,snapshot);return node('p',text,'truth-notice');}
+function operationNotice(){if(!operationStatus)return null;const message=node('p',operationStatus,'global-status');message.id='global-status';return message;}
+function appendOperationNotice(root){const message=operationNotice();if(message)root.append(message);}
+function renderSelection(){page='selection';clearTimer();clearFreshnessTimer();if(runtimeAdapter)viewMode='authoritative';const root=app();root.replaceChildren(header('PA MODULE'));const hero=node('section','','entry-hero panel');hero.append(node('p','ONE MICROPHONE · HUMAN CONTROL','eyebrow'),node('h1','Your second pair of ears.','hero-title'),node('p','Set up a known song, calibrate it in the room, then monitor the accepted balance.','hero-copy'),button('Add new song',()=>renderSetup(),'primary large'));const form=node('form','','existing-form');form.innerHTML='<label>Existing Runtime session ID<input name="sessionId" required placeholder="session-…"></label><button class="secondary" type="submit">Open existing song</button>';form.addEventListener('submit',async e=>{e.preventDefault();await loadSession(new FormData(form).get('sessionId'));});hero.append(node('p','or','or'),form);const catalog=getCatalog();if(catalog.length){const list=node('div','','saved-sessions');list.append(node('p','RECENT AUTHORITATIVE SESSIONS','eyebrow'));catalog.forEach(x=>list.append(button(`${x.song_name} · ${x.session_id}`,()=>loadSession(x.session_id),'ghost')));hero.append(list);}if(fixtures){const f=node('div','','fixture-shortcuts');f.append(button('Open fixture rehearsal',()=>openFixture(false),'ghost'),button('Open fixture live',()=>openFixture(true),'ghost'));hero.append(f);}root.append(hero,notice());appendOperationNotice(root);}
+function renderSetup(){page='setup';clearFreshnessTimer();const root=app();root.replaceChildren(header('SONG SETUP'));const form=node('form','','setup-layout');const ref=node('section','','panel setup-panel');ref.innerHTML='<p class="eyebrow">SONG</p><label>Song name<input name="song" value="Example song" required></label><label>Ideal / reference audio<input name="reference" type="file" accept="audio/*"></label><label>Project<input name="project" value="Demo set" required></label><label>Session source<select name="source" id="setup-source"><option value="live_microphone">Runtime native microphone</option><option value="uploaded_file">Uploaded reference replay (offline fallback)</option></select></label><label>Runtime microphone<select name="sourceId" id="setup-device"></select></label><label>Requested sample rate<input name="sampleRate" type="number" value="48000" min="1"></label><p class="muted" id="device-copy"></p>';
+const instruments=node('section','','panel setup-panel');instruments.append(node('p','INSTRUMENT CONFIGURATION','eyebrow'),node('p','Quantities create rehearsal identities. Live evidence remains honest family/group evidence unless Runtime provides more.','muted'));const list=node('div','','quantity-list');const draw=()=>{list.replaceChildren(...setupRows.map(([family,count],idx)=>{const r=node('div','','quantity-row');r.append(node('strong',family[0].toUpperCase()+family.slice(1)),button('−',()=>{setupRows[idx][1]=Math.max(0,count-1);draw();},'count'),node('span',String(count),'quantity'),button('+',()=>{setupRows[idx][1]=count+1;draw();},'count'));return r;}));};draw();const add=node('div','','add-instrument');add.innerHTML='<input aria-label="New instrument family" placeholder="Add instrument"><button type="button" class="secondary">Add instrument</button>';add.querySelector('button').onclick=()=>{const v=add.querySelector('input').value.trim().toLowerCase().replace(/[^a-z0-9-]+/g,'-');if(v&&!setupRows.some(x=>x[0]===v)){setupRows.push([v,1]);draw();add.querySelector('input').value='';}};instruments.append(list,add);const actions=node('div','','setup-actions');actions.append(button('Back',renderSelection,'ghost'),button('Continue to rehearsal',()=>{},'primary','submit'));form.append(ref,instruments,actions);form.addEventListener('submit',async e=>{e.preventDefault();await createSong(new FormData(form));});root.append(form,notice());appendOperationNotice(root);populateDeviceSelect();}
+function populateDeviceSelect(){const s=document.querySelector('#setup-device'),copy=document.querySelector('#device-copy');if(!s)return;const ds=deviceDiscovery?.devices??[];s.replaceChildren(...ds.map(d=>{const o=node('option',d.device_id);o.value=d.device_id;return o;}));s.disabled=!ds.length;copy.textContent=deviceDiscoveryText(deviceDiscovery);}
+async function createSong(data){configuredInstances=expandInstrumentConfiguration(setupRows);const groups=runtimeInstrumentGroups(configuredInstances);if(!groups.length)return statusMessage('Add at least one instrument.');restoredProbeStep=null;if(runtimeAdapter&&viewMode==='authoritative'){const file=data.get('reference');if(!(file instanceof File)||!file.size)return statusMessage('Choose a PCM16 WAV reference.');try{statusMessage('Preparing authoritative song and reference…');await runtimeAdapter.setup({project:data.get('project'),song:data.get('song'),families:groups.map(x=>x.family),reference:file,source:data.get('source'),sourceId:data.get('source')==='uploaded_file'?'reference-asset':data.get('sourceId'),captureProfile:'ui-request-v1',requestedSampleRateHz:Number(data.get('sampleRate'))});operationStatus=null;page='console';probePlan=buildProbePlan(configuredInstances);probeIndex=-1;renderConsole();saveCatalog(snapshot);}catch(e){statusMessage(`Setup failed: ${e.message}`);}}else{operationStatus=null;snapshot=fixtureRehearsal(fixtures);snapshot.song.name=data.get('song');snapshot.song.configured_families=groups.map(x=>x.family);snapshot.latest_frame=showcaseFrame(snapshot,'normal');probePlan=buildProbePlan(configuredInstances);probeIndex=-1;page='console';renderConsole();}}
+function statusMessage(text){operationStatus=text;let s=document.querySelector('#global-status');if(!s){s=node('p','','global-status');s.id='global-status';app().append(s);}s.textContent=text;}
+async function loadSession(id){if(!runtimeAdapter)return statusMessage('Runtime unavailable. Use the clearly labeled fixture fallback.');try{viewMode='authoritative';runtimeStartupError=null;fixtureLiveMode='normal';const catalogRow=getCatalog().find(row=>row.session_id===String(id));await runtimeAdapter.openSession(String(id));configuredInstances=restoreConfiguredInstances(snapshot?.song.configured_families??[],catalogRow);probePlan=buildProbePlan(configuredInstances);const restored=restoreProbeView(probePlan,runtimeAdapter.probe);restoredProbeStep=restored?.step??null;probeIndex=restored?.index??-1;probePhase=restored?'listening':'idle';operationStatus=null;page='console';saveCatalog(snapshot);renderConsole();}catch(e){removeCatalog(String(id));statusMessage(`Existing session rejected by Runtime: ${e.message}`);}}
+function openFixture(live){runtimeAdapter?.stopEvents();clearFreshnessTimer();viewMode='fixture';runtimeConnected=false;operationStatus=null;restoredProbeStep=null;calibrationDraft=null;configuredInstances=['guitar','bass','drums'].map(f=>({instrument_id:`${f}-1`,family:f,display_name:f[0].toUpperCase()+f.slice(1)}));probePlan=buildProbePlan(configuredInstances);probeIndex=-1;snapshot=live?fixtureLiveSnapshot(fixtures,'normal'):fixtureRehearsal(fixtures);page='console';renderConsole();}
+function saveCatalog(s){if(!s||viewMode!=='authoritative'||typeof localStorage==='undefined')return false;try{const rows=getCatalog().filter(x=>x.session_id!==s.session_id),instrument_counts={};for(const item of configuredInstances)instrument_counts[item.family]=(instrument_counts[item.family]??0)+1;rows.unshift({session_id:s.session_id,song_name:s.song.name,reference_id:s.active_reference?.reference_id??null,baseline_id:s.active_baseline?.baseline_id??null,instrument_counts});localStorage.setItem(CATALOG_KEY,JSON.stringify(normalizeCatalogRows(rows)));return true;}catch{return false;}}
+function removeCatalog(id){if(typeof localStorage==='undefined')return false;try{localStorage.setItem(CATALOG_KEY,JSON.stringify(getCatalog().filter(x=>x.session_id!==id)));return true;}catch{return false;}}
+function instrumentIcon(family){const wrap=node('span',(family||'?').slice(0,2).toUpperCase(),'instrument-icon');wrap.setAttribute('aria-hidden','true');return wrap;}
+function evidenceView(inst){const values=evidenceHistory.map(f=>f.instruments?.find(i=>i.instrument_id===inst.instrument_id)?.balance_deviation_db).filter(v=>typeof v==='number').slice(-12);const box=node('div','','evidence-view');box.setAttribute('aria-label','Received numeric evidence history, not a separated source waveform');if(!values.length){box.append(node('span',viewMode==='fixture'?'Fixture visualization — no measured history':'Awaiting received evidence history','evidence-empty'));return box;}values.forEach(v=>{const b=node('span','','evidence-bar');b.style.height=`${Math.min(88,18+Math.abs(v)*12)}%`;box.append(b);});return box;}
+function instrumentCard(inst,activeFamily=null,unavailable=false){const c=node('article','',`instrument-card ${unavailable?'unavailable':inst.status} ${activeFamily&&inst.family!==activeFamily?'dimmed':''}`);c.append(instrumentIcon(inst.family),node('h3',inst.family,'instrument-name'),node('p',unavailable?'Unavailable — last frame is not fresh':displayStatus(inst),'instrument-status'),evidenceView(inst),node('strong',unavailable?'Balance withheld':balanceText(inst),'instrument-value'),node('p',unavailable?'Wait for fresh authoritative evidence.':confidenceText(inst.confidence),'confidence'));return c;}
+function renderConsole(){if(!snapshot)return renderSelection();const focused=captureCalibrationFocus();page='console';ensureFreshnessTimer();const root=app();const cond=sessionCondition(snapshot),live=snapshot.session_mode==='live',active=restoredProbeStep??probePlan[probeIndex],state=liveViewState(snapshot,viewMode==='authoritative'?receiptMs:undefined,runtimeConnected),label=state==='unavailable'?'Evidence stale / disconnected':cond.label;root.replaceChildren(header(live?'LIVE MONITORING':'REHEARSAL'));const songHead=node('section','','song-header');songHead.append(node('div',snapshot.song.name,'song-title'),node('div',`${live?'LIVE':'REHEARSAL'} · ${label}`,`status-hero ${state}`),button('Songs',renderSelection,'ghost'));root.append(songHead,notice());if(live)renderLive(root);else renderRehearsal(root,active);root.append(renderRuntimeStrip());appendOperationNotice(root);restoreCalibrationFocus(focused);}
+function renderRuntimeStrip(){const s=node('section','','runtime-strip'),baseline=snapshot.active_baseline?`${snapshot.active_baseline.baseline_id} v${snapshot.active_baseline.version}`:'none accepted';s.append(node('span',`session ${snapshot.session_id}`),node('span',`reference ${snapshot.active_reference?.reference_id??'none'}`),node('span',`baseline ${baseline}`),node('span',`${snapshot.source.input_kind.replaceAll('_',' ')} · ${snapshot.source.input_asset_or_device_id}`),node('span',`${snapshot.execution.provider} · ${snapshot.execution.model_bundle_id}`),node('span',viewMode==='authoritative'?receiptFreshness(snapshot.latest_frame,receiptMs,runtimeConnected):freshness(snapshot.latest_frame)));return s;}
+function renderVerification(){const value=verificationPresentation(snapshot);if(!value)return null;const box=node('section','',`verification-panel panel ${value.state}`);box.append(node('p','VERIFICATION','eyebrow'),node('h3',value.title,'verification-title'),node('p',value.detail,'muted'));return box;}
+function renderSessionControls(){const actions=node('div','','live-actions session-controls'),restart=(snapshot.suspension_reasons??[]).includes('runtime_restart_requires_new_session');if(snapshot.incident_state==='active'&&!snapshot.adjustment)actions.append(guardedButton('Start adjustment','start_adjustment',{},'primary'));if(snapshot.adjustment&&!snapshot.adjustment.completed_monotonic_s)actions.append(guardedButton('Complete adjustment','complete_adjustment',{adjustment_id:snapshot.adjustment.adjustment_id},'primary'));if(snapshot.adjustment?.completed_monotonic_s)actions.append(guardedButton('Recheck / verify','recheck',{adjustment_id:snapshot.adjustment.adjustment_id},'secondary'));if(restart)actions.append(button(snapshot.song?.song_id&&snapshot.active_reference?.reference_id?'Create replacement session':'Set up replacement session',snapshot.song?.song_id&&snapshot.active_reference?.reference_id?recreateCurrentSession:renderSetup,'primary'));else if(snapshot.song.workflow_state==='SUSPENDED')actions.append(guardedButton('Resume','resume',{},'secondary'));else if(snapshot.song.workflow_state!=='STOPPED')actions.append(guardedButton('Pause','pause',{},'ghost'));if(snapshot.song.workflow_state!=='STOPPED')actions.append(guardedButton('Stop','stop',{},'ghost'));return actions;}
+async function recreateCurrentSession(){const previous=snapshot;try{await runtimeAdapter.recreateSession(previous);operationStatus=null;restoredProbeStep=null;probeIndex=-1;probePhase='idle';calibrationDraft=null;saveCatalog(snapshot);renderConsole();}catch(e){statusMessage(`Replacement session failed: ${e.message}`);}}
+function renderRehearsal(root,step){const layout=node('section','','console-layout');const left=node('div','','instrument-grid'),unavailable=viewMode==='authoritative'&&!receiptIsFresh(snapshot.latest_frame,receiptMs,runtimeConnected);const activeFamily=step?.kind==='instrument'?step.family:null;(snapshot.latest_frame?.instruments??[]).forEach(i=>left.append(instrumentCard(i,activeFamily,unavailable)));const side=node('aside','','panel rehearsal-panel');if(snapshot.song.workflow_state==='SUSPENDED'){side.append(node('p','SESSION RECOVERY','eyebrow'),node('h2','Rehearsal suspended','panel-title'),node('p',(snapshot.suspension_reasons??[]).join(', ')||'Runtime did not supply a suspension reason.','muted'));}else if(probeIndex<0){side.append(node('p','GUIDED REHEARSAL','eyebrow'),node('h2','Ready to calibrate this room.','panel-title'),node('p','Each request is an operator prompt, not measured activity. Runtime remains the only evidence source.','muted'),button('Start rehearsal',startProbe,'primary large'));}else if(step?.kind==='review'){renderCalibration(side);}else{side.append(node('p',step.kind==='instrument'?'INSTRUMENT PROBE':'FULL-BAND CALIBRATION','eyebrow'),node('h2',step.label,'panel-title'),node('div',probePhase[0].toUpperCase()+probePhase.slice(1),'probe-phase'),node('p',step.kind==='instrument'?'The requested performer is highlighted. Family/group evidence remains authoritative.':'This is a calibration observation, never a section-specific Live target.','muted'));const progress=node('div','','progress');progress.style.setProperty('--progress',`${Math.round((probeIndex+1)/(probePlan.length-1)*100)}%`);side.append(progress,button('Skip',advanceProbe,'ghost'));if(viewMode==='authoritative')side.append(button(probePhase==='result'?'Next probe':'Continue without qualifying evidence',()=>{probePhase=probePhase==='result'?'complete':'result';if(probePhase==='complete')advanceProbe();else renderConsole();},'secondary'));}const verification=renderVerification();if(verification)side.append(verification);if(viewMode==='authoritative')side.append(renderSessionControls());layout.append(left,side);root.append(layout);}
+async function startProbe(){restoredProbeStep=null;probeIndex=0;probePhase='listening';renderConsole();await activateProbeStep();}
+function scheduleFixtureProbe(){clearTimer();if(viewMode!=='fixture'||probePlan[probeIndex]?.kind==='review')return;probeTimer=setTimeout(()=>{probePhase='analyzing';renderConsole();probeTimer=setTimeout(()=>{probePhase='result';renderConsole();probeTimer=setTimeout(advanceProbe,500);},500);},500);}
+async function activateProbeStep(){const step=probePlan[probeIndex];if(viewMode==='fixture'){scheduleFixtureProbe();return;}try{const mode=step?.kind==='instrument'?'instrument':step?.kind?.startsWith('full_band')?'full_band':'idle';await runtimeAdapter.requestProbe(snapshot,mode,mode==='instrument'?step.family:null);operationStatus=null;probePhase=step?.kind==='review'?'review':'listening';renderConsole();}catch(e){probePhase='idle';statusMessage(`Guided rehearsal request failed: ${e.message}`);renderConsole();}}
+async function advanceProbe(){clearTimer();restoredProbeStep=null;probeIndex=Math.min(probeIndex+1,probePlan.length-1);probePhase=probePlan[probeIndex]?.kind==='review'?'review':'listening';renderConsole();await activateProbeStep();}
+function renderCalibration(side){side.append(node('p','CALIBRATION REVIEW','eyebrow'),node('h2',snapshot.active_baseline?'Baseline accepted':'Human approval required','panel-title'),node('p','Review the qualified interval. The system never accepts a baseline automatically.','muted'));if(!snapshot.active_baseline){calibrationDraft=calibrationDraftFor(snapshot,calibrationDraft);const f=node('form','','accept-form');f.innerHTML='<label>Accepted by<input name="acceptedBy" required></label><label>Run ID<input name="run" required></label><label>Sample rate<input name="rate" type="number" required></label><label>Sample start<input name="start" type="number" required></label><label>Sample end<input name="end" type="number" required></label><label><input name="difference" type="checkbox"> Accept intentional reference difference</label><button class="primary" type="submit">Accept as Baseline</button>';for(const key of ['acceptedBy','run','rate','start','end'])f.elements[key].value=calibrationDraft[key];f.elements.difference.checked=calibrationDraft.difference;const preserve=()=>{calibrationDraft={sessionId:snapshot.session_id,acceptedBy:f.elements.acceptedBy.value,run:f.elements.run.value,rate:f.elements.rate.value,start:f.elements.start.value,end:f.elements.end.value,difference:f.elements.difference.checked};};f.addEventListener('input',preserve);f.addEventListener('change',preserve);f.addEventListener('submit',acceptBaseline);const guard=commandGuard('accept_baseline',viewMode,runtimeAdapter,snapshot,runtimeConnected,receiptMs),submit=f.querySelector('[type="submit"]');if(viewMode==='authoritative'){submit.disabled=!guard.allowed;submit.title=guard.reason??'';}side.append(f);}else{const start=guardedButton('Start Live','start_live',{},'primary large');side.append(node('p',`${snapshot.active_baseline.baseline_id} v${snapshot.active_baseline.version}`,'accepted'),viewMode==='fixture'?button('Start Live',startLive,'primary large'):start);}}
+async function acceptBaseline(e){e.preventDefault();const d=new FormData(e.currentTarget),p={interval:{analysis_run_id:d.get('run'),clock_id:snapshot.source.clock_id,sample_rate_hz:Number(d.get('rate')),sample_start:Number(d.get('start')),sample_end:Number(d.get('end'))},accepted_by:d.get('acceptedBy'),reference_difference_accepted:d.get('difference')==='on',acceptance_note:null};if(viewMode==='fixture'){const b=structuredClone(fixtures.live_snapshot.active_baseline);b.song_id=snapshot.song.song_id;b.reference_id=snapshot.active_reference.reference_id;b.capture.provenance='unverified';b.limitations=['Illustrative fixture baseline; not physical validation.'];snapshot.active_baseline=b;snapshot.song.baseline_id=b.baseline_id;renderConsole();return;}const response=await sendCommand('accept_baseline',p);if(response)saveCatalog(snapshot);}
+async function startLive(){if(viewMode==='fixture'){snapshot=fixtureLiveSnapshot(fixtures,'normal',snapshot);fixtureLiveMode='normal';renderConsole();return;}await sendCommand('start_live',{});}
+function renderLive(root){
+  const received=viewMode==='authoritative'?receiptMs:undefined;
+  const state=liveViewState(snapshot,received,runtimeConnected);
+  const evidence=liveEvidenceState(snapshot,received,runtimeConnected);
+  const hero=node('section','',`live-hero panel ${state}`);
+  const abstainTitle={inactive:'Inactive — no advice',unsupported:'Unsupported — no advice',unknown:'Unknown / not observable — no advice',abstain:'Not enough evidence. No advice.'}[evidence];
+  const title={normal:'Matches baseline',monitoring:'Change observed — awaiting Runtime incident',anomaly:'Action required',abstain:abstainTitle,recovered:'Recovered',suspended:'Monitoring suspended',waiting:'Waiting for evidence',unavailable:'Evidence unavailable'}[state]??'Listening';
+  hero.append(node('p',(state==='abstain'?evidence:state).toUpperCase(),'eyebrow'),node('h2',title,'live-title'));
+  if(state==='anomaly'){
+    const instrument=snapshot.latest_frame?.instruments.find(item=>['too_loud','too_quiet'].includes(item.status)&&!item.confidence.abstained);
+    if(instrument)hero.append(node('strong',`${instrument.family} ${balanceText(instrument)}`,'live-figure'),node('p',confidenceText(instrument.confidence),'muted'));
+  }else{
+    const detail=state==='unavailable'?'The last Runtime frame is not fresh enough to act on.':state==='monitoring'?'Runtime has not confirmed an actionable incident or recommendation.':sessionCondition(snapshot).detail;
+    hero.append(node('p',detail,'hero-copy'));
   }
-  document.querySelector('#baseline-acceptance').addEventListener('input', () => { if (snapshot) renderControls(snapshot); });
-  document.querySelector('#show-setup').addEventListener('click', () => { const plan = document.querySelector('#setup-plan'); plan.hidden = !plan.hidden; plan.textContent = SETUP_ENDPOINT_PLAN.join('\n'); });
-  document.querySelector('#setup-form').addEventListener('submit', event => {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const reference = data.get('reference');
-    const selected = { project:data.get('project'), song:data.get('song'), families:data.get('families').split(',').map(value => value.trim()).filter(Boolean), reference, source:data.get('source'), sourceId:data.get('sourceId'), captureProfile:data.get('captureProfile'), geometryId:data.get('geometryId') };
-    const plan = document.querySelector('#setup-plan');
-    if (runtimeAdapter && viewMode === 'authoritative') {
-      if (!(reference instanceof File)) { document.querySelector('#command-status').textContent = 'Choose a PCM16 WAV ideal reference before setup.'; return; }
-      document.querySelector('#command-status').textContent = 'Creating project, song, reference profile, and rehearsal session…';
-      fixtureLocked = false;
-      runtimeAdapter.setup(selected).then(() => { document.querySelector('#command-status').textContent = 'Authoritative rehearsal session created.'; }).catch(error => { document.querySelector('#command-status').textContent = `Setup failed: ${error.message}`; });
-      return;
-    }
-    plan.hidden = false;
-    plan.textContent = `${SETUP_ENDPOINT_PLAN.join('\n')}\n\nFixture request plan only; Runtime is not connected.`;
-  });
+  const recommendation=snapshot.recommendations?.[0];
+  if(recommendation&&state==='anomaly')hero.append(node('p',recommendation.human_control_hint??`${recommendation.action.replaceAll('_',' ')} ${recommendation.instrument_id}`,'recommendation'));
+  if(viewMode==='fixture'){
+    const actions=node('div','','live-actions');
+    ['normal','anomaly','abstain','recovered'].forEach(mode=>actions.append(button(mode,()=>{fixtureLiveMode=mode;snapshot=fixtureLiveSnapshot(fixtures,mode,snapshot);renderConsole();},mode===fixtureLiveMode?'primary':'ghost')));
+    hero.append(actions);
+  }else hero.append(renderSessionControls());
+  const grid=node('div','','instrument-grid live-grid');
+  const unavailable=['waiting','unavailable','suspended'].includes(state);
+  (snapshot.latest_frame?.instruments??[]).forEach(instrument=>grid.append(instrumentCard(instrument,null,unavailable)));
+  const verification=renderVerification();
+  root.append(hero);
+  if(verification)root.append(verification);
+  root.append(grid);
 }
+async function sendCommand(action,payload){if(viewMode!=='authoritative')return null;const guard=commandGuard(action,viewMode,runtimeAdapter,snapshot,runtimeConnected,receiptMs);if(!guard.allowed){statusMessage(guard.reason);return null;}const c=commandFor(snapshot,action,payload,`ui-${action}-${crypto.randomUUID()}`);operationStatus=null;try{const response=await runtimeAdapter.command(c);if(page==='console')renderConsole();return response;}catch(e){statusMessage(`Runtime rejected ${action}: ${e.message}`);return null;}}
+function getCatalog(){try{return typeof localStorage==='undefined'?[]:normalizeCatalogRows(JSON.parse(localStorage.getItem(CATALOG_KEY)||'[]'));}catch{return[];}}
 
-if (typeof document !== 'undefined') start().catch(error => { document.body.replaceChildren(node('p', `Could not load frozen fixtures: ${error.message}`)); });
+async function start(){const adapter=new RuntimeAdapter({onSnapshot:setSnapshot,onProbe:setProbeState,onStatus:statusMessage,onConnection:c=>{runtimeConnected=c;if(page==='console'&&snapshot&&viewMode==='authoritative')renderConsole();}});try{runtimeHealth=await adapter.health();deviceDiscovery=await adapter.audioDevices();runtimeAdapter=adapter;runtimeStartupError=null;viewMode='authoritative';}catch(e){runtimeHealth=null;runtimeStartupError=e;viewMode='fixture';}try{fixtures=await (await fetch(FIXTURE_PATH)).json();}catch{fixtures=null;}renderSelection();}
+
+if(typeof document!=='undefined')start().catch(e=>{app().replaceChildren(node('p',`Could not start UI: ${e.message}`));});

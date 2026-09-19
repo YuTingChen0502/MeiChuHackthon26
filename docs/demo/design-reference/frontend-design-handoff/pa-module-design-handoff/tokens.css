@@ -1,0 +1,49 @@
+/* AI PA Module: design tokens as CSS custom properties.
+   Source of truth: tokens.json. Colors marked "added for the app" are not in the pitch deck. */
+:root {
+  /* color */
+  --surface-ground: #010c1d;
+  --surface-panel:  #061a33;   /* added for the app */
+  --line-hairline:  #a4c2f459; /* decorative only, about 2.2:1 on ground */
+  --accent:         #a4c2f4;
+  --line-strong:    var(--accent);
+  --ink:            #ffffff;
+  --ink-muted:      #9db2d3;
+  --signal-alert:   #f6b73c;   /* added for the app: anomaly */
+  --signal-ok:      #34e0a1;   /* added for the app: recovered / accepted */
+
+  /* spacing */
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-10: 40px;
+
+  /* radius */
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius-md: 6px;
+
+  /* shadow */
+  --glow-edge: 0 0 24px #a4c2f440;
+
+  /* font families (load Darker Grotesque 700 and Barlow 400/600 from Google Fonts) */
+  --font-display: "Darker Grotesque", "Barlow", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-body: "Barlow", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+body { background: var(--surface-ground); color: var(--ink); font-family: var(--font-body); }
+
+/* type styles */
+.figure-hero { font-family: var(--font-display); font-size: 160px; line-height: 0.9;  font-weight: 700; }
+.title-lg    { font-family: var(--font-display); font-size: 64px;  line-height: 0.95; font-weight: 700; }
+.title-md    { font-family: var(--font-display); font-size: 40px;  line-height: 1;    font-weight: 700; }
+.body-lg     { font-family: var(--font-body);    font-size: 20px;  line-height: 28px; font-weight: 400; }
+.body        { font-family: var(--font-body);    font-size: 16px;  line-height: 24px; font-weight: 400; }
+.caption     { font-family: var(--font-body);    font-size: 14px;  line-height: 20px; font-weight: 400; color: var(--ink-muted); }
+.label       { font-family: var(--font-body);    font-size: 13px;  line-height: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); }
+
+/* panel */
+.panel { background: var(--surface-panel); border: 1px solid var(--line-hairline); border-radius: var(--radius-none); }
+.panel--active { border-color: var(--line-strong); box-shadow: var(--glow-edge); }
+
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

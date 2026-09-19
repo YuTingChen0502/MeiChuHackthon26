@@ -6,16 +6,19 @@ const fileInput = document.querySelector('#audio-file');
 const status = document.querySelector('#now-playing');
 const playProbe = document.querySelector('#play-probe');
 const playSelected = document.querySelector('#play-selected');
+const nextSelected = document.querySelector('#next-selected');
 const pause = document.querySelector('#pause');
 const stop = document.querySelector('#stop');
-let selectedUrl = null;
+let selectedUrls = [];
+let selectedIndex = 0;
 
 function setStatus(message) { status.textContent = message; }
 function setControls() {
   const active = !media.paused && !media.ended;
   pause.disabled = media.paused || media.ended;
   stop.disabled = media.paused && media.currentTime === 0;
-  playSelected.disabled = !selectedUrl || active;
+  playSelected.disabled = selectedUrls.length === 0 || active;
+  nextSelected.disabled = selectedUrls.length < 2 || active || selectedIndex >= selectedUrls.length - 1;
   playProbe.disabled = active;
 }
 
@@ -44,14 +47,19 @@ async function play(url, label) {
 }
 
 fileInput.addEventListener('change', () => {
-  if (selectedUrl) URL.revokeObjectURL(selectedUrl);
-  const file = fileInput.files[0];
-  selectedUrl = file ? URL.createObjectURL(file) : null;
-  setStatus(file ? 'Prepared audio selected locally; file name is not displayed or transmitted.' : 'No media is playing.');
+  selectedUrls.forEach(url => URL.revokeObjectURL(url));
+  selectedUrls = [...fileInput.files].map(file => URL.createObjectURL(file));
+  selectedIndex = 0;
+  setStatus(selectedUrls.length ? `${selectedUrls.length} prepared clip${selectedUrls.length === 1 ? '' : 's'} selected locally; filenames are not displayed or transmitted.` : 'No media is playing.');
   setControls();
 });
 playProbe.addEventListener('click', () => play(audibleProbeUrl(), 'audible output check'));
-playSelected.addEventListener('click', () => play(selectedUrl, 'selected prepared audio'));
+playSelected.addEventListener('click', () => play(selectedUrls[selectedIndex], `prepared clip ${selectedIndex + 1} of ${selectedUrls.length}`));
+nextSelected.addEventListener('click', () => {
+  if (selectedIndex < selectedUrls.length - 1) selectedIndex += 1;
+  setStatus(`Prepared clip ${selectedIndex + 1} of ${selectedUrls.length} is selected. Filenames remain hidden.`);
+  setControls();
+});
 pause.addEventListener('click', () => media.pause());
 stop.addEventListener('click', () => { media.pause(); media.currentTime = 0; setStatus('Playback stopped.'); setControls(); });
 media.addEventListener('playing', () => { setStatus('Media playback is active. Route output only through the physical speaker path.'); setControls(); });

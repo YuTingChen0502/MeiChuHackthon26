@@ -1,52 +1,63 @@
-# PA physical demo and UI checkpoint
+# PA physical demo package
 
-## Launch
+This directory owns the operator-facing demo procedure. It does not certify model
+accuracy, MI300 lineage, PN54 deployment, capture provenance, or a completed physical
+trial. Record those facts only after the responsible lane supplies measured evidence.
 
-From the repository root, run `python -m http.server 8000`. Open
-`http://localhost:8000/apps/ui/` for the operator console and
-`http://localhost:8000/demo_player/` on the separate playback device/window.
+## Surfaces
 
-The console fetches the frozen illustrative fixture at
-`contracts/examples/pa_shared_v1.json`. It never presents fixture values as model
-accuracy or physical-demo evidence. It renders explicit unknown/inactive states,
-withholds a numeric balance when confidence abstains, and produces SessionCommand
-objects that bind the snapshot version, reference, baseline and incident currently
-visible to the operator. Fixture commands are logged only; integration needs the
-Runtime lane's handlers.
+- `/apps/ui/` is the operator console. With Runtime available it renders only
+  authoritative health, device discovery, snapshots, events, confidence, and
+  verification. A frame marked `example_only` is visibly simulation evidence.
+- `/demo_player/` is an independent playback environment. It has no imports, network
+  requests, or metadata path to Runtime. Only audible output may reach the microphone.
+- Fixture fallback is illustrative and non-mutating. Offline uploaded-file replay is
+  a product input, but it is not a physical microphone demonstration.
 
-## Physical isolation checklist
+## Documents
 
-1. Prepare rights-cleared audio externally and assign opaque asset IDs.
-2. Randomize playback order in the demo player. Do not use answer-bearing filenames.
-3. Route only audio from the player to a speaker, then through the room to the
-   microphone. The analyzer receives the microphone PCM plus legitimate mixed
-   reference/profile context—not player scenario metadata.
-4. Keep demo-player controls, injected gains, hidden scenario truth, and instrument
-   labels out of the runtime/analyzer process and all API payloads.
-5. Record the speaker/microphone geometry and clearly label any prerecorded backup
-   as a recording.
+- `PHYSICAL_DEMO_RUNBOOK.md`: reproducible operator sequence, hookup, preflight,
+  recovery, and teardown.
+- `ASSET_INTAKE.md`: rights and provenance intake before any clip is admitted to the
+  player, recording, or public materials.
+- `EVIDENCE_PACKET.md`: trial log, video shot list, presentation evidence skeleton,
+  and placeholders that must remain unclaimed until measured.
 
-`demo_player/player.js` has no imports and does not call the UI, API, analyzer, or
-runtime. It plays a real generated audible-output check and may play a locally
-selected rights-cleared audio file. Its status is driven by HTML media events, not by
-button intent. File names and prepared scenario truth are intentionally not rendered
-or transmitted outside that browser process.
+## Design references
 
-## Runtime launch and UI integration
+The supplied source mockups are preserved under `design-reference/` for traceability.
+They establish the dark navy/purple field, teal wave motif, high-distance typography,
+status color hierarchy, responsive cards, and focused/dimmed rehearsal language. They
+are references, not application code or data contracts. The operator console keeps
+the existing dependency-free shell and `RuntimeAdapter`; wording, states, controls,
+and payloads remain governed by the repository contracts and authoritative Runtime.
 
-The approved local Runtime listener serves the UI at `/apps/ui/` and exposes the
-frozen setup/session routes. Launch it from the repository root with the Lead-pinned
-environment:
+## Local launch
+
+Install the Lead-pinned Runtime environment, then launch the loopback listener:
 
 ```text
 python -m pip install -r requirements-runtime.txt
 python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 1 --loop asyncio --http h11 --ws websockets-sansio
 ```
 
-The UI probes `/v1/health` before attempting setup. With Runtime available, it
-creates the project/song, uploads PCM16 WAV reference bytes, waits for the reference
-job, creates a rehearsal session, then consumes authoritative snapshots/events. On a
-409 command conflict it refreshes the server snapshot. If Runtime is absent, local
-development may fall back to the shared illustrative fixture only when a development
-server exposes it; the Runtime listener intentionally serves only `apps/ui/` and does
-not mount the repository or demo-player data.
+Open `http://127.0.0.1:8000/apps/ui/`. The listener deliberately does not serve the
+independent player. Serve `demo_player/` separately on the playback device or from a
+separate static listener. Never add a player-to-Runtime API connection.
+
+For fixture-only development, a repository-root static server may expose both the UI
+and frozen shared example. The notice must continue to say that fixture values are
+not real-ML or physical-demo evidence.
+
+## Current gate status
+
+Native discovery and bounded local Runtime code are integrated. Local capture reports
+do not establish physical provenance or PN54 deployment. Actionable RealAnalyzer
+output remains gated on accepted MI300-adapted lineage, empirical calibration,
+operating envelope, compatible profiles, PN54 execution, and the recorded acoustic
+closed loop. The console must therefore display abstention, unavailable, suspended,
+or simulation states whenever Runtime does.
+
+Do not copy official workshop PDFs, credentials, private URLs, or secrets into demo
+or presentation artifacts. Those authority files remain local and outside release
+exports.
