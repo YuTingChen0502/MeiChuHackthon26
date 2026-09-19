@@ -1,5 +1,13 @@
 # PA shared interfaces V1
 
+## Approved product-policy amendment — 2026-09-20
+
+[Live reference and microphone freeze](../docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md)
+supersedes the live-implies-baseline, immutable-source and raw-endpoint presentation
+rules below for `live_reference_v1`. The older rules remain historical/legacy policy.
+New wire fields and switch command are defined in the session/setup schemas.
+Analyzer quantities, calibrated confidence and abstention meanings are unchanged.
+
 Status: frozen for the first parallel implementation checkpoint, 2026-09-19.
 Owner: engineering Lead. Changes follow the escalation procedure in
 `docs/implementation/IMPLEMENTATION_PLAN_V1.md`.

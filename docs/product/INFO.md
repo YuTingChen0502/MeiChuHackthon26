@@ -1,5 +1,17 @@
 # `INFO.md`
 
+## User-approved workflow correction — 2026-09-20
+
+The current product is song/instrument configuration + uploaded ideal reference
+-> Live against that reference -> human level adjustment -> fresh analysis.
+Microphones are logical user-facing inputs and can be switched within the same
+session without re-upload/re-analysis. No public rehearsal, Accept as Baseline,
+Start Live transition or guided rehearsal flow. Legacy records/code may remain
+unreachable for compatibility. Authoritative perception and uncertainty gates,
+no automatic mixer, and no absolute instrument SPL claims remain in force.
+See [the exact shared freeze](../implementation/LIVE_REFERENCE_MIC_FREEZE.md).
+This explicit user decision supersedes conflicting historical scope text below.
+
 ```md
 # AI Performance Controller
 ## PA Module — Product & Technical Handoff
