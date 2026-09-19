@@ -1,0 +1,759 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pa-controller:analyzer:1.0",
+  "title": "PA Analyzer/Core Contract V1",
+  "description": "Internal backend-neutral comparison evidence. Numerical meanings and invariants are normative in PA_SHARED_INTERFACES_V1.md.",
+  "oneOf": [
+    {
+      "$ref": "urn:pa-controller:analyzer:1.0#/$defs/AnalyzerContext"
+    },
+    {
+      "$ref": "urn:pa-controller:analyzer:1.0#/$defs/AnalyzerEvidence"
+    }
+  ],
+  "$defs": {
+    "ReferenceBinding": {
+      "type": "object",
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_asset_hash": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "reference_id",
+        "source_asset_hash"
+      ],
+      "additionalProperties": false
+    },
+    "BaselineBinding": {
+      "type": "object",
+      "properties": {
+        "baseline_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "baseline_id",
+        "baseline_version"
+      ],
+      "additionalProperties": false
+    },
+    "ComparisonTarget": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "target_kind": {
+              "const": "reference"
+            },
+            "reference": {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ReferenceBinding"
+            },
+            "baseline": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "target_kind",
+            "reference",
+            "baseline"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "target_kind": {
+              "const": "baseline"
+            },
+            "reference": {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ReferenceBinding"
+            },
+            "baseline": {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/BaselineBinding"
+            }
+          },
+          "required": [
+            "target_kind",
+            "reference",
+            "baseline"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ModelIdentity": {
+      "type": "object",
+      "properties": {
+        "model_bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frontend_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taxonomy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "level_scale_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "model_bundle_id",
+        "frontend_id",
+        "taxonomy_id",
+        "execution_profile_id",
+        "level_scale_id"
+      ],
+      "additionalProperties": false
+    },
+    "WindowIdentity": {
+      "type": "object",
+      "properties": {
+        "window_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "analysis_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input_kind": {
+          "type": "string",
+          "enum": [
+            "uploaded_file",
+            "live_microphone"
+          ]
+        },
+        "input_asset_or_device_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sample_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sample_end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "capture_end_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "window_id",
+        "session_id",
+        "analysis_run_id",
+        "input_kind",
+        "input_asset_or_device_id",
+        "clock_id",
+        "sample_rate_hz",
+        "sample_start",
+        "sample_end",
+        "capture_end_monotonic_s"
+      ],
+      "additionalProperties": false
+    },
+    "InstrumentConfig": {
+      "type": "object",
+      "properties": {
+        "instrument_config_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "instruments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instrument_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "family": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "instrument_id",
+              "family"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "instrument_config_version",
+        "instruments"
+      ],
+      "additionalProperties": false
+    },
+    "UncertaintyFeature": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "SourceLevelMeasurement": {
+      "type": "object",
+      "properties": {
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "activity": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive",
+            "unknown",
+            "unsupported"
+          ]
+        },
+        "observability": {
+          "type": "string",
+          "enum": [
+            "observable",
+            "not_observable",
+            "unknown"
+          ]
+        },
+        "validity": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "invalid"
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "uncertainty_features": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:analyzer:1.0#/$defs/UncertaintyFeature"
+          }
+        },
+        "source_level_db": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_source_level_db": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "instrument_id",
+        "family",
+        "activity",
+        "observability",
+        "validity",
+        "reason_codes",
+        "uncertainty_features",
+        "source_level_db",
+        "target_source_level_db"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "validity": {
+                "const": "valid"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "activity": {
+                "const": "active"
+              },
+              "observability": {
+                "const": "observable"
+              },
+              "source_level_db": {
+                "type": "number"
+              },
+              "target_source_level_db": {
+                "type": "number"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason_codes": {
+                "minItems": 1
+              },
+              "source_level_db": {
+                "type": "null"
+              },
+              "target_source_level_db": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SourceDeltaMeasurement": {
+      "type": "object",
+      "properties": {
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "activity": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive",
+            "unknown",
+            "unsupported"
+          ]
+        },
+        "observability": {
+          "type": "string",
+          "enum": [
+            "observable",
+            "not_observable",
+            "unknown"
+          ]
+        },
+        "validity": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "invalid"
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "uncertainty_features": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:analyzer:1.0#/$defs/UncertaintyFeature"
+          }
+        },
+        "source_level_delta_db": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "instrument_id",
+        "family",
+        "activity",
+        "observability",
+        "validity",
+        "reason_codes",
+        "uncertainty_features",
+        "source_level_delta_db"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "validity": {
+                "const": "valid"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "activity": {
+                "const": "active"
+              },
+              "observability": {
+                "const": "observable"
+              },
+              "source_level_delta_db": {
+                "type": "number"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason_codes": {
+                "minItems": 1
+              },
+              "source_level_delta_db": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AnalyzerContext": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "AnalyzerContext"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "observation": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/WindowIdentity"
+        },
+        "model": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ModelIdentity"
+        },
+        "instrument_config": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/InstrumentConfig"
+        },
+        "target": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ComparisonTarget"
+        },
+        "comparison_regime": {
+          "type": "string",
+          "enum": [
+            "matched_excerpt",
+            "stable_texture",
+            "unvalidated"
+          ]
+        },
+        "model_specific_context_asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observation_purpose": {
+          "type": "string",
+          "enum": [
+            "rehearsal",
+            "guided_probe",
+            "verification",
+            "live"
+          ]
+        },
+        "probe_instrument_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "observation",
+        "model",
+        "instrument_config",
+        "target",
+        "comparison_regime",
+        "model_specific_context_asset",
+        "observation_purpose",
+        "probe_instrument_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "observation_purpose": {
+                "const": "guided_probe"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "probe_instrument_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "probe_instrument_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "observation_purpose": {
+                "const": "live"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "properties": {
+                  "target_kind": {
+                    "const": "baseline"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SourceLevelsEvidence": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "AnalyzerEvidence"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "example_only": {
+          "type": "boolean"
+        },
+        "observation": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/WindowIdentity"
+        },
+        "model": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ModelIdentity"
+        },
+        "instrument_config_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ComparisonTarget"
+        },
+        "comparison_regime": {
+          "type": "string",
+          "enum": [
+            "matched_excerpt",
+            "stable_texture",
+            "unvalidated"
+          ]
+        },
+        "model_specific_context_asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "matched_context_window_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_mode": {
+          "const": "source_levels"
+        },
+        "units": {
+          "const": "dBFS_rms"
+        },
+        "measurements": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:analyzer:1.0#/$defs/SourceLevelMeasurement"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "example_only",
+        "observation",
+        "model",
+        "instrument_config_version",
+        "target",
+        "comparison_regime",
+        "model_specific_context_asset",
+        "matched_context_window_id",
+        "evidence_mode",
+        "units",
+        "measurements"
+      ],
+      "additionalProperties": false
+    },
+    "SourceLevelDeltasEvidence": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "AnalyzerEvidence"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "example_only": {
+          "type": "boolean"
+        },
+        "observation": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/WindowIdentity"
+        },
+        "model": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ModelIdentity"
+        },
+        "instrument_config_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ComparisonTarget"
+        },
+        "comparison_regime": {
+          "type": "string",
+          "enum": [
+            "matched_excerpt",
+            "stable_texture",
+            "unvalidated"
+          ]
+        },
+        "model_specific_context_asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "matched_context_window_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_mode": {
+          "const": "source_level_deltas"
+        },
+        "units": {
+          "const": "dB"
+        },
+        "measurements": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:analyzer:1.0#/$defs/SourceDeltaMeasurement"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "example_only",
+        "observation",
+        "model",
+        "instrument_config_version",
+        "target",
+        "comparison_regime",
+        "model_specific_context_asset",
+        "matched_context_window_id",
+        "evidence_mode",
+        "units",
+        "measurements"
+      ],
+      "additionalProperties": false
+    },
+    "AnalyzerEvidence": {
+      "oneOf": [
+        {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/SourceLevelsEvidence"
+        },
+        {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/SourceLevelDeltasEvidence"
+        }
+      ]
+    }
+  }
+}

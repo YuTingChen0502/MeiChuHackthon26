@@ -1,0 +1,841 @@
+{
+  "notice": "All examples are illustrative fixtures, not model accuracy or hardware evidence.",
+  "analyzer_context": {
+    "record_type": "AnalyzerContext",
+    "schema_version": "1.0",
+    "observation": {
+      "window_id": "window-1",
+      "session_id": "session-1",
+      "analysis_run_id": "run-1",
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "mic-1",
+      "clock_id": "clock-1",
+      "sample_rate_hz": 48000,
+      "sample_start": 1440000,
+      "sample_end": 1632000,
+      "capture_end_monotonic_s": 34
+    },
+    "model": {
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "taxonomy_id": "families-v1",
+      "execution_profile_id": "cpu-fp32-v1",
+      "level_scale_id": "restored-pcm-rms-v1"
+    },
+    "instrument_config": {
+      "instrument_config_version": 1,
+      "instruments": [
+        {
+          "instrument_id": "guitar",
+          "family": "guitar"
+        },
+        {
+          "instrument_id": "bass",
+          "family": "bass"
+        },
+        {
+          "instrument_id": "drums",
+          "family": "drums"
+        }
+      ]
+    },
+    "target": {
+      "target_kind": "baseline",
+      "reference": {
+        "reference_id": "reference-1",
+        "source_asset_hash": "example-sha256-reference"
+      },
+      "baseline": {
+        "baseline_id": "baseline-1",
+        "baseline_version": 1
+      }
+    },
+    "comparison_regime": "matched_excerpt",
+    "model_specific_context_asset": "context-baseline-1",
+    "observation_purpose": "live",
+    "probe_instrument_id": null
+  },
+  "source_levels": {
+    "record_type": "AnalyzerEvidence",
+    "schema_version": "1.0",
+    "example_only": true,
+    "observation": {
+      "window_id": "window-1",
+      "session_id": "session-1",
+      "analysis_run_id": "run-1",
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "mic-1",
+      "clock_id": "clock-1",
+      "sample_rate_hz": 48000,
+      "sample_start": 1440000,
+      "sample_end": 1632000,
+      "capture_end_monotonic_s": 34
+    },
+    "model": {
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "taxonomy_id": "families-v1",
+      "execution_profile_id": "cpu-fp32-v1",
+      "level_scale_id": "restored-pcm-rms-v1"
+    },
+    "instrument_config_version": 1,
+    "target": {
+      "target_kind": "baseline",
+      "reference": {
+        "reference_id": "reference-1",
+        "source_asset_hash": "example-sha256-reference"
+      },
+      "baseline": {
+        "baseline_id": "baseline-1",
+        "baseline_version": 1
+      }
+    },
+    "comparison_regime": "matched_excerpt",
+    "model_specific_context_asset": "context-baseline-1",
+    "matched_context_window_id": "baseline-window-2",
+    "evidence_mode": "source_levels",
+    "units": "dBFS_rms",
+    "measurements": [
+      {
+        "instrument_id": "guitar",
+        "family": "guitar",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [],
+        "uncertainty_features": [
+          {
+            "name": "raw_error_scale_db",
+            "value": 0.5,
+            "unit": "dB"
+          }
+        ],
+        "source_level_db": -16,
+        "target_source_level_db": -20
+      },
+      {
+        "instrument_id": "bass",
+        "family": "bass",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [],
+        "uncertainty_features": [
+          {
+            "name": "raw_error_scale_db",
+            "value": 0.5,
+            "unit": "dB"
+          }
+        ],
+        "source_level_db": -20,
+        "target_source_level_db": -20
+      },
+      {
+        "instrument_id": "drums",
+        "family": "drums",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [],
+        "uncertainty_features": [
+          {
+            "name": "raw_error_scale_db",
+            "value": 0.5,
+            "unit": "dB"
+          }
+        ],
+        "source_level_db": -20,
+        "target_source_level_db": -20
+      }
+    ]
+  },
+  "source_level_deltas": {
+    "record_type": "AnalyzerEvidence",
+    "schema_version": "1.0",
+    "example_only": true,
+    "observation": {
+      "window_id": "window-1",
+      "session_id": "session-1",
+      "analysis_run_id": "run-1",
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "mic-1",
+      "clock_id": "clock-1",
+      "sample_rate_hz": 48000,
+      "sample_start": 1440000,
+      "sample_end": 1632000,
+      "capture_end_monotonic_s": 34
+    },
+    "model": {
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "taxonomy_id": "families-v1",
+      "execution_profile_id": "cpu-fp32-v1",
+      "level_scale_id": "restored-pcm-rms-v1"
+    },
+    "instrument_config_version": 1,
+    "target": {
+      "target_kind": "baseline",
+      "reference": {
+        "reference_id": "reference-1",
+        "source_asset_hash": "example-sha256-reference"
+      },
+      "baseline": {
+        "baseline_id": "baseline-1",
+        "baseline_version": 1
+      }
+    },
+    "comparison_regime": "matched_excerpt",
+    "model_specific_context_asset": "context-baseline-1",
+    "matched_context_window_id": "baseline-window-2",
+    "evidence_mode": "source_level_deltas",
+    "units": "dB",
+    "measurements": [
+      {
+        "instrument_id": "guitar",
+        "family": "guitar",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [],
+        "uncertainty_features": [
+          {
+            "name": "raw_error_scale_db",
+            "value": 0.5,
+            "unit": "dB"
+          }
+        ],
+        "source_level_delta_db": 4
+      },
+      {
+        "instrument_id": "bass",
+        "family": "bass",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [],
+        "uncertainty_features": [
+          {
+            "name": "raw_error_scale_db",
+            "value": 0.5,
+            "unit": "dB"
+          }
+        ],
+        "source_level_delta_db": 0
+      },
+      {
+        "instrument_id": "drums",
+        "family": "drums",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [],
+        "uncertainty_features": [
+          {
+            "name": "raw_error_scale_db",
+            "value": 0.5,
+            "unit": "dB"
+          }
+        ],
+        "source_level_delta_db": 0
+      }
+    ]
+  },
+  "rehearsal_snapshot": {
+    "record_type": "SessionSnapshot",
+    "schema_version": "1.0",
+    "session_id": "session-1",
+    "state_version": 2,
+    "event_sequence": 5,
+    "session_mode": "rehearsal",
+    "incident_state": "none",
+    "song": {
+      "record_type": "SongState",
+      "schema_version": "1.0",
+      "song_id": "song-1",
+      "project_id": "project-1",
+      "name": "Example song",
+      "instrument_config_version": 1,
+      "configured_families": [
+        "guitar",
+        "bass",
+        "drums"
+      ],
+      "unsupported_families": [],
+      "reference_id": "reference-1",
+      "baseline_id": null,
+      "workflow_state": "REHEARSAL"
+    },
+    "source": {
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "mic-1",
+      "clock_id": "clock-1"
+    },
+    "execution": {
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "execution_profile_id": "cpu-fp32-v1",
+      "provider": "fake"
+    },
+    "active_reference": {
+      "record_type": "ReferenceProfile",
+      "schema_version": "1.0",
+      "reference_id": "reference-1",
+      "source_asset_hash": "example-sha256-reference",
+      "song_id": "song-1",
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "taxonomy_id": "families-v1",
+      "instrument_config_version": 1,
+      "duration_s": 60,
+      "coverage": [
+        {
+          "instrument_id": "guitar",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        },
+        {
+          "instrument_id": "bass",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        },
+        {
+          "instrument_id": "drums",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        }
+      ],
+      "context_policy": "fixed_target_with_comparability_gate",
+      "model_specific_context_asset": "context-reference-1",
+      "limitations": [
+        "Illustrative fixture, not measured audio."
+      ],
+      "comparison_regime": "matched_excerpt"
+    },
+    "active_baseline": null,
+    "incident": null,
+    "adjustment": null,
+    "latest_frame": null,
+    "recommendations": [],
+    "latest_verification": null,
+    "suspension_reasons": []
+  },
+  "live_snapshot": {
+    "record_type": "SessionSnapshot",
+    "schema_version": "1.0",
+    "session_id": "session-1",
+    "state_version": 4,
+    "event_sequence": 8,
+    "session_mode": "live",
+    "incident_state": "none",
+    "song": {
+      "record_type": "SongState",
+      "schema_version": "1.0",
+      "song_id": "song-1",
+      "project_id": "project-1",
+      "name": "Example song",
+      "instrument_config_version": 1,
+      "configured_families": [
+        "guitar",
+        "bass",
+        "drums"
+      ],
+      "unsupported_families": [],
+      "reference_id": "reference-1",
+      "baseline_id": "baseline-1",
+      "workflow_state": "LIVE_MONITORING"
+    },
+    "source": {
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "mic-1",
+      "clock_id": "clock-1"
+    },
+    "execution": {
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "execution_profile_id": "cpu-fp32-v1",
+      "provider": "fake"
+    },
+    "active_reference": {
+      "record_type": "ReferenceProfile",
+      "schema_version": "1.0",
+      "reference_id": "reference-1",
+      "source_asset_hash": "example-sha256-reference",
+      "song_id": "song-1",
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "taxonomy_id": "families-v1",
+      "instrument_config_version": 1,
+      "duration_s": 60,
+      "coverage": [
+        {
+          "instrument_id": "guitar",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        },
+        {
+          "instrument_id": "bass",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        },
+        {
+          "instrument_id": "drums",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        }
+      ],
+      "context_policy": "fixed_target_with_comparability_gate",
+      "model_specific_context_asset": "context-reference-1",
+      "limitations": [
+        "Illustrative fixture, not measured audio."
+      ],
+      "comparison_regime": "matched_excerpt"
+    },
+    "active_baseline": {
+      "record_type": "BaselineProfile",
+      "schema_version": "1.0",
+      "baseline_id": "baseline-1",
+      "version": 1,
+      "song_id": "song-1",
+      "reference_id": "reference-1",
+      "accepted_by": "example-pa",
+      "accepted_at": "2026-09-19T12:00:00+08:00",
+      "model_bundle_id": "fake-v1",
+      "frontend_id": "frontend-v1",
+      "execution_profile_id": "cpu-fp32-v1",
+      "taxonomy_id": "families-v1",
+      "instrument_config_version": 1,
+      "capture": {
+        "device_id": "mic-1",
+        "profile_id": "capture-1",
+        "native_sample_rate_hz": 48000,
+        "channels": 1,
+        "gain_setting": "fixed",
+        "enhancements_verified_disabled": true,
+        "geometry_id": "example-geometry",
+        "provenance": "physical_verified"
+      },
+      "source_audio_hashes": [
+        "example-sha256-rehearsal"
+      ],
+      "coverage": [
+        {
+          "instrument_id": "guitar",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        },
+        {
+          "instrument_id": "bass",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        },
+        {
+          "instrument_id": "drums",
+          "valid_active_seconds": 30,
+          "qualified_nonoverlap_windows": 7,
+          "status": "adequate"
+        }
+      ],
+      "normal_envelopes": [
+        {
+          "instrument_id": "guitar",
+          "center_db": 0,
+          "lower_db": -1.5,
+          "upper_db": 1.5
+        },
+        {
+          "instrument_id": "bass",
+          "center_db": 0,
+          "lower_db": -1.5,
+          "upper_db": 1.5
+        },
+        {
+          "instrument_id": "drums",
+          "center_db": 0,
+          "lower_db": -1.5,
+          "upper_db": 1.5
+        }
+      ],
+      "reference_difference_accepted": true,
+      "acceptance_note": "Illustrative human acceptance.",
+      "validity": "valid",
+      "immutable": true,
+      "limitations": [
+        "Illustrative fixture, not physical validation."
+      ],
+      "comparison_regime": "matched_excerpt",
+      "model_specific_context_asset": "context-baseline-1"
+    },
+    "incident": null,
+    "adjustment": null,
+    "latest_frame": null,
+    "recommendations": [],
+    "latest_verification": null,
+    "suspension_reasons": []
+  },
+  "accept_command": {
+    "record_type": "SessionCommand",
+    "schema_version": "1.0",
+    "session_id": "session-1",
+    "idempotency_key": "accept-1",
+    "expected_state_version": 2,
+    "reference": {
+      "reference_id": "reference-1",
+      "source_asset_hash": "example-sha256-reference"
+    },
+    "baseline": null,
+    "event": null,
+    "action": "accept_baseline",
+    "payload": {
+      "interval": {
+        "analysis_run_id": "run-1",
+        "clock_id": "clock-1",
+        "sample_rate_hz": 48000,
+        "sample_start": 0,
+        "sample_end": 1440000
+      },
+      "accepted_by": "example-pa",
+      "reference_difference_accepted": true,
+      "acceptance_note": "Intentional accepted reference difference."
+    }
+  },
+  "accept_response": {
+    "record_type": "CommandResponse",
+    "schema_version": "1.0",
+    "session_id": "session-1",
+    "idempotency_key": "accept-1",
+    "outcome": "applied",
+    "http_status": 200,
+    "snapshot": {
+      "record_type": "SessionSnapshot",
+      "schema_version": "1.0",
+      "session_id": "session-1",
+      "state_version": 3,
+      "event_sequence": 6,
+      "session_mode": "rehearsal",
+      "incident_state": "none",
+      "song": {
+        "record_type": "SongState",
+        "schema_version": "1.0",
+        "song_id": "song-1",
+        "project_id": "project-1",
+        "name": "Example song",
+        "instrument_config_version": 1,
+        "configured_families": [
+          "guitar",
+          "bass",
+          "drums"
+        ],
+        "unsupported_families": [],
+        "reference_id": "reference-1",
+        "baseline_id": "baseline-1",
+        "workflow_state": "REHEARSAL"
+      },
+      "source": {
+        "input_kind": "live_microphone",
+        "input_asset_or_device_id": "mic-1",
+        "clock_id": "clock-1"
+      },
+      "execution": {
+        "model_bundle_id": "fake-v1",
+        "frontend_id": "frontend-v1",
+        "execution_profile_id": "cpu-fp32-v1",
+        "provider": "fake"
+      },
+      "active_reference": {
+        "record_type": "ReferenceProfile",
+        "schema_version": "1.0",
+        "reference_id": "reference-1",
+        "source_asset_hash": "example-sha256-reference",
+        "song_id": "song-1",
+        "model_bundle_id": "fake-v1",
+        "frontend_id": "frontend-v1",
+        "taxonomy_id": "families-v1",
+        "instrument_config_version": 1,
+        "duration_s": 60,
+        "coverage": [
+          {
+            "instrument_id": "guitar",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "bass",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "drums",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          }
+        ],
+        "context_policy": "fixed_target_with_comparability_gate",
+        "model_specific_context_asset": "context-reference-1",
+        "limitations": [
+          "Illustrative fixture, not measured audio."
+        ],
+        "comparison_regime": "matched_excerpt"
+      },
+      "active_baseline": {
+        "record_type": "BaselineProfile",
+        "schema_version": "1.0",
+        "baseline_id": "baseline-1",
+        "version": 1,
+        "song_id": "song-1",
+        "reference_id": "reference-1",
+        "accepted_by": "example-pa",
+        "accepted_at": "2026-09-19T12:00:00+08:00",
+        "model_bundle_id": "fake-v1",
+        "frontend_id": "frontend-v1",
+        "execution_profile_id": "cpu-fp32-v1",
+        "taxonomy_id": "families-v1",
+        "instrument_config_version": 1,
+        "capture": {
+          "device_id": "mic-1",
+          "profile_id": "capture-1",
+          "native_sample_rate_hz": 48000,
+          "channels": 1,
+          "gain_setting": "fixed",
+          "enhancements_verified_disabled": true,
+          "geometry_id": "example-geometry",
+          "provenance": "physical_verified"
+        },
+        "source_audio_hashes": [
+          "example-sha256-rehearsal"
+        ],
+        "coverage": [
+          {
+            "instrument_id": "guitar",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "bass",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "drums",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          }
+        ],
+        "normal_envelopes": [
+          {
+            "instrument_id": "guitar",
+            "center_db": 0,
+            "lower_db": -1.5,
+            "upper_db": 1.5
+          },
+          {
+            "instrument_id": "bass",
+            "center_db": 0,
+            "lower_db": -1.5,
+            "upper_db": 1.5
+          },
+          {
+            "instrument_id": "drums",
+            "center_db": 0,
+            "lower_db": -1.5,
+            "upper_db": 1.5
+          }
+        ],
+        "reference_difference_accepted": true,
+        "acceptance_note": "Illustrative human acceptance.",
+        "validity": "valid",
+        "immutable": true,
+        "limitations": [
+          "Illustrative fixture, not physical validation."
+        ],
+        "comparison_regime": "matched_excerpt",
+        "model_specific_context_asset": "context-baseline-1"
+      },
+      "incident": null,
+      "adjustment": null,
+      "latest_frame": null,
+      "recommendations": [],
+      "latest_verification": null,
+      "suspension_reasons": []
+    },
+    "error": null
+  },
+  "snapshot_event": {
+    "record_type": "SessionEvent",
+    "schema_version": "1.0",
+    "session_id": "session-1",
+    "event_sequence": 6,
+    "state_version": 3,
+    "payload": {
+      "record_type": "SessionSnapshot",
+      "schema_version": "1.0",
+      "session_id": "session-1",
+      "state_version": 3,
+      "event_sequence": 6,
+      "session_mode": "rehearsal",
+      "incident_state": "none",
+      "song": {
+        "record_type": "SongState",
+        "schema_version": "1.0",
+        "song_id": "song-1",
+        "project_id": "project-1",
+        "name": "Example song",
+        "instrument_config_version": 1,
+        "configured_families": [
+          "guitar",
+          "bass",
+          "drums"
+        ],
+        "unsupported_families": [],
+        "reference_id": "reference-1",
+        "baseline_id": "baseline-1",
+        "workflow_state": "REHEARSAL"
+      },
+      "source": {
+        "input_kind": "live_microphone",
+        "input_asset_or_device_id": "mic-1",
+        "clock_id": "clock-1"
+      },
+      "execution": {
+        "model_bundle_id": "fake-v1",
+        "frontend_id": "frontend-v1",
+        "execution_profile_id": "cpu-fp32-v1",
+        "provider": "fake"
+      },
+      "active_reference": {
+        "record_type": "ReferenceProfile",
+        "schema_version": "1.0",
+        "reference_id": "reference-1",
+        "source_asset_hash": "example-sha256-reference",
+        "song_id": "song-1",
+        "model_bundle_id": "fake-v1",
+        "frontend_id": "frontend-v1",
+        "taxonomy_id": "families-v1",
+        "instrument_config_version": 1,
+        "duration_s": 60,
+        "coverage": [
+          {
+            "instrument_id": "guitar",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "bass",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "drums",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          }
+        ],
+        "context_policy": "fixed_target_with_comparability_gate",
+        "model_specific_context_asset": "context-reference-1",
+        "limitations": [
+          "Illustrative fixture, not measured audio."
+        ],
+        "comparison_regime": "matched_excerpt"
+      },
+      "active_baseline": {
+        "record_type": "BaselineProfile",
+        "schema_version": "1.0",
+        "baseline_id": "baseline-1",
+        "version": 1,
+        "song_id": "song-1",
+        "reference_id": "reference-1",
+        "accepted_by": "example-pa",
+        "accepted_at": "2026-09-19T12:00:00+08:00",
+        "model_bundle_id": "fake-v1",
+        "frontend_id": "frontend-v1",
+        "execution_profile_id": "cpu-fp32-v1",
+        "taxonomy_id": "families-v1",
+        "instrument_config_version": 1,
+        "capture": {
+          "device_id": "mic-1",
+          "profile_id": "capture-1",
+          "native_sample_rate_hz": 48000,
+          "channels": 1,
+          "gain_setting": "fixed",
+          "enhancements_verified_disabled": true,
+          "geometry_id": "example-geometry",
+          "provenance": "physical_verified"
+        },
+        "source_audio_hashes": [
+          "example-sha256-rehearsal"
+        ],
+        "coverage": [
+          {
+            "instrument_id": "guitar",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "bass",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          },
+          {
+            "instrument_id": "drums",
+            "valid_active_seconds": 30,
+            "qualified_nonoverlap_windows": 7,
+            "status": "adequate"
+          }
+        ],
+        "normal_envelopes": [
+          {
+            "instrument_id": "guitar",
+            "center_db": 0,
+            "lower_db": -1.5,
+            "upper_db": 1.5
+          },
+          {
+            "instrument_id": "bass",
+            "center_db": 0,
+            "lower_db": -1.5,
+            "upper_db": 1.5
+          },
+          {
+            "instrument_id": "drums",
+            "center_db": 0,
+            "lower_db": -1.5,
+            "upper_db": 1.5
+          }
+        ],
+        "reference_difference_accepted": true,
+        "acceptance_note": "Illustrative human acceptance.",
+        "validity": "valid",
+        "immutable": true,
+        "limitations": [
+          "Illustrative fixture, not physical validation."
+        ],
+        "comparison_regime": "matched_excerpt",
+        "model_specific_context_asset": "context-baseline-1"
+      },
+      "incident": null,
+      "adjustment": null,
+      "latest_frame": null,
+      "recommendations": [],
+      "latest_verification": null,
+      "suspension_reasons": []
+    }
+  }
+}

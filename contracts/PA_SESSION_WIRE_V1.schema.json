@@ -1,0 +1,777 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pa-controller:session-wire:1.0",
+  "title": "PA Session Wire Contract V1",
+  "description": "Companion session boundary; existing public records are referenced unchanged. Cross-record and command lifecycle invariants: PA_SHARED_INTERFACES_V1.md.",
+  "oneOf": [
+    {
+      "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionSnapshot"
+    },
+    {
+      "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionCommand"
+    },
+    {
+      "$ref": "urn:pa-controller:session-wire:1.0#/$defs/CommandResponse"
+    },
+    {
+      "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionEvent"
+    }
+  ],
+  "$defs": {
+    "EventBinding": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "event_id",
+        "event_version"
+      ],
+      "additionalProperties": false
+    },
+    "SourceBinding": {
+      "type": "object",
+      "properties": {
+        "input_kind": {
+          "type": "string",
+          "enum": [
+            "uploaded_file",
+            "live_microphone"
+          ]
+        },
+        "input_asset_or_device_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "input_kind",
+        "input_asset_or_device_id",
+        "clock_id"
+      ],
+      "additionalProperties": false
+    },
+    "ExecutionIdentity": {
+      "type": "object",
+      "properties": {
+        "model_bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frontend_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "model_bundle_id",
+        "frontend_id",
+        "execution_profile_id",
+        "provider"
+      ],
+      "additionalProperties": false
+    },
+    "AdjustmentRecord": {
+      "type": "object",
+      "properties": {
+        "adjustment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/EventBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ComparisonTarget"
+        },
+        "clock_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "started_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "completed_monotonic_s": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification_not_before_monotonic_s": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "adjustment_id",
+        "event",
+        "target",
+        "clock_id",
+        "started_monotonic_s",
+        "completed_monotonic_s",
+        "verification_not_before_monotonic_s"
+      ],
+      "additionalProperties": false
+    },
+    "Incident": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "$ref": "urn:pa-controller:contracts:1.0#/$defs/AnomalyEvent"
+        },
+        "event_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ComparisonTarget"
+        }
+      },
+      "required": [
+        "event",
+        "event_version",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "SessionSnapshot": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "SessionSnapshot"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "session_mode": {
+          "type": "string",
+          "enum": [
+            "rehearsal",
+            "live"
+          ]
+        },
+        "incident_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "active",
+            "adjusting",
+            "verifying",
+            "resolved",
+            "inconclusive",
+            "dismissed"
+          ]
+        },
+        "song": {
+          "$ref": "urn:pa-controller:contracts:1.0#/$defs/SongState"
+        },
+        "source": {
+          "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SourceBinding"
+        },
+        "execution": {
+          "$ref": "urn:pa-controller:session-wire:1.0#/$defs/ExecutionIdentity"
+        },
+        "active_reference": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/ReferenceProfile"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "active_baseline": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/BaselineProfile"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "incident": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/Incident"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "adjustment": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/AdjustmentRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latest_frame": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/AnalysisFrame"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:pa-controller:contracts:1.0#/$defs/Recommendation"
+          }
+        },
+        "latest_verification": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/VerificationResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suspension_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "session_id",
+        "state_version",
+        "event_sequence",
+        "session_mode",
+        "incident_state",
+        "song",
+        "source",
+        "execution",
+        "active_reference",
+        "active_baseline",
+        "incident",
+        "adjustment",
+        "latest_frame",
+        "recommendations",
+        "latest_verification",
+        "suspension_reasons"
+      ],
+      "additionalProperties": false
+    },
+    "SelectedInterval": {
+      "type": "object",
+      "properties": {
+        "analysis_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sample_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sample_end": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "analysis_run_id",
+        "clock_id",
+        "sample_rate_hz",
+        "sample_start",
+        "sample_end"
+      ],
+      "additionalProperties": false
+    },
+    "SessionCommand": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "SessionCommand"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_state_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reference": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/ReferenceBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:analyzer:1.0#/$defs/BaselineBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "event": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/EventBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "accept_baseline",
+            "start_adjustment",
+            "complete_adjustment",
+            "recheck",
+            "dismiss",
+            "pause",
+            "resume",
+            "stop",
+            "start_live"
+          ]
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "session_id",
+        "idempotency_key",
+        "expected_state_version",
+        "reference",
+        "baseline",
+        "event",
+        "action",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "action": {
+              "const": "accept_baseline"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "interval": {
+                  "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SelectedInterval"
+                },
+                "accepted_by": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reference_difference_accepted": {
+                  "type": "boolean"
+                },
+                "acceptance_note": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "interval",
+                "accepted_by",
+                "reference_difference_accepted",
+                "acceptance_note"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "start_adjustment"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "complete_adjustment"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "adjustment_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "adjustment_id"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "recheck"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "adjustment_id": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "adjustment_id"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "dismiss"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "pause"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "resume"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "stop"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "properties": {
+            "action": {
+              "const": "start_live"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            }
+          }
+        }
+      ]
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    },
+    "CommandResponse": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "record_type": {
+              "const": "CommandResponse"
+            },
+            "schema_version": {
+              "const": "1.0"
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcome": {
+              "const": "applied"
+            },
+            "http_status": {
+              "const": 200
+            },
+            "snapshot": {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionSnapshot"
+            },
+            "error": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "record_type",
+            "schema_version",
+            "session_id",
+            "idempotency_key",
+            "outcome",
+            "http_status",
+            "snapshot",
+            "error"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "record_type": {
+              "const": "CommandResponse"
+            },
+            "schema_version": {
+              "const": "1.0"
+            },
+            "session_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "outcome": {
+              "const": "rejected"
+            },
+            "http_status": {
+              "enum": [
+                409,
+                422,
+                503
+              ]
+            },
+            "snapshot": {
+              "oneOf": [
+                {
+                  "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionSnapshot"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "error": {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/Error"
+            }
+          },
+          "required": [
+            "record_type",
+            "schema_version",
+            "session_id",
+            "idempotency_key",
+            "outcome",
+            "http_status",
+            "snapshot",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SessionEvent": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "SessionEvent"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionSnapshot"
+            },
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/AnalysisFrame"
+            },
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/AnomalyEvent"
+            },
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/Recommendation"
+            },
+            {
+              "$ref": "urn:pa-controller:contracts:1.0#/$defs/VerificationResult"
+            }
+          ]
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "session_id",
+        "event_sequence",
+        "state_version",
+        "payload"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
