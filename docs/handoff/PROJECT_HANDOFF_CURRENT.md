@@ -1,3 +1,27 @@
+# Candidate adapter and Runtime integration — 2026-09-20
+
+Accepted ML `795f179bde8bbae9b3e25b8a591e2d25735ddfde` and Runtime
+`f9098018d0bfd2f501058ce6190d1403a48be12c` are integrated at
+`42695c4f122fff0297989ec787ff8187fbe6a6c6`. Full main validation:234 Python,
+34 UI, full Fake correction loop and source audit PASS. Lead also ran actual P1
+CPU reference/cache/file and synthetic-mic abstention through HTTP/WS on that clean
+commit; see `docs/implementation/evidence/p1_runtime_42695c4.json`.
+
+UI `95656cb` is NOT accepted: the new read-only baseline interval can retain missing
+or old-run evidence with no operator recovery path. The existing UI owner is fixing
+that concrete issue and must prove form-to-baseline acceptance before integration.
+Final MVP product integration therefore remains IN_PROGRESS. Existing main UI stays
+unchanged until the correction is accepted.
+
+Candidate startup: `python -m apps.api.launch --mode candidate-p1 --storage .pa-runtime
+--bundle models/candidates/nano4-p1-adapted-mvp-v1` (one command; optional model
+packages documented in `models/P1_CANDIDATE_INTEGRATION.md`). It is uncalibrated,
+bass-only matched-digital diagnostics; microphone input abstains and public numerical
+actions remain disabled. Local CPU observation7.929s per4s window is not realtime.
+No MI300-final, PN54 or physical validation claim is made. Frozen contracts unchanged.
+
+---
+
 # Final MVP integration update — 2026-09-20
 
 The current milestone is **FINAL_MVP_PRODUCT_INTEGRATION / MVP_BASE_READY**.

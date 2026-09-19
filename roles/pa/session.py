@@ -109,6 +109,8 @@ class PASession:
         self._lock = RLock()
         self._persistence_callback = None
         model = analyzer.capabilities()["model"]
+        self._model_identity = copy.deepcopy(model)
+        self._baseline_model_identity = None
         self.execution = {
             "model_bundle_id": model["model_bundle_id"],
             "frontend_id": model["frontend_id"],
@@ -241,6 +243,8 @@ class PASession:
             "analysis_sample_rate_hz": self.analysis_sample_rate_hz,
             "baseline_records": self.baseline_store.records(),
             "analyzer_capabilities": self.analyzer.capabilities(),
+            "model_identity": copy.deepcopy(self._model_identity),
+            "baseline_model_identity": copy.deepcopy(self._baseline_model_identity),
             "execution": copy.deepcopy(self.execution),
             "song": copy.deepcopy(self.song),
             "state_version": self.state_version,
@@ -326,6 +330,8 @@ class PASession:
         self.capture_fingerprint = copy.deepcopy(state["capture_fingerprint"])
         self.capture_runtime_verified = state.get("capture_runtime_verified", False)
         self.execution = copy.deepcopy(state["execution"])
+        self._model_identity = copy.deepcopy(state.get("model_identity", self._model_identity))
+        self._baseline_model_identity = copy.deepcopy(state.get("baseline_model_identity"))
         self.analysis_sample_rate_hz = state.get("analysis_sample_rate_hz", state["capture_fingerprint"]["native_sample_rate_hz"])
         self.song = copy.deepcopy(state["song"])
         self.state_version = state["state_version"]
@@ -511,7 +517,7 @@ class PASession:
                 window.input_asset_or_device_id != self.source["input_asset_or_device_id"]):
             raise ValueError("window source differs from the session source")
         model = self.analyzer.capabilities()["model"]
-        if any(model[key] != self.execution[key] for key in ("model_bundle_id", "frontend_id", "execution_profile_id")):
+        if model != self._model_identity or any(model[key] != self.execution[key] for key in ("model_bundle_id", "frontend_id", "execution_profile_id")):
             raise ValueError("runtime model/profile changed; create a revalidated session")
         if self.capture_profile_enforced and window.sample_rate_hz != self.analysis_sample_rate_hz:
             raise ValueError("capture sample rate changed; revalidate the input profile")
@@ -824,6 +830,8 @@ class PASession:
         self._transition()
 
     def _accept_baseline(self, payload: dict) -> None:
+        if self.analyzer.capabilities()["model"] != self._model_identity:
+            raise SessionCommandError("incompatible_profile", "Model identity changed; reanalyze in a new session.")
         if self.session_mode != "rehearsal":
             raise SessionCommandError("baseline_immutable_live", "Baseline acceptance is forbidden during Live.")
         if self.incident is not None and self.incident["event"]["state"] not in ("resolved", "dismissed"):
@@ -881,6 +889,7 @@ class PASession:
         except ValueError as exc:
             raise SessionCommandError("baseline_quality_rejected", str(exc), http_status=422) from exc
         self.baseline = self.baseline_store.get(baseline_id, next_version)
+        self._baseline_model_identity = copy.deepcopy(self._model_identity)
         self._audit("baseline_accepted", self.baseline, evidence_frames=selected)
         self.song["baseline_id"] = baseline_id
         self.song["workflow_state"] = "REHEARSAL"
@@ -901,6 +910,8 @@ class PASession:
                 "capture_not_runtime_verified",
                 "Live requires a runtime-verified capture device/profile.",
             )
+        if self._baseline_model_identity != self._model_identity or self.analyzer.capabilities()["model"] != self._model_identity:
+            raise SessionCommandError("incompatible_profile", "Baseline requires the exact accepted five-ID model identity.")
         expected = self.execution
         for key in ("model_bundle_id", "frontend_id", "execution_profile_id"):
             if self.baseline[key] != expected[key]:

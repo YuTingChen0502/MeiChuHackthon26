@@ -1,26 +1,28 @@
 {
   "milestone": "FINAL_MVP_PRODUCT_INTEGRATION",
-  "status": "MVP_BASE_READY",
+  "status": "MVP_CANDIDATE_INTEGRATION_IN_PROGRESS",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_integration_commit": "80f6df0103c3cd436a919b92db9fb82e8e703536",
+  "latest_integration_commit": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
   "lanes": {
     "ML": {
-      "commit": "d31caa0ba76410658c28074e3c175e2fe46c7705",
-      "status": "candidate adapter in progress in existing worktree; merge new Lead base before checkpoint",
+      "commit": "795f179bde8bbae9b3e25b8a591e2d25735ddfde",
+      "status": "CHECKPOINT_ACCEPTED; merged df62ce9; raw bass candidate-only adapter, full226+34 validation passed",
       "go_no_go": "NARROW matched-digital bass engineering candidate only; production NO_GO",
-      "empirical_claim": "No trained artifact or real-audio capability accepted"
+      "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed",
-      "status": "existing native runtime accepted; candidate identity/gates work in progress, preserve dirty owned changes before sync"
+      "commit": "f9098018d0bfd2f501058ce6190d1403a48be12c",
+      "status": "CHECKPOINT_ACCEPTED; integrated42695c4; full234Python/34UI and actual CPU Runtime probe PASS"
     },
     "UI": {
-      "commit": "a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed",
-      "status": "existing UI accepted; clean worktree ready to sync candidate base"
+      "commit": "95656cb723affac55d794d1dce1a86fd866b5ff3",
+      "status": "CORRECTIONS_REQUIRED: read-only baseline interval must recover from missing/new-run evidence; UI39 independently pass"
     }
   },
-  "pending_reviews": [],
+  "pending_reviews": [
+    "UI corrected baseline interval binding/recovery and actual form acceptance"
+  ],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -54,16 +56,20 @@
     "CP2-UI/CORRECTION_COMPLETE/947dae26f2410023d71f0b4a024e14f5e7e75592": "read-only old IAB origin cache diagnosis; fresh origin correct; no source issue",
     "CP2-RUNTIME/CORRECTION_COMPLETE/eaf5b73dd6bc398498771ebd38b26b8e8f7e501b": "accepted; launcher2 independently passed; merged af342d8; integration54 passed",
     "NANO4/CANDIDATE_PUBLICATION/01eaf5ddcc439efe799be61e54589d331c8556c6": "accepted and merged at80f6df0;45 hashes and209Python/34UI/fullFake smoke pass",
-    "CP2-ML/CROSS_LANE_REQUEST/a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed": "resolved: candidate raw bass evidence may be implemented; unsupported invalid/null and Core valid-source identifiability rules unchanged"
+    "CP2-ML/CROSS_LANE_REQUEST/a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed": "resolved: candidate raw bass evidence may be implemented; unsupported invalid/null and Core valid-source identifiability rules unchanged",
+    "ML/REAL_ANALYZER_CANDIDATE_READY/795f179bde8bbae9b3e25b8a591e2d25735ddfde": "accepted and merged df62ce9; exact artifact hashes, restricted-fixture provenance and candidate gates retained",
+    "UI/MVP_PRODUCT_UI_READY/95656cb723affac55d794d1dce1a86fd866b5ff3": "corrections required, directly routed; no-frame draft remains stale indefinitely and run/clock binding cannot be refreshed",
+    "Runtime/MVP_NATIVE_RUNTIME_READY/f9098018d0bfd2f501058ce6190d1403a48be12c": "accepted and merged42695c4; native/soak source lineage checked; full main suite and clean-SHA P1 Runtime probe pass"
   },
   "integration_validation": {
-    "commit": "80f6df0103c3cd436a919b92db9fb82e8e703536",
-    "python_tests": 209,
+    "commit": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
+    "python_tests": 234,
     "ui_tests": 34,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS no findings; frozen candidate research media excluded from public source export",
+    "release_scan": "PASS clean main zero findings",
     "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
-    "browser": "PASS actual setup/upload/reference/rehearsal/EOF/resume/saved-song reopen; UI owner actual probe cancellation/resume PASS"
+    "browser": "PASS actual setup/upload/reference/rehearsal/EOF/resume/saved-song reopen; UI owner actual probe cancellation/resume PASS",
+    "actual_p1_runtime_probe": "PASS clean42695c4,20.052s,actual CPU reference/cache/file+synthetic-mic abstention,HTTP200/WS replay; docs/implementation/evidence/p1_runtime_42695c4.json"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
@@ -72,14 +78,12 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "80f6df0103c3cd436a919b92db9fb82e8e703536",
+  "latest_approved_main_implementation": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
   "remaining": [
-    "candidate-specific ML adapter",
-    "Runtime candidate orchestration/identity gates",
-    "UI candidate states/frontend-owned sample rate",
-    "empirical calibration",
+    "UI baseline interval recovery correction and final integration",
+    "empirical calibration and supported operating envelope",
     "MI300 final adaptation lineage",
-    "PN54 deployment",
+    "PN54 model deployment/performance",
     "physical validation"
   ],
   "candidate": {

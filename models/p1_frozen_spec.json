@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "trust_role": "host-reviewed frozen integration pin, not production acceptance",
+  "publication_git_sha": "01eaf5ddcc439efe799be61e54589d331c8556c6",
+  "bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+  "archive_sha256": "5963e80929e2fa987f223056dacf70659066ef07154b169447e1864dd5e933ad",
+  "files": {
+    "checkpoint.pt": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "evidence/CP2B_METHOD_COMPARISON_REPORT.md": "4716cdd048aa3d1c3180ec005af3dcf6b3ababd6a291d3f5a745c8980881f4ed",
+    "evidence/cp2b-final-evidence-v1.json": "dfb6581635e08aa930efeaad915f3c1f4bde80c068cf4803a87505da669c832e",
+    "evidence/cp2b-method-freeze-v1.json": "54a0c55b0b44ba74881c3df3e3fae441e978600f8b429bc4aa7ee5f71fe7180a",
+    "evidence/index.json": "e91238c03971e202feb5ec40dbd52e2be65153c94cf6713bdc5a174f222269ab",
+    "frontend.json": "e6b4836095d7fab813ae4aa2fa8d9be8c2f9dc3ba12a4ae3a5016cbf90ec0f26",
+    "licenses/DEMUCS_LICENSE.txt": "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173",
+    "licenses/NOTICE.md": "3b5e246eb50ef007948cd5c978c71470e7bc598761b014dd018b172c04b598f8",
+    "limitations.json": "3b78bd50daf550c46e08ecc344127a0ebab499498ab60b58459c12ceb110f34f",
+    "manifest.json": "c2270b54f59a99f01b7016200db6a35802b058721b3f17f7a19653acf50b3e32",
+    "requirements.txt": "46dfc21b02b27be6a8c5505248cc9cce00eb5011d438ea6f5b0647cdc38a4108",
+    "taxonomy.json": "375adb0dac7ad526b9a93ed28118e3ac05ca796d44214b05a96e6df2ac274215",
+    "thresholds.json": "9fd1fd69134b75cc6c7d063b288c220b7e2fa7781ae77826477f73c84d0f4602",
+    "torch_cache/hub/checkpoints/5c90dfd2-34c22ccb.th": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+    "training_config.json": "75b8a60ba232830346d088827f11f63bf8dd10ddd93a37c40eb3fca832814ea5"
+  },
+  "level_scale_id": "htdemucs6s-source-rms-dbfs-before-centering-v1",
+  "supported_candidate_families": [
+    "bass"
+  ],
+  "smoke_files": {
+    "reference.wav": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+    "observation.wav": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+    "inference-run-1.json": "63e15811778798dcf4d1a4c3a8d047f014497081c4615ed6e4053613b176002e",
+    "fixture_provenance.json": "9cb5d74e958cec374048d650f84b06d03fb4be675e0e26591b708f5ac4b3d934"
+  }
+}

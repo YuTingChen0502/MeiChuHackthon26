@@ -37,3 +37,30 @@ class LauncherOriginTests(unittest.TestCase):
         allowed,decisions=self.launch("http://127.0.0.1:8000")
         self.assertEqual({"http://127.0.0.1:8000"},allowed)
         self.assertEqual([False,False,True,False],list(decisions.values()))
+
+
+class CandidateLauncherTests(unittest.TestCase):
+    def test_explicit_candidate_uses_host_loader_and_frozen_geometry(self):
+        from unittest.mock import Mock
+        from pathlib import Path
+        loader=Mock()
+        make=Mock(return_value=loader)
+        module=SimpleNamespace(make_p1_candidate_loader=make)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {}, clear=True), patch.dict(
+                "sys.modules", {"analyzers.separation.p1_candidate":module}):
+            with patch("sys.argv",["launch","--mode","candidate-p1","--storage",directory,
+                    "--bundle",directory]), patch("uvicorn.run"), patch("apps.api.transport.create_app") as app:
+                main()
+            make.assert_called_once_with(cache_dir=Path(directory)/"context-cache",candidate_mode=True,device="cpu")
+            self.assertIs(loader,app.call_args.kwargs["bundle_loader"])
+            self.assertEqual(["44100","176400","44100"],[os.environ[k] for k in
+                ("PA_ANALYSIS_RATE_HZ","PA_WINDOW_SIZE_SAMPLES","PA_HOP_SIZE_SAMPLES")])
+            self.assertEqual("bundle",os.environ["PA_ANALYZER_MODE"])
+            self.assertNotIn("PA_HOST_REVIEW",os.environ)
+
+    def test_candidate_rejects_wrong_geometry_or_production_review(self):
+        for extra in (["--rate","48000"],["--host-review","review.json"],["--adapter","x=y:z"]):
+            with patch("sys.argv",["launch","--mode","candidate-p1","--storage","unused",*extra]):
+                with self.assertRaises(SystemExit) as raised:
+                    main()
+                self.assertEqual(2,raised.exception.code)

@@ -1,0 +1,65 @@
+{
+  "git_commit": "9ec15f0825abcd592f53df2468f0c3c9de878907",
+  "git_dirty": false,
+  "analysis_rate_hz": 44100,
+  "window_seconds": 4.0,
+  "hop_seconds": 1.0,
+  "recording": "No microphone PCM saved",
+  "device_id": "portaudio:b0f45d7b7c5f04d95e39",
+  "claim": "Local native transport/lifecycle only; Fake abstains; no model/calibration/PN54 claim.",
+  "duration_s": 16.343999999997322,
+  "runs": [
+    {
+      "metrics": {
+        "processed_windows": 4,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 46.999999991385266,
+        "processing_p95_ms": 46.999999991385266,
+        "publication_age_p95_s": 0.05700000000069849,
+        "error": null
+      },
+      "analysis_run_id": "run:49dcbed8495a43eea4a16ad0670c4c77",
+      "callback_max_queue": 1,
+      "callback_drops": 0,
+      "adc_residual_s": 0.003913100008503534,
+      "rss_bytes": 68255744,
+      "all_abstained": true
+    },
+    {
+      "metrics": {
+        "processed_windows": 4,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 47.00000000593718,
+        "processing_p95_ms": 63.00000000919681,
+        "publication_age_p95_s": 0.07300000001851004,
+        "error": null
+      },
+      "analysis_run_id": "run:9dd20cc1e2da47b4adc62a974b9754dd",
+      "callback_max_queue": 1,
+      "callback_drops": 0,
+      "adc_residual_s": 0.0025809999933699146,
+      "rss_bytes": 68161536,
+      "all_abstained": true
+    }
+  ],
+  "final_workflow": "STOPPED",
+  "capture": {
+    "device_id": "portaudio:b0f45d7b7c5f04d95e39",
+    "profile_id": "unverified-native-probe",
+    "native_sample_rate_hz": 48000,
+    "channels": 1,
+    "gain_setting": null,
+    "enhancements_verified_disabled": null,
+    "geometry_id": null,
+    "provenance": "unverified"
+  },
+  "status": "passed"
+}

@@ -78,6 +78,25 @@ python scripts/validate.py
 The validation runner executes shared, Runtime, integration, UI, selected ML suites,
 the unchanged full Fake correction-loop smoke, and the source release audit.
 
+## Frozen candidate integration
+
+The Nano4 P1 candidate adapter and Runtime host mode are integrated for engineering
+use. It reconstructs the exact offline HTDemucs base plus adapted projections and
+emits frozen AnalyzerEvidence. Support is bass-only matched-digital; confidence is
+uncalibrated, microphone evidence abstains, and public numerical actions remain
+disabled. CPU observation time was 7.929 seconds per four-second window, not realtime.
+Install the optional tested model packages listed in
+[the candidate runbook](models/P1_CANDIDATE_INTEGRATION.md), then run:
+
+```text
+python -m apps.api.launch --mode candidate-p1 --storage .pa-runtime --bundle models/candidates/nano4-p1-adapted-mvp-v1
+```
+
+The host fixes the model's 44.1 kHz/four-second geometry. Native capture negotiation
+remains separate. The final UI candidate-parity checkpoint is still under correction
+review; see the [current handoff](docs/handoff/PROJECT_HANDOFF_CURRENT.md). Production
+acceptance, MI300 lineage, held-out calibration, PN54 and physical trials remain gates.
+
 ## Run locally
 
 Start the local native-audio application with an explicitly simulated analyzer:

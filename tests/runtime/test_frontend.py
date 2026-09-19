@@ -70,3 +70,24 @@ class FrontendTests(unittest.TestCase):
         chunks=list(AudioFrontend(16000).chunks(source.chunks()))
         self.assertTrue(any(chunk.input_clipped_fraction > 0 for chunk in chunks))
         self.assertTrue(all(max(chunk.samples) < 1.0 for chunk in chunks))
+
+
+class CandidateGeometryTests(unittest.TestCase):
+    def test_native_rate_file_and_mic_have_exact_candidate_spans(self):
+        # Acquisition kind and chunk partition cannot change canonical PCM/clock spans.
+        rendered=[]
+        for kind,block in ((FileAudioInput,1024),(MicAudioInput,4800)):
+            source=kind(input_asset_or_device_id="same",clock_id="clock",sample_rate_hz=48000,
+                samples=[.125]*int(48000*6.1),origin_monotonic_s=10,chunk_size_samples=block)
+            rendered.append(list(SharedAudioPipeline(window_size_samples=176400,
+                hop_size_samples=44100,sample_rate_hz=44100).iter_windows(source,
+                session_id="same",analysis_run_id="same")))
+        self.assertEqual(3,len(rendered[0]))
+        for index,(file,mic) in enumerate(zip(*rendered)):
+            self.assertEqual(file.samples,mic.samples)
+            self.assertEqual((index*44100,(index+4)*44100),(file.sample_start,file.sample_end))
+            self.assertEqual((file.sample_start,file.sample_end),(mic.sample_start,mic.sample_end))
+            self.assertEqual(44100,file.sample_rate_hz)
+            self.assertEqual(14+index,file.capture_end_monotonic_s)
+            self.assertEqual(file.capture_end_monotonic_s,mic.capture_end_monotonic_s)
+            self.assertLess(max(abs(value-.125) for value in file.samples),1e-12)

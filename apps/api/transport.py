@@ -237,6 +237,7 @@ def create_app(
     *,
     ui_directory: str | Path | None = None,
     bundle_registry: dict | None = None,
+    bundle_loader=None,
 ) -> Starlette:
     @asynccontextmanager
     async def lifespan(application):
@@ -255,7 +256,7 @@ def create_app(
                 window_size_samples=int(os.environ.get("PA_WINDOW_SIZE_SAMPLES", "192000")),
                 hop_size_samples=int(os.environ.get("PA_HOP_SIZE_SAMPLES", "48000")),
                 analysis_sample_rate_hz=int(os.environ.get("PA_ANALYSIS_RATE_HZ", "48000")),
-                **runtime_options(registry=bundle_registry),
+                **runtime_options(registry=bundle_registry, loader=bundle_loader),
             )
         origins = os.environ.get("PA_ALLOWED_ORIGINS")
         application.state.allowed_origins = (
