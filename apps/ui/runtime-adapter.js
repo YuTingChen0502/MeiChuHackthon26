@@ -10,13 +10,14 @@ export class RuntimeAdapter {
     this.generation = 0;
     this.reconnectTimer = null;
     this.stopped = false;
+    this.probe = null;
   }
 
   async request(path, options = {}) {
     const response = await fetch(`/v1${path}`, options);
     const payload = await response.json();
     if (!response.ok) {
-      const error = new Error(payload.error?.message ?? `Request failed (${response.status})`);
+      const error = new Error(payload.error?.message ?? payload.command?.error?.message ?? `Request failed (${response.status})`);
       error.status = response.status;
       error.payload = payload;
       throw error;
@@ -25,6 +26,47 @@ export class RuntimeAdapter {
   }
 
   async health() { return this.request('/health'); }
+
+  async audioDevices() { return this.request('/audio-devices'); }
+
+  async probeState(sessionId = this.activeSessionId) {
+    if (!sessionId || sessionId !== this.activeSessionId) return null;
+    const probe = await this.request(`/sessions/${encodeURIComponent(sessionId)}/probes`);
+    if (sessionId === this.activeSessionId) this.probe = probe;
+    return probe;
+  }
+
+  async requestProbe(snapshot, mode, instrumentId = null) {
+    if (snapshot.session_id !== this.activeSessionId) throw new Error('Probe does not target the active session.');
+    const command = {
+      record_type:'RehearsalProbeCommand', schema_version:'1.0', session_id:snapshot.session_id,
+      idempotency_key:`ui-probe-${crypto.randomUUID()}`, expected_state_version:snapshot.state_version,
+      reference:snapshot.active_reference && { reference_id:snapshot.active_reference.reference_id, source_asset_hash:snapshot.active_reference.source_asset_hash },
+      baseline:snapshot.active_baseline && { baseline_id:snapshot.active_baseline.baseline_id, baseline_version:snapshot.active_baseline.version },
+      event:snapshot.incident && { event_id:snapshot.incident.event.event_id, event_version:snapshot.incident.event_version },
+      mode, instrument_id:instrumentId,
+    };
+    const response = await this.request(`/sessions/${encodeURIComponent(snapshot.session_id)}/probes`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(command) });
+    if (response.command?.snapshot) this.acceptSnapshot(response.command.snapshot);
+    this.probe = response.probe;
+    return response;
+  }
+
+  async openSession(sessionId) {
+    const normalized = sessionId.trim();
+    if (!normalized) throw new Error('Session ID is required.');
+    this.activateSession(normalized);
+    try {
+      const snapshot = await this.refresh(normalized);
+      if (!snapshot) throw new Error('Session changed before it could be loaded.');
+      await this.probeState(normalized);
+      this.connect(normalized, snapshot.event_sequence);
+      return snapshot;
+    } catch (error) {
+      if (this.activeSessionId === normalized) this.stopEvents();
+      throw error;
+    }
+  }
 
   async setup(values) {
     const project = await this.request('/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:values.project }) });
@@ -37,7 +79,7 @@ export class RuntimeAdapter {
     }
     if (job.status !== 'completed') throw new Error(job.error ?? 'Reference preparation failed.');
     const sourceId = values.source === 'uploaded_file' && values.sourceId === 'reference-asset' ? asset.asset_id : values.sourceId;
-    const snapshot = await this.request('/sessions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ song_id:song.song_id, reference_id:job.reference_id, source:{ input_kind:values.source, input_asset_or_device_id:sourceId }, capture_fingerprint:{ device_id:sourceId, profile_id:values.captureProfile, native_sample_rate_hz:48000, channels:1, gain_setting:'fixed', enhancements_verified_disabled:true, geometry_id:values.geometryId, provenance:'unverified' } }) });
+    const snapshot = await this.request('/sessions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ song_id:song.song_id, reference_id:job.reference_id, source:{ input_kind:values.source, input_asset_or_device_id:sourceId }, capture_fingerprint:{ device_id:sourceId, profile_id:values.captureProfile ?? 'ui-request-v1', native_sample_rate_hz:Number(values.requestedSampleRateHz ?? 48000), channels:1, gain_setting:null, enhancements_verified_disabled:null, geometry_id:null, provenance:'unverified' } }) });
     this.activateSession(snapshot.session_id);
     this.acceptSnapshot(snapshot);
     this.connect(snapshot.session_id, snapshot.event_sequence);
@@ -71,11 +113,13 @@ export class RuntimeAdapter {
     this.activeSessionId = sessionId;
     this.cursor = 0;
     this.snapshot = null;
+    this.probe = null;
     clearTimeout(this.reconnectTimer);
     const oldSocket = this.socket;
     this.socket = null;
     oldSocket?.close();
     this.stopped = false;
+    this.onConnection(false);
   }
 
   acceptSnapshot(snapshot) {
@@ -120,6 +164,8 @@ export class RuntimeAdapter {
   async recover(sessionId, generation = this.generation) {
     try {
       await this.refresh(sessionId, generation);
+      if (sessionId !== this.activeSessionId || generation !== this.generation) return;
+      await this.probeState(sessionId);
       if (sessionId !== this.activeSessionId || generation !== this.generation) return;
       this.connect(sessionId, this.cursor);
       this.onStatus('Runtime event stream reconnected from an authoritative snapshot.');
