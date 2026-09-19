@@ -1,8 +1,9 @@
 export class RuntimeAdapter {
-  constructor({ onSnapshot, onStatus, onConnection }) {
+  constructor({ onSnapshot, onStatus, onConnection, onProbe }) {
     this.onSnapshot = onSnapshot;
     this.onStatus = onStatus;
     this.onConnection = onConnection ?? (() => {});
+    this.onProbe = onProbe ?? (() => {});
     this.socket = null;
     this.snapshot = null;
     this.cursor = 0;
@@ -29,15 +30,25 @@ export class RuntimeAdapter {
 
   async audioDevices() { return this.request('/audio-devices'); }
 
-  async probeState(sessionId = this.activeSessionId) {
-    if (!sessionId || sessionId !== this.activeSessionId) return null;
+  acceptProbe(probe, sessionId = this.activeSessionId, generation = this.generation) {
+    if (!probe || sessionId !== this.activeSessionId || generation !== this.generation || probe.session_id !== sessionId) return false;
+    if (this.snapshot && probe.state_version < this.snapshot.state_version) return false;
+    if (this.probe && probe.state_version < this.probe.state_version) return false;
+    this.probe = probe;
+    this.onProbe(probe);
+    return true;
+  }
+
+  async probeState(sessionId = this.activeSessionId, generation = this.generation) {
+    if (!sessionId || sessionId !== this.activeSessionId || generation !== this.generation) return null;
     const probe = await this.request(`/sessions/${encodeURIComponent(sessionId)}/probes`);
-    if (sessionId === this.activeSessionId) this.probe = probe;
+    this.acceptProbe(probe, sessionId, generation);
     return probe;
   }
 
   async requestProbe(snapshot, mode, instrumentId = null) {
     if (snapshot.session_id !== this.activeSessionId) throw new Error('Probe does not target the active session.');
+    const generation = this.generation;
     const command = {
       record_type:'RehearsalProbeCommand', schema_version:'1.0', session_id:snapshot.session_id,
       idempotency_key:`ui-probe-${crypto.randomUUID()}`, expected_state_version:snapshot.state_version,
@@ -47,8 +58,9 @@ export class RuntimeAdapter {
       mode, instrument_id:instrumentId,
     };
     const response = await this.request(`/sessions/${encodeURIComponent(snapshot.session_id)}/probes`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(command) });
+    if (snapshot.session_id !== this.activeSessionId || generation !== this.generation) return response;
     if (response.command?.snapshot) this.acceptSnapshot(response.command.snapshot);
-    this.probe = response.probe;
+    this.acceptProbe(response.probe, snapshot.session_id, generation);
     return response;
   }
 
@@ -105,10 +117,14 @@ export class RuntimeAdapter {
   async command(command) {
     if (command.session_id !== this.activeSessionId) throw new Error('Command does not target the active session.');
     const generation = this.generation;
+    const previousVersion = this.snapshot?.state_version;
     const path = command.action === 'accept_baseline' ? `/sessions/${encodeURIComponent(command.session_id)}/baseline` : `/sessions/${encodeURIComponent(command.session_id)}/actions`;
     try {
       const response = await this.request(path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(command) });
-      if (generation === this.generation) this.acceptSnapshot(response.snapshot);
+      if (generation === this.generation) {
+        this.acceptSnapshot(response.snapshot);
+        if (response.snapshot?.state_version !== previousVersion) await this.probeState(command.session_id, generation);
+      }
       return response;
     } catch (error) {
       if (generation === this.generation && error.status === 409 && error.payload?.snapshot) this.acceptSnapshot(error.payload.snapshot);
@@ -173,15 +189,20 @@ export class RuntimeAdapter {
     if (sessionId !== this.activeSessionId || generation !== this.generation || event.session_id !== sessionId || event.event_sequence <= this.cursor) return;
     if (event.event_sequence !== this.cursor + 1) { await this.recover(sessionId, generation); return; }
     this.cursor = event.event_sequence;
-    if (event.payload?.record_type === 'SessionSnapshot') this.acceptSnapshot(event.payload);
-    else await this.refresh(sessionId, generation);
+    const previousVersion = this.snapshot?.state_version;
+    let nextSnapshot;
+    if (event.payload?.record_type === 'SessionSnapshot') {
+      this.acceptSnapshot(event.payload);
+      nextSnapshot = this.snapshot;
+    } else nextSnapshot = await this.refresh(sessionId, generation);
+    if (nextSnapshot && nextSnapshot.state_version !== previousVersion) await this.probeState(sessionId, generation);
   }
 
   async recover(sessionId, generation = this.generation) {
     try {
       await this.refresh(sessionId, generation);
       if (sessionId !== this.activeSessionId || generation !== this.generation) return;
-      await this.probeState(sessionId);
+      await this.probeState(sessionId, generation);
       if (sessionId !== this.activeSessionId || generation !== this.generation) return;
       this.connect(sessionId, this.cursor);
       this.onStatus('Runtime event stream reconnected from an authoritative snapshot.');

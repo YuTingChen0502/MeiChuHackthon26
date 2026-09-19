@@ -213,17 +213,90 @@ test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
   }
 });
 test('runtime adapter isolates cursor and late responses across deliberate session switches', async () => {
-  const snapshots = [];
-  const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
-  adapter.activateSession('old');
-  adapter.acceptSnapshot({ session_id:'old', state_version:4, event_sequence:50 });
-  adapter.activateSession('new');
-  adapter.acceptSnapshot({ session_id:'new', state_version:0, event_sequence:0 });
-  await adapter.handleEvent('new', { session_id:'new', event_sequence:1, payload:{ record_type:'SessionSnapshot', session_id:'new', state_version:1, event_sequence:1 } });
-  assert.equal(adapter.cursor, 1);
-  assert.equal(adapter.acceptSnapshot({ session_id:'old', state_version:5, event_sequence:51 }), false);
-  assert.equal(adapter.snapshot.session_id, 'new');
-  assert.deepEqual(snapshots.map(snapshot => snapshot.session_id), ['old', 'new', 'new']);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ok:true,status:200,json:async()=>({record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'new',state_version:1,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null})});
+  try{
+    const snapshots = [];
+    const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
+    adapter.activateSession('old');
+    adapter.acceptSnapshot({ session_id:'old', state_version:4, event_sequence:50 });
+    adapter.activateSession('new');
+    adapter.acceptSnapshot({ session_id:'new', state_version:0, event_sequence:0 });
+    await adapter.handleEvent('new', { session_id:'new', event_sequence:1, payload:{ record_type:'SessionSnapshot', session_id:'new', state_version:1, event_sequence:1 } });
+    assert.equal(adapter.cursor, 1);
+    assert.equal(adapter.acceptSnapshot({ session_id:'old', state_version:5, event_sequence:51 }), false);
+    assert.equal(adapter.snapshot.session_id, 'new');
+    assert.deepEqual(snapshots.map(snapshot => snapshot.session_id), ['old', 'new', 'new']);
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('successful session commands reconcile server-canceled probe intent', async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = [];
+  const probes = [];
+  globalThis.fetch = async (url,options={}) => {
+    urls.push(url);
+    const payload = options.method === 'POST'
+      ? {snapshot:{session_id:'s-1',state_version:2,event_sequence:2}}
+      : {record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:2,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null};
+    return {ok:true,status:200,json:async()=>payload};
+  };
+  try{
+    const adapter = new RuntimeAdapter({onSnapshot(){},onStatus(){},onProbe:value=>probes.push(value)});
+    adapter.activateSession('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:1,event_sequence:1});
+    await adapter.command({session_id:'s-1',action:'pause'});
+    assert.deepEqual(urls,['/v1/sessions/s-1/actions','/v1/sessions/s-1/probes']);
+    assert.equal(probes[0].mode,'idle');
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('runtime adapter refreshes probe intent once on state transitions and not on frame-only refreshes', async () => {
+  const originalFetch = globalThis.fetch;
+  const urls = [];
+  const probes = [];
+  globalThis.fetch = async url => {
+    urls.push(url);
+    const payload = url.endsWith('/probes')
+      ? {record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:2,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null}
+      : {session_id:'s-1',state_version:2,event_sequence:3};
+    return {ok:true,status:200,json:async()=>payload};
+  };
+  try{
+    const adapter = new RuntimeAdapter({onSnapshot(){},onStatus(){},onProbe:value=>probes.push(value)});
+    adapter.activateSession('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:1,event_sequence:1});
+    await adapter.handleEvent('s-1',{session_id:'s-1',event_sequence:2,payload:{record_type:'SessionSnapshot',session_id:'s-1',state_version:2,event_sequence:2}});
+    await adapter.handleEvent('s-1',{session_id:'s-1',event_sequence:3,payload:{record_type:'AnalysisFrame'}});
+    assert.deepEqual(urls,['/v1/sessions/s-1/probes','/v1/sessions/s-1']);
+    assert.equal(probes.length,1);
+    assert.equal(probes[0].mode,'idle');
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
+});
+test('delayed probe GET cannot overwrite newer same-session probe state', async () => {
+  const originalFetch = globalThis.fetch;
+  let resolveFetch;
+  globalThis.fetch = async () => new Promise(resolve => { resolveFetch=resolve; });
+  try{
+    const seen=[];
+    const adapter=new RuntimeAdapter({onSnapshot(){},onStatus(){},onProbe:value=>seen.push(value.state_version)});
+    adapter.activateSession('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:6,event_sequence:6});
+    const delayed=adapter.probeState('s-1');
+    adapter.acceptSnapshot({session_id:'s-1',state_version:7,event_sequence:7});
+    assert.equal(adapter.acceptProbe({record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:7,mode:'idle',instrument_id:null,probe_id:null,not_before_monotonic_s:null}),true);
+    resolveFetch({ok:true,status:200,json:async()=>({record_type:'RehearsalProbeState',schema_version:'1.0',session_id:'s-1',state_version:6,mode:'instrument',instrument_id:'guitar',probe_id:'old',not_before_monotonic_s:1})});
+    await delayed;
+    assert.equal(adapter.probe.state_version,7);
+    assert.equal(adapter.probe.mode,'idle');
+    assert.deepEqual(seen,[7]);
+  }finally{
+    globalThis.fetch=originalFetch;
+  }
 });
 test('runtime adapter binds guided probe requests exactly and restores probe state on GET', async () => {
   const originalFetch = globalThis.fetch;
@@ -408,6 +481,8 @@ test('UI source contains no client-side audio inference or automatic mixer execu
   assert.match(source, /runtimeAdapter\?\.stopEvents\(\)/);
   assert.match(source, /operationStatus=text/);
   assert.match(source, /appendOperationNotice\(root\);restoreCalibrationFocus/);
+  assert.match(source, /setupRows=\[\['guitar',2\],\['vocals',1\]/);
+  assert.doesNotMatch(source, /\['vocal',1\]/);
 });
 test('responsive card grid supports variable counts without fixed four-card selectors', async () => {
   const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');
