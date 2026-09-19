@@ -1,0 +1,14 @@
+{
+  "model_bundle_id": "htdemucs-6s-feasibility-v1",
+  "backend_id": "htdemucs_6s",
+  "checkpoint": "facebookresearch-demucs:htdemucs_6s",
+  "checkpoint_hash": null,
+  "status": "candidate_not_bundled",
+  "evidence_mode": "source_levels",
+  "units": "dBFS_rms",
+  "taxonomy": ["drums", "bass", "other", "vocals", "guitar", "piano"],
+  "amplitude_policy": "consume in-memory original-scale tensors; prohibit per-stem peak normalization/rescaled saving",
+  "adapted_on_mi300": false,
+  "selection_status": "open_experiment"
+}
+
