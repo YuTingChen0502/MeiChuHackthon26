@@ -51,6 +51,11 @@ class ReferenceBuilder:
             # approved reference coverage/calibration bundle before claiming coverage.
             for item in coverage:
                 item.update(valid_active_seconds=0.0, qualified_nonoverlap_windows=0, status="insufficient")
+        if not example_only and getattr(self.analyzer, "calibration_policy", None) is not None and "coverage" in prepared:
+            coverage = prepared["coverage"]
+            expected = {item["instrument_id"] for item in instrument_config["instruments"]}
+            if len(coverage) != len(expected) or {item["instrument_id"] for item in coverage} != expected:
+                raise ValueError("prepared reference coverage identity mismatch")
         model = self.analyzer.capabilities()["model"]
         profile = {
             "record_type": "ReferenceProfile",

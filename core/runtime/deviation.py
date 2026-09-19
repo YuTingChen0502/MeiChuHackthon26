@@ -11,8 +11,9 @@ from .quality import hard_gate_reasons
 
 
 class FrameBuilder:
-    def __init__(self, *, anomaly_threshold_db: float = 3.0) -> None:
+    def __init__(self, *, anomaly_threshold_db: float = 3.0, calibration_policy=None) -> None:
         self.anomaly_threshold_db = anomaly_threshold_db
+        self.calibration_policy = calibration_policy
 
     @staticmethod
     def _confidence(*, abstained: bool, reasons: list[str], value: float | None, example_only: bool) -> dict:
@@ -73,13 +74,20 @@ class FrameBuilder:
             instrument_id = measurement["instrument_id"]
             activity = measurement["activity"]
             reasons = list(measurement["reason_codes"])
-            if not evidence["example_only"]:
+            approved_confidence = None
+            if not evidence["example_only"] and self.calibration_policy is None:
                 reasons.append("empirical_calibration_unavailable")
             if measurement["validity"] == "valid" and not measurement["uncertainty_features"]:
                 reasons.append("uncalibrated_uncertainty")
             reasons.extend(reason for reason in gate_reasons if reason not in reasons)
             if measurement["validity"] == "valid" and not identifiable:
                 reasons.append("insufficient_stable_anchors")
+            if not reasons and not evidence["example_only"] and self.calibration_policy is not None:
+                approved_confidence, failure = self.calibration_policy.evaluate(
+                    context=context, measurement=measurement, quality=quality,
+                    balance=deltas[instrument_id] - common_mode, anomaly_threshold_db=self.anomaly_threshold_db)
+                if failure:
+                    reasons.append(failure)
             reasons = list(dict.fromkeys(reasons))
             abstained = bool(reasons)
             if activity == "inactive":
@@ -110,7 +118,7 @@ class FrameBuilder:
                 "source_level_delta_db": None if abstained else deltas[instrument_id],
                 "balance_deviation_db": balance,
                 "status": status,
-                "confidence": self._confidence(
+                "confidence": approved_confidence or self._confidence(
                     abstained=abstained, reasons=reasons, value=balance, example_only=evidence["example_only"]
                 ),
                 "tone": None,

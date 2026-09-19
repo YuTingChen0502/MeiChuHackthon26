@@ -83,6 +83,7 @@ class PASession:
         capture_runtime_verified: bool = True,
         frame_retention: int = 128,
         capture_profile_enforced: bool = True,
+        analysis_sample_rate_hz: int | None = None,
     ) -> None:
         validate_record(reference_profile, PUBLIC, "ReferenceProfile")
         self.session_id = session_id
@@ -92,6 +93,7 @@ class PASession:
         self.capture_fingerprint = copy.deepcopy(capture_fingerprint)
         self.capture_runtime_verified = capture_runtime_verified
         self.capture_profile_enforced = capture_profile_enforced
+        self.analysis_sample_rate_hz = analysis_sample_rate_hz or capture_fingerprint["native_sample_rate_hz"]
         self.analyzer = analyzer
         self.baseline_store = baseline_store or BaselineStore()
         self.monotonic_clock = monotonic_clock
@@ -140,6 +142,10 @@ class PASession:
         self._audit_total = 0
         self._frames: list[dict] = []
         self._frame_audio_hashes: dict[str, str] = {}
+        # Non-persisted, bounded rehearsal PCM for explicit baseline preparation.
+        self._baseline_windows = {}
+        self._baseline_pcm_samples = 0
+        self._baseline_pcm_limit = 1_000_000
         self._frame_sequence = 0
         self._incident_counter = 0
         self._adjustment_counter = 0
@@ -148,7 +154,7 @@ class PASession:
         self._verification_armed = False
         self._require_fresh_after_resume = False
         self._detector = PersistentAnomalyPolicy(required_frames=persistence_frames)
-        self._frame_builder = FrameBuilder()
+        self._frame_builder = FrameBuilder(calibration_policy=getattr(analyzer, "calibration_policy", None))
         validate_snapshot(self.snapshot())
 
     def _target(self) -> dict:
@@ -228,7 +234,9 @@ class PASession:
             "capture_fingerprint": copy.deepcopy(self.capture_fingerprint),
             "capture_runtime_verified": self.capture_runtime_verified,
             "capture_profile_enforced": self.capture_profile_enforced,
+            "analysis_sample_rate_hz": self.analysis_sample_rate_hz,
             "baseline_records": self.baseline_store.records(),
+            "analyzer_capabilities": self.analyzer.capabilities(),
             "execution": copy.deepcopy(self.execution),
             "song": copy.deepcopy(self.song),
             "state_version": self.state_version,
@@ -312,6 +320,7 @@ class PASession:
         self.capture_fingerprint = copy.deepcopy(state["capture_fingerprint"])
         self.capture_runtime_verified = state.get("capture_runtime_verified", False)
         self.execution = copy.deepcopy(state["execution"])
+        self.analysis_sample_rate_hz = state.get("analysis_sample_rate_hz", state["capture_fingerprint"]["native_sample_rate_hz"])
         self.song = copy.deepcopy(state["song"])
         self.state_version = state["state_version"]
         self.event_sequence = state["event_sequence"]
@@ -464,7 +473,7 @@ class PASession:
         model = self.analyzer.capabilities()["model"]
         if any(model[key] != self.execution[key] for key in ("model_bundle_id", "frontend_id", "execution_profile_id")):
             raise ValueError("runtime model/profile changed; create a revalidated session")
-        if self.capture_profile_enforced and window.sample_rate_hz != self.capture_fingerprint["native_sample_rate_hz"]:
+        if self.capture_profile_enforced and window.sample_rate_hz != self.analysis_sample_rate_hz:
             raise ValueError("capture sample rate changed; revalidate the input profile")
         if purpose is None:
             purpose = "verification" if self._verification_armed else ("live" if self.session_mode == "live" else "rehearsal")
@@ -494,6 +503,12 @@ class PASession:
         )
         self.latest_frame = copy.deepcopy(frame)
         self._frames.append(copy.deepcopy(frame))
+        if not evidence["example_only"] and self.session_mode == "rehearsal":
+            self._baseline_windows[frame["frame_id"]] = window
+            self._baseline_pcm_samples += len(window.samples)
+            while self._baseline_pcm_samples > self._baseline_pcm_limit:
+                oldest = next(iter(self._baseline_windows))
+                self._baseline_pcm_samples -= len(self._baseline_windows.pop(oldest).samples)
         self._frame_audio_hashes[frame["frame_id"]] = self._audio_hash(window)
         while len(self._frames) > self.frame_retention:
             retired = self._frames.pop(0)
@@ -781,6 +796,17 @@ class PASession:
         next_version = 1 if self.baseline is None else self.baseline["version"] + 1
         baseline_id = self.baseline["baseline_id"] if self.baseline else f"baseline:{self.session_id}"
         try:
+            preparation = {}
+            if not self.analyzer.capabilities().get("example_only", False):
+                policy = getattr(self.analyzer, "calibration_policy", None)
+                if policy is None:
+                    raise ValueError("approved baseline calibration unavailable")
+                if any(frame["frame_id"] not in self._baseline_windows for frame in selected):
+                    raise ValueError("baseline PCM expired; capture a new rehearsal interval")
+                prepared = self.analyzer.prepare_reference(
+                    (self._baseline_windows[frame["frame_id"]] for frame in selected), self.instrument_config)
+                preparation = {"prepared_context_asset": prepared["model_specific_context_asset"],
+                               "normal_envelopes": policy.normal_envelopes(self.instrument_config)}
             profile = build_baseline_profile(
                 baseline_id=baseline_id,
                 version=next_version,
@@ -796,6 +822,7 @@ class PASession:
                 frames=selected,
                 reference_difference_accepted=payload["reference_difference_accepted"],
                 acceptance_note=payload["acceptance_note"],
+                **preparation,
             )
             self.baseline_store.save(profile)
         except ValueError as exc:

@@ -103,9 +103,14 @@ def build_baseline_profile(
     frames: list[dict],
     reference_difference_accepted: bool,
     acceptance_note: str | None,
+    prepared_context_asset: str | None = None,
+    normal_envelopes: list[dict] | None = None,
 ) -> dict:
     if not frames:
         raise ValueError("baseline interval has no frames")
+    example_only = all(frame["example_only"] for frame in frames)
+    if not example_only and (not prepared_context_asset or normal_envelopes is None):
+        raise ValueError("approved baseline context/envelopes unavailable")
     instrument_ids = [item["instrument_id"] for item in instrument_config["instruments"]]
     duration_by_instrument = {instrument_id: 0.0 for instrument_id in instrument_ids}
     windows_by_instrument = {instrument_id: 0 for instrument_id in instrument_ids}
@@ -159,7 +164,7 @@ def build_baseline_profile(
         "capture": copy.deepcopy(capture),
         "source_audio_hashes": sorted(set(source_audio_hashes)),
         "coverage": coverage,
-        "normal_envelopes": [
+        "normal_envelopes": normal_envelopes if not example_only else [
             {
                 "instrument_id": instrument_id,
                 "center_db": 0.0,
@@ -172,9 +177,9 @@ def build_baseline_profile(
         "acceptance_note": acceptance_note,
         "validity": "valid",
         "immutable": True,
-        "limitations": ["Simulated fake-analyzer checkpoint baseline; example only."],
+        "limitations": ["Simulated fake-analyzer checkpoint baseline; example only."] if example_only else ["Valid only inside the reviewed calibration and capture envelope."],
         "comparison_regime": reference["comparison_regime"],
-        "model_specific_context_asset": f"fake-simulated-baseline-context:{baseline_id}:v{version}",
+        "model_specific_context_asset": f"fake-simulated-baseline-context:{baseline_id}:v{version}" if example_only else prepared_context_asset,
     }
     validate_record(profile, PUBLIC, "BaselineProfile")
     return profile

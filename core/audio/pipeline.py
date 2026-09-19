@@ -4,10 +4,12 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Iterator
 from .types import AudioChunk, AudioWindow
+from .frontend import AudioFrontend
 
 
 class SharedAudioPipeline:
-    def __init__(self, *, window_size_samples: int, hop_size_samples: int | None = None) -> None:
+    def __init__(self, *, window_size_samples: int, hop_size_samples: int | None = None, sample_rate_hz: int | None = None) -> None:
+        self.frontend = AudioFrontend(sample_rate_hz)
         self.window_size_samples = window_size_samples
         self.hop_size_samples = window_size_samples if hop_size_samples is None else hop_size_samples
         if not 0 < self.hop_size_samples <= self.window_size_samples:
@@ -25,7 +27,7 @@ class SharedAudioPipeline:
         expected_start = 0
         window_start = 0
         origin = 0.0
-        for chunk in chunks:
+        for chunk in self.frontend.chunks(chunks):
             if (chunk.sample_rate_hz <= 0 or chunk.sample_start < 0 or not chunk.samples
                     or not math.isfinite(chunk.capture_end_monotonic_s)
                     or not all(math.isfinite(value) for value in chunk.samples)):
