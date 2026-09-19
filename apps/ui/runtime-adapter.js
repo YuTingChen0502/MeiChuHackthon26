@@ -1,4 +1,4 @@
-export const REFERENCE_JOB_STALL_TIMEOUT_MS = 15 * 60_000;
+export const REFERENCE_JOB_STALL_TIMEOUT_MS = 60_000;
 export const REFERENCE_JOB_REQUEST_TIMEOUT_MS = 30_000;
 
 const referenceJobActive = job => job.status === 'queued' || job.status === 'running';
