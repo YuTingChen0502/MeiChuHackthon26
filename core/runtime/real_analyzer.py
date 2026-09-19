@@ -31,7 +31,8 @@ class RealAnalyzerAdapter:
     def analyze(self, window, context):
         if self._closed:
             raise RuntimeError("analyzer is closed")
-        if self.analyzer.capabilities() != self._capabilities:
+        current = self.analyzer.capabilities()
+        if {k:v for k,v in current.items() if k != "state"} != {k:v for k,v in self._capabilities.items() if k != "state"}:
             raise ValueError('analyzer capabilities changed; revalidate profiles in a new session')
         if context['model'] != self._capabilities['model'] or context['observation'] != window.identity():
             raise ValueError('analyzer request does not match runtime identity')
