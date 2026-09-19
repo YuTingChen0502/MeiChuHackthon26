@@ -1,0 +1,316 @@
+{
+  "record_type": "CP2BFinalEvidence",
+  "schema_version": "1.0",
+  "evidence_id": "cp2b-final-evidence-v1",
+  "decision": "NARROW_ENVELOPE",
+  "selected_method": "P1_ADAPTED",
+  "selected_adaptation_direction": {
+    "architecture": "HTDemucs_6s with task-adapted final frequency and waveform output projections",
+    "artifact_path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/htdemucs6s-output-projections-adapted.pt",
+    "artifact_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "training_config_path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/config.json",
+    "training_config_sha256": "75b8a60ba232830346d088827f11f63bf8dd10ddd93a37c40eb3fca832814ea5",
+    "repository_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+    "mi300_run_performed": false,
+    "mi300_claim": "No MI300 run occurred; this is the selected direction for future MI300 adaptation."
+  },
+  "selected_config": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/final/selected-mi300-adaptation-config-v1.json",
+    "sha256": "81da7e94058c6b11e962ce8e612a4f8b4045973baedc5c13d1ce2058623a8bbf"
+  },
+  "training_scope_distinction": {
+    "actual_nano4_run": {
+      "status": "COMPLETED_AND_TESTED",
+      "train_parent_count": 40,
+      "train_recording_count": 80,
+      "four_family_one_source_pair_count": 1920
+    },
+    "recommended_mi300_extension": {
+      "status": "NOT_RUN_AND_NOT_TESTED",
+      "train_parent_count": 48,
+      "expected_recording_count": 96,
+      "expected_four_family_one_source_pair_count": 2304,
+      "additional_parent_rule": "Eight prior-exposed former-final parents are reassigned to training only and may not be calibration or fresh holdout data."
+    },
+    "authoritative_parent_id_artifact": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-split-v1.json",
+      "sha256": "b6d0699727372431759b991a8fd7922c6d8fea6e6f3a86755fec7a5701e9059a"
+    }
+  },
+  "status_classification": {
+    "P1_BASELINE": [
+      "IMPLEMENTED",
+      "TESTED"
+    ],
+    "P1_ADAPTED": [
+      "IMPLEMENTED",
+      "TESTED",
+      "EMPIRICALLY_VALIDATED_BASS_ONLY_ON_FRESH_DIGITAL"
+    ],
+    "P2_ADAPTED": [
+      "IMPLEMENTED",
+      "TESTED",
+      "GENUINE_C2_ADAPTATION_VERIFIED",
+      "ELIMINATED_BEFORE_FRESH_FINAL"
+    ],
+    "acoustic_sensitivity": [
+      "SIMULATED_ACOUSTIC_ONLY"
+    ]
+  },
+  "selection_targets": {
+    "precision_min": 0.9,
+    "recall_including_abstentions_min": 0.75,
+    "sign_accuracy_min": 0.95,
+    "balance_mae_db_max": 2.0,
+    "balance_coverage_min": 0.6,
+    "missing_prediction_penalty_db": 12.0
+  },
+  "fresh_final": {
+    "method_freeze_sha256": "54a0c55b0b44ba74881c3df3e3fae441e978600f8b429bc4aa7ee5f71fe7180a",
+    "split_sha256": "b6d0699727372431759b991a8fd7922c6d8fea6e6f3a86755fec7a5701e9059a",
+    "manifest_sha256": "9f6eed2993966cb671f19874e4dab97f3b766360f737a5bbeb2832935a5efcf3",
+    "pair_plan_sha256": "52bb0d08d525b28d652ce29182eb86e816d65df152a78d5bc7cb0484a666e97f",
+    "comparison_report_sha256": "6ff9aac0c28543fd4eb9a5b8ebd0fa4747e4400d310f02342cb99f05616cd6ec",
+    "parent_count": 16,
+    "normalized_artist_count": 10,
+    "pair_count": 944,
+    "parent_disjoint": true,
+    "normalized_artist_disjoint": true,
+    "audio_accessed_before_method_freeze": false,
+    "no_retuning": true
+  },
+  "p1_adapted_frozen_operating_point_results": {
+    "bass": {
+      "status": "SUPPORTED_NARROW_DIGITAL",
+      "minimum_true_anomaly_db": 2.0,
+      "alert_threshold_db": 1.5,
+      "balance_mae_db": 0.19844816795901246,
+      "penalized_balance_mae_db": 0.19844816795901246,
+      "balance_coverage": 1.0,
+      "sign_accuracy": 1.0,
+      "precision": 0.9629629629629629,
+      "recall_including_abstentions": 1.0,
+      "passes_all_targets": true
+    },
+    "drums": {
+      "status": "UNSUPPORTED_FRESH_FINAL",
+      "minimum_true_anomaly_db": 2.0,
+      "alert_threshold_db": 1.0,
+      "balance_mae_db": 0.20251271103542445,
+      "penalized_balance_mae_db": 0.20251271103542445,
+      "balance_coverage": 1.0,
+      "sign_accuracy": 1.0,
+      "precision": 0.8767123287671232,
+      "recall_including_abstentions": 1.0,
+      "passes_all_targets": false,
+      "failed_targets": [
+        "precision"
+      ]
+    },
+    "guitar": {
+      "status": "UNSUPPORTED_CALIBRATION",
+      "operating_point": null
+    },
+    "keys": {
+      "status": "UNSUPPORTED_CALIBRATION",
+      "operating_point": null
+    },
+    "vocals": {
+      "status": "UNSUPPORTED_FRESH_FINAL",
+      "minimum_true_anomaly_db": 2.0,
+      "alert_threshold_db": 1.0,
+      "balance_mae_db": 0.30559042808541625,
+      "penalized_balance_mae_db": 0.33123606311154474,
+      "balance_coverage": 0.9978070175438597,
+      "sign_accuracy": 0.9895287958115183,
+      "precision": 0.8617511520737328,
+      "recall_including_abstentions": 0.9739583333333334,
+      "passes_all_targets": false,
+      "failed_targets": [
+        "precision"
+      ]
+    }
+  },
+  "common_predeclared_3db_diagnostic": {
+    "actionable": false,
+    "retuning_permitted": false,
+    "purpose": "same-threshold method diagnostic",
+    "p1_adapted_passing_families": [
+      "bass",
+      "drums",
+      "vocals"
+    ],
+    "p1_adapted_overall": {
+      "balance_mae_db": 0.4033761768409725,
+      "penalized_balance_mae_db": 1.9845991233090619,
+      "balance_coverage": 0.8636479918137631,
+      "sign_accuracy": 0.9957264957264957,
+      "precision": 0.8935281837160751,
+      "recall_including_abstentions": 0.7925925925925926
+    },
+    "p1_baseline_overall": {
+      "balance_mae_db": 0.35542752905158537,
+      "penalized_balance_mae_db": 2.7296215068837384,
+      "balance_coverage": 0.7961115374776158,
+      "sign_accuracy": 0.9976525821596244,
+      "precision": 0.8666666666666667,
+      "recall_including_abstentions": 0.7703703703703704
+    }
+  },
+  "guitar": {
+    "status": "UNSUPPORTED",
+    "material_improvement_vs_baseline_at_common_3db": {
+      "baseline_coverage": 0.6586666666666666,
+      "adapted_coverage": 1.0,
+      "baseline_penalized_balance_mae_db": 4.804693104208073,
+      "adapted_penalized_balance_mae_db": 0.8409677074849629,
+      "baseline_precision": 0.5714285714285714,
+      "adapted_precision": 0.71,
+      "baseline_recall": 0.5384615384615384,
+      "adapted_recall": 0.6826923076923077
+    }
+  },
+  "keys": {
+    "status": "UNSUPPORTED",
+    "adapted_common_3db": {
+      "balance_coverage": 0.07329842931937172,
+      "penalized_balance_mae_db": 11.324739627215703,
+      "precision": 0.2631578947368421,
+      "recall_including_abstentions": 0.06578947368421052
+    }
+  },
+  "p2_adapted": {
+    "artifact_sha256": "497aeb6c5b2f1b890668bcb534e538193fdb919763f08b672db8a8647047b6fe",
+    "genuine_c2_verified": true,
+    "encoder_hash_changed": true,
+    "nonzero_gradient_verified": true,
+    "efficientat_fallback_reason": "explicitly_bypassed_missing_torchvision_source_checkpoint",
+    "calibration_supported_families": [
+      "drums",
+      "vocals"
+    ],
+    "elimination_reason": "Calibration supported only drums and vocals under the predeclared all-target rule.",
+    "fresh_final_run": false,
+    "acoustic_run": false,
+    "noise_run": false
+  },
+  "sensitivity_evidence": {
+    "acoustic": {
+      "status": "SIMULATED_ACOUSTIC_ONLY",
+      "physical_evidence": false,
+      "pair_count": 92,
+      "transform_sha256": "47cab63d9a79cebcc9aa087cec14e7c941a6ff3a84ca22793342bcb20f274871",
+      "P1_BASELINE": {
+        "bass": {"mae_db": 0.16295317859183547, "penalized_mae_db": 0.16295317859183547, "coverage": 1.0, "sign_accuracy": 1.0, "precision": 1.0, "recall": 1.0},
+        "drums": {"mae_db": 0.09128659469989209, "penalized_mae_db": 0.09128659469989209, "coverage": 1.0, "sign_accuracy": 1.0, "precision": 1.0, "recall": 1.0},
+        "guitar": {"mae_db": 0.4889835161797159, "penalized_mae_db": 6.369611502479209, "coverage": 0.4891304347826087, "sign_accuracy": 1.0, "precision": 0.8571428571428571, "recall": 0.375},
+        "keys": {"mae_db": null, "penalized_mae_db": 12.0, "coverage": 0.0, "sign_accuracy": null, "precision": null, "recall": 0.0},
+        "vocals": {"mae_db": 0.33224145403295485, "penalized_mae_db": 0.33224145403295485, "coverage": 1.0, "sign_accuracy": 1.0, "precision": 1.0, "recall": 1.0}
+      },
+      "P1_ADAPTED": {
+        "bass": {"mae_db": 0.3227731189571275, "penalized_mae_db": 0.3227731189571275, "coverage": 1.0, "sign_accuracy": 1.0, "precision": 1.0, "recall": 1.0},
+        "drums": {"mae_db": 0.2656217392879926, "penalized_mae_db": 0.2656217392879926, "coverage": 1.0, "sign_accuracy": 1.0, "precision": 1.0, "recall": 0.9375},
+        "guitar": {"mae_db": 0.924299790894323, "penalized_mae_db": 1.0446878366454717, "coverage": 0.9891304347826086, "sign_accuracy": 1.0, "precision": 0.9, "recall": 0.5625},
+        "keys": {"mae_db": null, "penalized_mae_db": 12.0, "coverage": 0.0, "sign_accuracy": null, "precision": null, "recall": 0.0},
+        "vocals": {"mae_db": 0.48779763279685584, "penalized_mae_db": 0.48779763279685584, "coverage": 1.0, "sign_accuracy": 1.0, "precision": 1.0, "recall": 1.0}
+      },
+      "P2_ADAPTED": {
+        "status": "NOT_RUN_AFTER_ELIMINATION"
+      }
+    },
+    "noise": {
+      "status": "TESTED_SELECTIVE_VALIDATION_ONLY",
+      "physical_evidence": false,
+      "base_pair_count": 60,
+      "task_count": 360,
+      "noise_types": [
+        "ambient",
+        "babble",
+        "speech"
+      ],
+      "snr_db": [
+        20,
+        10
+      ],
+      "common_passing_snr_db_for_bass_drums_vocals": 20,
+      "ten_db_common_envelope_passes": false
+    }
+  },
+  "family_diversity": {
+    "parent_counts": {
+      "declared_cp2b_train": 48,
+      "actual_nano4_train": 40,
+      "validation": 12,
+      "calibration": 8,
+      "fresh_final": 16
+    },
+    "normalized_artist_counts": {
+      "train": 17,
+      "validation": 4,
+      "calibration": 3,
+      "fresh_final": 10
+    },
+    "fresh_final_parent_counts_by_core_family": {
+      "bass": 13,
+      "drums": 16,
+      "guitar": 13,
+      "keys": 10,
+      "vocals": 16
+    },
+    "metadata_only_subtype_proxies": true,
+    "invented_timbre_labels": false
+  },
+  "runtime_comparison": {
+    "P1_BASELINE": {
+      "scope": "historical H200 per-pair clean separator predictions",
+      "prediction_seconds_p50": 0.08817691635340452,
+      "prediction_seconds_p95": 0.09249085118062794,
+      "evidence_path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/p1-clean-aggregate.json",
+      "evidence_sha256": "2862326680b1ee8f31d7614641c2222445f790a48627cae90cd68f3ed0b02ed9"
+    },
+    "P1_ADAPTED": {
+      "scope": "escalated H200 per-pair canonical validation separator predictions",
+      "prediction_seconds_p50": 0.08537726337090135,
+      "prediction_seconds_p95": 0.0894653934519738,
+      "pair_count": 816,
+      "evidence_path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/validation/canonical-validation-report.json",
+      "evidence_sha256": "02197a3c3ecfc9f9033d0365b73807ea001a04d41f59c1983dd296cda06ac6a3"
+    },
+    "P2_ADAPTED": {
+      "scope": "batched H200 canonical validation",
+      "pair_count": 816,
+      "preprocessing_and_prefix_seconds": 25.491771936416626,
+      "adapted_inference_seconds": 0.8909344673156738,
+      "evidence_path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p2_adapted/results/canonical-validation/canonical-validation-report.json",
+      "evidence_sha256": "7e28ee9952e3c6ac20f677a75d4391b7a1a06651beaad89287bfa74963ba4095"
+    },
+    "comparability": "NOT_APPLES_TO_APPLES: P1 values are per-pair separator latency distributions; P2 separates full-set preprocessing/prefix work from highly batched adapted inference. No PN54 or production latency claim."
+  },
+  "resource_summary": {
+    "ledger": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/final/cp2b-slurm-job-ledger-v1.json",
+    "ledger_sha256": "9d41e2cc89e8a35de2f4ca75a06a7a01d9692868bcb15f6490d7b06d6018f969",
+    "job_count": 13,
+    "successful_job_count": 11,
+    "failed_job_count": 2,
+    "allocated_gpu_seconds": 1509,
+    "successful_gpu_seconds": 1505,
+    "wall_span_seconds": 2684,
+    "gpu_type": "NVIDIA H200"
+  },
+  "claims": {
+    "mi300_run": false,
+    "pn54_run": false,
+    "real_room_run": false,
+    "physical_acoustic_evidence": false,
+    "production_validated": false,
+    "absolute_per_instrument_spl": false
+  },
+  "limitations": [
+    "P1_BASELINE is a historical off-the-shelf comparator, not an automatic winner or a task-adapted compliance artifact.",
+    "The supported envelope is matched-excerpt digital bass only at the frozen operating point.",
+    "The common 3 dB diagnostic cannot be used to retune or expand support after fresh-final evaluation.",
+    "Guitar improved materially but remains unsupported; keys remains unsupported.",
+    "P2 has no fresh-final, acoustic, or noise result because staged elimination stopped it after calibration.",
+    "Simulated acoustic and digitally injected selective noise are not physical evidence."
+  ]
+}
