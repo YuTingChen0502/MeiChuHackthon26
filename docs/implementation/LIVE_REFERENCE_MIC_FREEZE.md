@@ -4,6 +4,52 @@ Lead-approved user product correction, 2026-09-20.
 Inspected clean main/origin/main: `95fa5fed576d6e45f608f413bc84167161d34f13`.
 Status: shared contract frozen; Runtime/UI implementation and physical acceptance pending.
 
+## Urgent execution/perception amendment — 2026-09-20
+
+Inspected base `5e543f0207dc8c76d3dfecfe47942f8e739f1fb0`. The real candidate MUST
+execute on physical microphone PCM. Lack of room validation/calibration must not
+short-circuit HTDemucs. `real_room_not_validated` is a limitation/action-policy
+reason, never by itself an execution rejection. Existing candidate support mask
+and production numerical/action abstention remain unchanged.
+
+P1 uses amplitude-preserving mono 44100 Hz, 176400-sample windows, 44100-sample
+host hop. For synchronized demonstration only, new capture generation starts at
+relative canonical sample zero; match each observation [start,end) to the exact
+same reference span. Stream-native rate conversion must preserve this relative
+sample identity. No matching span means explicit alignment unavailable, never
+an invented match. A gap does not reset the relative song timeline or invent lost
+duration; if relative alignment is no longer defensible, mark alignment unavailable.
+An explicit source restart/switch starts a new relative-zero demo timeline, so
+playback/performers must restart the reference for comparable results. No automatic
+tempo drift, section-jump, unsynchronized-entry or music-alignment claims.
+
+For compatible complete PCM and a matching span, P1Runner.levels MUST run, yielding
+all six model sources (drums, bass, other, vocals, guitar, piano). Configured/support
+masks are applied to published evidence afterward, not used to avoid execution.
+Clipping/nonfinite/geometry faults remain explicit quality/contract faults; no
+physical-calibration requirement may masquerade as an input execution guard.
+
+Perception and actionability are separate. Perception carries raw AnalyzerEvidence
+activity/observability/validity, plus downstream calibration_status, action_abstained
+and numerical_advice_allowed. `detected` requires fresh current source evidence,
+active + observable + valid, and permitted family; it does NOT require calibrated
+PA confidence. Thus detected + uncalibrated + advice withheld is valid. Raw masks
+must come from actual inference; no synthetic positivity. Public InstrumentState
+can remain unknown/abstained with null numerical values while perception is detected.
+Numerical advice requires calibrated non-abstained downstream policy; detection
+alone never authorizes it. Unsupported families stay unsupported/null regardless
+of the separator producing six internal sources. Real probabilities stay null
+until empirical calibration. Fake remains labeled simulation.
+
+Keep bounded oldest-window dropping; do not relabel slow inference as fresh to
+make UI detection appear. Capture can be listening while model work is pending.
+Measure actual model calls, inference p50/p95, publication age, queue depth and
+drop counts. Report CPU throughput honestly against the one-second offered hop.
+Acceptance must exercise physical mic -> frontend -> worker -> actual frozen
+HTDemucs -> evidence -> Live UI; Fake and pre-inference abstention are not substitutes.
+Windows native candidate execution is required now when accessible. Linux/PN54
+needs equivalent physical evidence when accessible, never inferred from unit tests.
+
 ## Authority and migration
 
 This explicit user decision supersedes rehearsal/baseline requirements in INFO,
@@ -134,14 +180,15 @@ frame clears old perception even if a delayed WS frame arrives.
 
 Runtime emits one perception entry per configured instrument: instrument_id,
 family, state (listening/detected/not_heard/uncertain/unsupported), frame_id|null,
-reason_codes. It derives these from current AnalyzerEvidence masks joined to the
-downstream calibrated ConfidenceState, not from configuration or animation.
+reason_codes, raw activity/observability/validity and separate actionability fields.
+It derives perception from current AnalyzerEvidence masks, not from configuration
+or animation. Downstream ConfidenceState governs actionability independently.
 Precedence: explicit family outside actual supported_families -> unsupported;
 no fresh current evidence -> listening only when capture is fresh and acquiring,
 otherwise uncertain; fresh inactive -> not_heard; fresh active + observable + valid
-+ confidence.abstained=false -> detected; otherwise uncertain. Absence of capability
-information is uncertainty, not proof of support. A raw valid number with downstream
-abstention is never detected. No evidence yet but fresh PCM is listening. Attach
++ allowed family -> detected; otherwise uncertain. Absence of capability
+information is uncertainty, not proof of support. Detection with downstream
+abstention remains possible and must display advice withheld. No evidence yet but fresh PCM is listening. Attach
 frame_id only to the current frame. Keep Fake/example-only labeling visible.
 Uncalibrated probabilities stay null; unsupported numerical values stay null.
 

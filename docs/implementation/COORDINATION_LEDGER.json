@@ -1,5 +1,5 @@
 {
-  "milestone": "LIVE_REFERENCE_HOTSWAP_CORRECTION",
+  "milestone": "REALTIME_MIC_EXECUTION_CORRECTION",
   "status": "SHARED_CONTRACT_FROZEN_IMPLEMENTATION_AND_PHYSICAL_ACCEPTANCE_PENDING",
   "current_decision": "docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md; inspected origin/main95fa5fe; existing Runtime/UI owners only",
   "updated": "2026-09-20",
@@ -40,6 +40,7 @@
     }
   ],
   "events": {
+    "LEAD/REALTIME_MIC_CONTRACT/perception-actionability-v1": "User requires actual P1 physical microphone execution. Independent raw perception and calibrated actionability frozen; physical Windows candidate+Live UI acceptance pending, no Fake substitution",
     "LEAD/CONTRACT_FREEZE/live-reference-mic-v1": "User-authorized live/reference policy, logical mic inventory, source switch, capture and perception snapshot;33 shared tests plus canonical regression passed; Windows/Linux sustained acceptance remains pending",
     "UI/DEMO_WORKFLOW_READY/291780c409722b52c8c5bb195bd98f97f0ff93d1": "Preserved on existing clean UI branch; new user Live-only decision supersedes legacy rehearsal UX; do not merge wholesale",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/5cea661afdbf2760ecfc590fa339c25e4b7f25ca": "Recorded for focused review; independent ADC correction; worker awaiting shared commit before public integration",
