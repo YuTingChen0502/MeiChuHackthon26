@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "status": "BLOCKED_EXTERNAL_RESOURCES",
+  "git_sha": null,
+  "config_sha256": null,
+  "environment": null,
+  "model_checkpoint": null,
+  "account": null,
+  "partition": null,
+  "nodes": null,
+  "gpus_per_node": null,
+  "wall_time_seconds": null,
+  "maximum_memory_gib": null,
+  "maximum_optimizer_steps": 8,
+  "approved_by": null,
+  "approved_scope": null,
+  "notes": "Nano4 inventory/minimal readiness only authorized. Prior gov115094 scheduler feasibility is not a CP2 material-experiment budget. MI300 access/quota/budget not supplied. This template cannot authorize execution."
+}

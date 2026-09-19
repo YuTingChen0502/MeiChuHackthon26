@@ -1,0 +1,62 @@
+{
+  "record_type": "CP2EnvironmentReadiness",
+  "schema_version": "1.0",
+  "source": {
+    "git_commit": "1aedfc431fe59833f67092b7cf49612c496809e7",
+    "worktree_clean": true,
+    "dirty_paths": []
+  },
+  "environment": {
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "python_executable": "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "pid": 46172
+  },
+  "packages": {
+    "numpy": {
+      "version": "2.4.3",
+      "importable": true
+    },
+    "torch": {
+      "version": "2.11.0",
+      "importable": true
+    },
+    "torchaudio": {
+      "version": "2.11.0",
+      "importable": true
+    },
+    "demucs": {
+      "version": "4.0.1",
+      "importable": true
+    },
+    "jsonschema": {
+      "version": "4.23.0",
+      "importable": true
+    },
+    "onnxruntime": {
+      "version": null,
+      "importable": false
+    }
+  },
+  "scheduler": {
+    "SLURM_JOB_ID": null,
+    "SLURM_JOB_ACCOUNT": null,
+    "SLURM_JOB_PARTITION": null,
+    "SLURM_JOB_NUM_NODES": null,
+    "SLURM_GPUS_ON_NODE": null,
+    "SLURM_TIMELIMIT": null
+  },
+  "claims": {
+    "gate_a": "BLOCKED_EXTERNAL_ASSETS",
+    "mi300_access_budget": "NOT_VERIFIED_BY_INVENTORY",
+    "optimizer_executed": false,
+    "gpu_executed": false,
+    "real_analyzer_enabled": false
+  },
+  "limitations": [
+    "Package presence is not import, device compatibility or model execution evidence.",
+    "No GPU job, model download, optimizer or empirical audio run is performed."
+  ]
+}
