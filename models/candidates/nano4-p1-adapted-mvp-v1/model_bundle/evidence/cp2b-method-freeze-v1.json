@@ -1,0 +1,61 @@
+{
+  "record_type": "CP2BMethodAndOperatingPointFreeze",
+  "schema_version": "1.0",
+  "freeze_id": "cp2b-method-freeze-v1",
+  "frozen_at": "2026-09-20T02:56:10+08:00",
+  "git_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+  "selected_method": "P1_ADAPTED",
+  "architecture": "HTDemucs_6s with task-adapted final frequency and waveform output projections",
+  "base_checkpoint": {
+    "path": "/work/austinhpc25/nano4_cp2_readiness_3d161dd/torch-cache/hub/checkpoints/5c90dfd2-34c22ccb.th",
+    "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+  },
+  "adapted_checkpoint": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/htdemucs6s-output-projections-adapted.pt",
+    "sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+  },
+  "training_config": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/config.json",
+    "sha256": "75b8a60ba232830346d088827f11f63bf8dd10ddd93a37c40eb3fca832814ea5"
+  },
+  "trainable_modules": [
+    "decoder.3.conv_tr",
+    "tdecoder.3.conv_tr"
+  ],
+  "operating_points": {
+    "bass": {"minimum_true_anomaly_db": 2.0, "alert_threshold_db": 1.5},
+    "drums": {"minimum_true_anomaly_db": 2.0, "alert_threshold_db": 1.0},
+    "guitar": null,
+    "keys": null,
+    "vocals": {"minimum_true_anomaly_db": 2.0, "alert_threshold_db": 1.0}
+  },
+  "calibration_targets": {
+    "precision_min": 0.90,
+    "recall_min": 0.75,
+    "sign_accuracy_min": 0.95,
+    "balance_mae_db_max": 2.0,
+    "balance_coverage_min": 0.60,
+    "missing_prediction_penalty_db": 12.0
+  },
+  "support_before_fresh_final": {
+    "bass": "SUPPORTED_CANDIDATE",
+    "drums": "SUPPORTED_CANDIDATE",
+    "guitar": "UNSUPPORTED",
+    "keys": "UNSUPPORTED",
+    "vocals": "SUPPORTED_CANDIDATE"
+  },
+  "p2_adapted_disposition": "ELIMINATED_AFTER_GENUINE_C2_CALIBRATION_SUPPORTED_ONLY_DRUMS_AND_VOCALS",
+  "fresh_split": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-split-v1.json",
+    "sha256": "b6d0699727372431759b991a8fd7922c6d8fea6e6f3a86755fec7a5701e9059a",
+    "fresh_final_parent_count": 16,
+    "fresh_final_audio_accessed_before_freeze": false
+  },
+  "evidence": {
+    "validation_report_sha256": "02197a3c3ecfc9f9033d0365b73807ea001a04d41f59c1983dd296cda06ac6a3",
+    "calibration_report_sha256": "858296d696a77f55b324382a4d7e2ef91f182c1c2cfa103e629df6bb1ea0aa7c",
+    "validation_evaluator_sha256": "1377cd656913f12c1707b2ca4c7a20c3abd5f3a88ff9a51bc7a723c8bb4e12de",
+    "calibration_evaluator_sha256": "a68b10b60c09704b04fd65ac37a445ea48ef3c9722ad7915f917ddca9bed66f1"
+  },
+  "post_freeze_rule": "No model, threshold, family support, or evaluation-code change after fresh-final audio preparation or inference."
+}

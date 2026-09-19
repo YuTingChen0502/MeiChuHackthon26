@@ -1,0 +1,35 @@
+{
+  "audio_copied": false,
+  "audio_dataset_root": "/work/austinhpc25/nano4_cp2_fastest_first_pass/datasets/moisesdb_prepared",
+  "fresh_final_included": false,
+  "git_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+  "pair_plan": {
+    "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/mi300_handoff/pair_plan.json",
+    "sha256": "fc86aedb5d3e0a788322fb8128ad2a15417f8ba4b9ab0d27b81bdee9470ce202"
+  },
+  "pair_plan_config": {
+    "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/mi300_handoff/pair_plan_config.json",
+    "sha256": "7759dc40f4bb3a250c9007b7440af268571932e796ef9fac5d0ff0e769dd565d"
+  },
+  "prior_exposed_final_policy": "Reassigned to train only; never eligible as untouched evaluation.",
+  "record_type": "CP2CMI300InputPreparation",
+  "schema_version": "1.0",
+  "source_manifest": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/moisesdb-manifest.json",
+    "sha256": "f5d3ff8b0dd94b1d779a3493d0f7a87a3a85d310174736f679206fefb66e6021"
+  },
+  "split_pair_counts": {
+    "calibration": 544,
+    "train": 3264,
+    "validation": 816
+  },
+  "split_parent_counts": {
+    "calibration": 8,
+    "train": 48,
+    "validation": 12
+  },
+  "training_manifest": {
+    "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/mi300_handoff/training_manifest.json",
+    "sha256": "5e3c4e479603c995daf16c8497fb631fbfed40cab4463864abfaffe98046b976"
+  }
+}

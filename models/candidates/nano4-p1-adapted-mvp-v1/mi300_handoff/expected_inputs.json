@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "training": {
+    "manifest": "training_manifest.json",
+    "pair_plan": "pair_plan.json",
+    "dataset_root": "/work/austinhpc25/nano4_cp2_fastest_first_pass/datasets/moisesdb_prepared",
+    "sample_rate_hz": 44100,
+    "window_duration_seconds": 4.0,
+    "channel_convention": "family-grouped mono stems; reference/observation mixtures duplicated to dual-mono model input",
+    "configured_families": ["guitar", "bass", "drums", "vocals"],
+    "prohibited_model_inputs": ["changed-source identity", "injected gain", "filename truth", "hidden benchmark variables"],
+    "supervision_only": ["isolated family stems", "source gain labels", "activity/validity labels"]
+  },
+  "evaluation": {
+    "validation_split_id": "cp2c-mi300-handoff-moisesdb-v0.1-excerpts-v1:validation",
+    "calibration_split_id": "cp2c-mi300-handoff-moisesdb-v0.1-excerpts-v1:calibration",
+    "new_final_requirement": "A new metadata-selected parent- and normalized-artist-isolated set with no CP2/CP2B exposure, frozen before audio/model inspection."
+  }
+}

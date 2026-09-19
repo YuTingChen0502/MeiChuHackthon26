@@ -1,0 +1,41 @@
+{
+  "common_gain_grid_db": [
+    -4,
+    4
+  ],
+  "config_id": "cp2c-mi300-handoff-controlled-pairs-v1",
+  "excerpt_duration_s": 4.0,
+  "hop_duration_s": 4.0,
+  "max_excerpts_per_recording": 1,
+  "multi_source_gain_cycles_db": [
+    [
+      -2,
+      4,
+      0,
+      2
+    ]
+  ],
+  "noise_profiles": [
+    {
+      "kind": "none",
+      "observation_snr_db": null,
+      "reference_snr_db": null
+    }
+  ],
+  "root_seed": 260919,
+  "schema_version": "1.0",
+  "shared_scale": 0.1,
+  "single_source_gain_grid_db": [
+    -6,
+    -4,
+    -2,
+    2,
+    4,
+    6
+  ],
+  "splits": [
+    "train",
+    "validation",
+    "calibration"
+  ]
+}
