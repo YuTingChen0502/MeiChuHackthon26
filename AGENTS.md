@@ -103,3 +103,25 @@ Read-only exploration, review, testing analysis, and research may run in paralle
 - Every remote experiment must record the exact Git commit and experiment config.
 
 - Avoid ad-hoc divergent edits directly on Nano4, MI300, or PN54.
+
+## Execution Policy
+
+When encountering a local, reversible implementation problem within your
+owned files and the frozen architecture/contracts:
+
+1. diagnose it,
+2. apply the smallest correct fix,
+3. run the relevant validation,
+4. continue the assigned task,
+5. report the issue and fix at the end.
+
+Do not stop merely to ask permission for routine implementation fixes.
+
+Stop and escalate to the Lead only if the required change would:
+- alter locked product scope,
+- change a public contract or shared interface,
+- modify another lane's owned files,
+- require a destructive or irreversible action,
+- require unavailable credentials / permissions / paid resources,
+- invalidate benchmark ground truth or experimental evidence,
+- or require choosing between materially different product behaviors.
