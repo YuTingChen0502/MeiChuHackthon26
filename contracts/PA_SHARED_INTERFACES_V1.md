@@ -228,6 +228,22 @@ shared validation helpers only reject structural/binding violations.
 
 ## Validation and remaining implementation gates
 
+### Native input discovery presentation metadata (additive, 2026-09-20)
+
+`GET /v1/audio-devices` retains `devices[].device_id` as the stable selection and
+command-binding value. Discovery may additionally supply `name` (human-readable
+endpoint name), `host_api` (backend name), and `is_default` (boolean when the default
+input is known). Omitted metadata is unknown; clients must remain compatible with
+legacy injected/test entries containing only `device_id`. These fields do not
+certify physical provenance, disabled enhancements, or supported model geometry.
+
+Operator labels use the friendly name, mark a known default, and add host API only
+to disambiguate otherwise identical labels. Raw device hashes are not operator
+labels. Output-only and recognized loopback endpoints are excluded. Names alone do
+not prove that endpoints across host APIs are the same physical microphone; absent
+strong identity evidence, retain distinguishable alternatives rather than silently
+discarding a usable device. No capture identity or public audio-state meaning changes.
+
 Run from the repository root with a Python environment containing the test dependency:
 
 ```text

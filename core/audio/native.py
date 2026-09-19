@@ -24,6 +24,7 @@ class NativeDevice:
     host_api: str
     max_channels: int
     default_sample_rate_hz: int
+    is_default: bool | None = None
 
 
 class SoundDeviceBackend:
@@ -36,6 +37,17 @@ class SoundDeviceBackend:
         hosts = self.module.query_hostapis()
         devices = []
         inventory = list(self.module.query_devices())
+        # PortAudio descriptors expose no cross-host physical endpoint identity.
+        # Keep host-specific entries; equal display names do not prove one device.
+        default_index = None
+        try:
+            selected = self.module.default.device[0]
+            if (type(selected) is int and 0 <= selected < len(inventory)
+                    and inventory[selected]["max_input_channels"] > 0):
+                default_index = selected
+        except Exception:
+            # Missing optional default metadata must not disable discovery.
+            pass
         identities = [(hosts[item["hostapi"]]["name"], item["name"]) for item in inventory if item["max_input_channels"] > 0]
         for index, item in enumerate(inventory):
             if item['max_input_channels'] < 1:
@@ -50,7 +62,8 @@ class SoundDeviceBackend:
                 continue
             digest = hashlib.sha256(f'{host}\0{name}'.encode()).hexdigest()[:20]
             devices.append(NativeDevice(f'portaudio:{digest}', index, name, host,
-                                       item['max_input_channels'], int(item['default_samplerate'])))
+                                       item['max_input_channels'], int(item['default_samplerate']),
+                                       None if default_index is None else index == default_index))
         return devices
 
     def negotiate(self, *, device_id, sample_rate_hz):
