@@ -1,5 +1,9 @@
 # Harmonix demo workflow audit and implementation intent
 
+Historical rehearsal/baseline audit. The explicit 2026-09-20 live-reference decision
+supersedes this public workflow; see [current UI handoff](LIVE_REFERENCE_UI_HANDOFF.md).
+The validation below describes the historical checkpoint, not the new-policy rollout.
+
 Audited production code at `95fa5fed576d6e45f608f413bc84167161d34f13` before product edits. Browser walkthrough used the actual UI/Runtime API with FakeAnalyzer, synthetic test audio and an isolated deterministic microphone adapter. Also checked the ordinary Fake launcher with unavailable native capture and uploaded-file EOF. These are functional checks, not physical/model validation.
 
 ## Phase A: visible-element inventory

@@ -95,6 +95,7 @@ export class RuntimeAdapter {
 
   async probeState(sessionId = this.activeSessionId, generation = this.generation) {
     if (!sessionId || sessionId !== this.activeSessionId || generation !== this.generation) return null;
+    if (this.snapshot?.workflow_policy === 'live_reference_v1') return null;
     const probe = await this.request(`/sessions/${encodeURIComponent(sessionId)}/probes`);
     this.acceptProbe(probe, sessionId, generation);
     return probe;
@@ -158,11 +159,32 @@ export class RuntimeAdapter {
     if (job.status !== 'completed') throw new Error(job.error ?? 'Reference preparation failed.');
     const sourceId = values.source === 'uploaded_file' && values.sourceId === 'reference-asset' ? asset.asset_id : values.sourceId;
     progress({ stage:'session', status:'running', message:`Connecting ${values.source === 'live_microphone' ? 'live microphone' : 'uploaded file'} source…` });
+    if (values.workflowPolicy === 'live_reference_v1') {
+      const source=sourceId ? {input_kind:values.source, input_asset_or_device_id:sourceId} : undefined;
+      const snapshot=await this.createLiveReferenceSession({song_id:song.song_id,reference_id:job.reference_id,source});
+      progress({stage:'session',status:'completed',message:'Listening session ready.',session_id:snapshot.session_id});
+      return snapshot;
+    }
     const snapshot = await this.request('/sessions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ song_id:song.song_id, reference_id:job.reference_id, source:{ input_kind:values.source, input_asset_or_device_id:sourceId }, capture_fingerprint:{ device_id:sourceId, profile_id:values.captureProfile ?? 'ui-request-v1', native_sample_rate_hz:Number(values.requestedSampleRateHz ?? 48000), channels:1, gain_setting:null, enhancements_verified_disabled:null, geometry_id:null, provenance:'unverified' } }) });
     progress({ stage:'session', status:'completed', message:'Rehearsal session ready.', session_id:snapshot.session_id });
     this.activateSession(snapshot.session_id);
     this.acceptSnapshot(snapshot);
     this.connect(snapshot.session_id, snapshot.event_sequence);
+    return snapshot;
+  }
+
+  async setupLiveReference(values) {
+    return this.setup({...values,workflowPolicy:'live_reference_v1'});
+  }
+
+  async createLiveReferenceSession({song_id,reference_id,source}) {
+    const body={song_id,reference_id,workflow_policy:'live_reference_v1'};
+    if(source)body.source=source;
+    const snapshot=await this.request('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(snapshot.workflow_policy!=='live_reference_v1')throw new Error('The listening service needs the live-reference update.');
+    this.activateSession(snapshot.session_id);
+    this.acceptSnapshot(snapshot);
+    this.connect(snapshot.session_id,snapshot.event_sequence);
     return snapshot;
   }
 
@@ -210,7 +232,7 @@ export class RuntimeAdapter {
     const snapshot = await this.request(`/sessions/${encodeURIComponent(sessionId)}`);
     if (sessionId !== this.activeSessionId || generation !== this.generation) return null;
     this.acceptSnapshot(snapshot);
-    return snapshot;
+    return this.snapshot;
   }
 
   activateSession(sessionId) {
@@ -229,6 +251,9 @@ export class RuntimeAdapter {
 
   acceptSnapshot(snapshot) {
     if (snapshot.session_id !== this.activeSessionId) return false;
+    if (this.snapshot?.workflow_policy==='live_reference_v1' &&
+        (snapshot.workflow_policy!=='live_reference_v1' ||
+         !snapshot.capture || snapshot.capture.source_generation<this.snapshot.capture.source_generation)) return false;
     if (this.snapshot && this.snapshot.session_id === snapshot.session_id &&
       (snapshot.event_sequence < this.snapshot.event_sequence ||
        (snapshot.event_sequence === this.snapshot.event_sequence && snapshot.state_version < this.snapshot.state_version))) return false;
@@ -247,9 +272,9 @@ export class RuntimeAdapter {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(`${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/events?after_sequence=${cursor}`);
     this.socket = socket;
-    socket.onopen = () => { if (this.socket === socket) { this.onConnection(true, 'active'); this.onStatus('Connected to local Runtime event stream.'); } };
-    socket.onmessage = event => this.handleEvent(sessionId, JSON.parse(event.data), generation);
-    socket.onerror = () => this.onStatus('Runtime event stream unavailable; corrective controls are gated.');
+    socket.onopen = () => { if (this.socket === socket && !this.stopped) { this.onConnection(true, 'active'); this.onStatus('Connected to local Runtime event stream.'); } };
+    socket.onmessage = event => { if(this.socket===socket&&!this.stopped) this.handleEvent(sessionId, JSON.parse(event.data), generation); };
+    socket.onerror = () => { if(this.socket===socket&&generation===this.generation&&!this.stopped) this.onStatus('Runtime event stream unavailable; corrective controls are gated.'); };
     socket.onclose = () => {
       if (this.socket !== socket || generation !== this.generation) return;
       this.onConnection(false, 'disconnected');
@@ -272,15 +297,17 @@ export class RuntimeAdapter {
   }
 
   async recover(sessionId, generation = this.generation) {
+    if(this.stopped||sessionId!==this.activeSessionId||generation!==this.generation)return;
     try {
       this.onConnection(false, 'connecting');
       await this.refresh(sessionId, generation);
-      if (sessionId !== this.activeSessionId || generation !== this.generation) return;
+      if (this.stopped || sessionId !== this.activeSessionId || generation !== this.generation) return;
       await this.probeState(sessionId, generation);
-      if (sessionId !== this.activeSessionId || generation !== this.generation) return;
+      if (this.stopped || sessionId !== this.activeSessionId || generation !== this.generation) return;
       this.connect(sessionId, this.cursor);
       this.onStatus('Runtime event stream reconnected from an authoritative snapshot.');
     } catch {
+      if(this.stopped||sessionId!==this.activeSessionId||generation!==this.generation)return;
       this.onConnection(false, 'disconnected');
       this.onStatus('Runtime reconnect failed; corrective controls remain gated.');
       if (!this.stopped && generation === this.generation) this.reconnectTimer = setTimeout(() => this.recover(sessionId, generation), 1000);

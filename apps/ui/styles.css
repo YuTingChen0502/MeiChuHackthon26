@@ -457,6 +457,11 @@ input, select {
 .setup-layout { max-width: 1120px; }
 .setup-panel details label { margin-top: 12px; }
 .verification-values { font-size: 20px; }
+.microphone-picker { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0 16px; }
+.microphone-picker label { color: var(--muted); font-size: 12px; }
+.microphone-picker select { width: min(340px, 100%); }
+.instrument-card.detected { border-color: var(--line); }
+.instrument-card.not_heard, .instrument-card.uncertain, .instrument-card.listening { color: var(--stone); }
 .accept-form label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
 .action-focus.live_anomaly { display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; }
 .action-focus.live_anomaly > .eyebrow, .action-focus.live_anomaly > .panel-title { grid-column: 1 / -1; }

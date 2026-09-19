@@ -12,7 +12,7 @@ export function productError(error, context = 'action') {
   if (/model_unavailable|503|analy[sz]|reference.*fail/.test(detail) || context === 'reference') return "We couldn't analyze this reference. Check the audio file and analysis service, then try again.";
   if (/unsupported|out.of.envelope/.test(detail)) return 'This instrument or listening condition is not supported. No reliable advice is available.';
   if (/unresolved|adjustment/.test(detail)) return 'Finish the current adjustment and verification before continuing.';
-  if (/baseline|capture.*verified|physical/.test(detail)) return 'This listening session is not ready for Live. Review the baseline and microphone setup.';
+  if (/baseline|capture.*verified|physical/.test(detail)) return 'This listening setup is not ready for reliable advice. Check the microphone setup before continuing.';
   if (/origin|connect|network|fetch|runtime|http|socket/.test(detail)) return 'The listening service is unavailable. Check the connection and try again.';
   return "We couldn't complete that step. Check the connection and try again.";
 }
