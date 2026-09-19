@@ -1,0 +1,546 @@
+{
+  "git_commit": "5cea661afdbf2760ecfc590fa339c25e4b7f25ca",
+  "git_dirty": false,
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "sounddevice": "0.5.6",
+  "duration_s": 60.48399999999674,
+  "labels": null,
+  "perception": "none; native continuity only",
+  "recording": "No PCM saved",
+  "source_id": "portaudio:7e9e9dff606f9c65ff87",
+  "sample_rate_hz": 48000,
+  "channels": 1,
+  "endpoint_name": "Microphone Array (Realtek(R) Au",
+  "host_api": "MME",
+  "is_default": true,
+  "clock_mode": "monotonic_fallback",
+  "adc_packets": 0,
+  "fallback_packets": 2812,
+  "window_samples": 192000,
+  "hop_samples": 48000,
+  "block_samples": 1024,
+  "clock_tolerance_s": 0.05,
+  "max_adc_residual_s": 0.0,
+  "callback_drops": 0,
+  "callback_discontinuities": 0,
+  "callback_max_queue": 2,
+  "worker_metrics": {
+    "processed_windows": 56,
+    "dropped_windows": 0,
+    "stale_windows": 0,
+    "discontinuities": 0,
+    "queue_depth": 0,
+    "max_queue_depth": 1,
+    "processing_p50_ms": 0,
+    "processing_p95_ms": 0,
+    "publication_age_p95_s": 0.021333333337679505,
+    "error": null
+  },
+  "frames": [
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 0,
+      "sample_end": 192000,
+      "capture_end": 81337.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 53534720
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 48000,
+      "sample_end": 240000,
+      "capture_end": 81338.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57028608
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 96000,
+      "sample_end": 288000,
+      "capture_end": 81339.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57159680
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 144000,
+      "sample_end": 336000,
+      "capture_end": 81340.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57171968
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 192000,
+      "sample_end": 384000,
+      "capture_end": 81341.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57180160
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 240000,
+      "sample_end": 432000,
+      "capture_end": 81342.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57180160
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 288000,
+      "sample_end": 480000,
+      "capture_end": 81343.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57188352
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 336000,
+      "sample_end": 528000,
+      "capture_end": 81344.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57188352
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 384000,
+      "sample_end": 576000,
+      "capture_end": 81345.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57208832
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 432000,
+      "sample_end": 624000,
+      "capture_end": 81346.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57208832
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 480000,
+      "sample_end": 672000,
+      "capture_end": 81347.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57221120
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 528000,
+      "sample_end": 720000,
+      "capture_end": 81348.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57233408
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 576000,
+      "sample_end": 768000,
+      "capture_end": 81349.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57233408
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 624000,
+      "sample_end": 816000,
+      "capture_end": 81350.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57237504
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 672000,
+      "sample_end": 864000,
+      "capture_end": 81351.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57237504
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 720000,
+      "sample_end": 912000,
+      "capture_end": 81352.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57237504
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 768000,
+      "sample_end": 960000,
+      "capture_end": 81353.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57237504
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 816000,
+      "sample_end": 1008000,
+      "capture_end": 81354.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 864000,
+      "sample_end": 1056000,
+      "capture_end": 81355.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 912000,
+      "sample_end": 1104000,
+      "capture_end": 81356.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 960000,
+      "sample_end": 1152000,
+      "capture_end": 81357.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1008000,
+      "sample_end": 1200000,
+      "capture_end": 81358.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1056000,
+      "sample_end": 1248000,
+      "capture_end": 81359.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1104000,
+      "sample_end": 1296000,
+      "capture_end": 81360.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57303040
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1152000,
+      "sample_end": 1344000,
+      "capture_end": 81361.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1200000,
+      "sample_end": 1392000,
+      "capture_end": 81362.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1248000,
+      "sample_end": 1440000,
+      "capture_end": 81363.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1296000,
+      "sample_end": 1488000,
+      "capture_end": 81364.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1344000,
+      "sample_end": 1536000,
+      "capture_end": 81365.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1392000,
+      "sample_end": 1584000,
+      "capture_end": 81366.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1440000,
+      "sample_end": 1632000,
+      "capture_end": 81367.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1488000,
+      "sample_end": 1680000,
+      "capture_end": 81368.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1536000,
+      "sample_end": 1728000,
+      "capture_end": 81369.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1584000,
+      "sample_end": 1776000,
+      "capture_end": 81370.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57307136
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1632000,
+      "sample_end": 1824000,
+      "capture_end": 81371.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57327616
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1680000,
+      "sample_end": 1872000,
+      "capture_end": 81372.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57327616
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1728000,
+      "sample_end": 1920000,
+      "capture_end": 81373.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57327616
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1776000,
+      "sample_end": 1968000,
+      "capture_end": 81374.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57327616
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1824000,
+      "sample_end": 2016000,
+      "capture_end": 81375.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57327616
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1872000,
+      "sample_end": 2064000,
+      "capture_end": 81376.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57327616
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1920000,
+      "sample_end": 2112000,
+      "capture_end": 81377.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 1968000,
+      "sample_end": 2160000,
+      "capture_end": 81378.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2016000,
+      "sample_end": 2208000,
+      "capture_end": 81379.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2064000,
+      "sample_end": 2256000,
+      "capture_end": 81380.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2112000,
+      "sample_end": 2304000,
+      "capture_end": 81381.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2160000,
+      "sample_end": 2352000,
+      "capture_end": 81382.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2208000,
+      "sample_end": 2400000,
+      "capture_end": 81383.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2256000,
+      "sample_end": 2448000,
+      "capture_end": 81384.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2304000,
+      "sample_end": 2496000,
+      "capture_end": 81385.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2352000,
+      "sample_end": 2544000,
+      "capture_end": 81386.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2400000,
+      "sample_end": 2592000,
+      "capture_end": 81387.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2448000,
+      "sample_end": 2640000,
+      "capture_end": 81388.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57397248
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2496000,
+      "sample_end": 2688000,
+      "capture_end": 81389.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57401344
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2544000,
+      "sample_end": 2736000,
+      "capture_end": 81390.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57401344
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2592000,
+      "sample_end": 2784000,
+      "capture_end": 81391.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57401344
+    },
+    {
+      "run": "run:c0cf95e846664ea0867db40b983d8834",
+      "sample_start": 2640000,
+      "sample_end": 2832000,
+      "capture_end": 81392.43166666666,
+      "dropout": false,
+      "clipped_fraction": 0.0,
+      "rss_bytes": 57405440
+    }
+  ]
+}
