@@ -539,5 +539,6 @@ test('UI source contains no client-side audio inference or automatic mixer execu
 test('responsive card grid supports variable counts without fixed four-card selectors', async () => {
   const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');
   assert.match(css, /repeat\(auto-fit,minmax/);
+  assert.match(css, /\[hidden\]\{display:none!important\}/);
   assert.doesNotMatch(css, /nth-child\(4\)/);
 });
