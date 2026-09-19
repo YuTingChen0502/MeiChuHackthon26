@@ -6,6 +6,28 @@ the branch, worktree and commit history identify the full SHA above.
 Recorded experiment source: `ffe6d591fdd07d2f0010d31cb08dcfdf49e08880`.
 Date: 2026-09-19. Reviewer: engineering Lead.
 
+## Correction and integration
+
+Accepted corrected tip `507173c2eb816bf3c357e5f80d3998b9431da621` and merged its
+complete history as `8a1bc47265cbf7187ec5d925017b19a9b1be4b03`. The Lead reviewed
+the configured-source median, insufficient-anchor masking, checkpoint-file hashing
+and corrected evidence records. The requested regression passes. Corrected experiment
+source is `043e154117dcf2dcfeb5d8dd82ba13d649ff354a`; historical evidence remains
+in Git and is explicitly superseded. All 38 changed files remain ML-owned.
+
+Validation: 40 tests passed in the corrected lane, then 43 passed after integration
+with main's expanded shared suite (24 shared plus 19 ML). The original public schema
+hash remains unchanged. The Lead did not repeat the expensive model inference run;
+the committed report records a deterministic repeat and verified artifact hash.
+
+The HTDemucs synthetic smoke now reports 25% numeric raw-delta coverage and 0%
+identifiable centered-balance coverage. Centered MAE/sign/F1 are unavailable. This
+foundation merge does not select a backend or complete Runtime/model integration.
+Rights-cleared grouped music, a fitted direct probe, calibration, MI300 adaptation
+and PN54 execution remain later gates. Runtime/UI integration proceeds separately.
+
+The findings and hold below document the superseded `39d20f4` checkpoint.
+
 ## Verified
 
 - All 37 changed files are within ML-owned analyzers/, training/, benchmarks/,
@@ -40,7 +62,7 @@ The adapter also reports a literal checkpoint SHA without verifying the loaded f
 Verify the artifact actually used, or distinguish expected from unverified provenance.
 Do not silently assert a fixed literal is a measured checksum.
 
-## Disposition
+## Original disposition (superseded by correction above)
 
 Requested integration is held pending the targeted ML-owned correction. The Lead sent
 the findings to the existing ML task; it acknowledged the centering/coverage issue

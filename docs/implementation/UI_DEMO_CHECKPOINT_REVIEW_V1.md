@@ -6,6 +6,20 @@ Date: 2026-09-19. Reviewer: engineering Lead.
 
 ## Correction update
 
+Correction commit `6187c69080da91f20633ce17be9c174e62a0a7a7` was source-reviewed;
+the Lead repeated the UI suite with 7/7 passing. It resolves the remaining fixture
+interval/probability-event mismatch, bounds the example step to -2 dB, adds Resume,
+uses text-safe DOM construction and requires explicit human declarations before
+preparing acceptance. The UI lane reports browser QA of these states and gates.
+This supersedes the earlier fixture-polish findings below. The Lead has not
+independently verified audible playback or physical capture.
+
+The corrected UI is accepted as a fixture checkpoint. Live integration remains
+pending the Runtime listener: select a genuinely qualified multi-frame interval,
+use authoritative command outcomes/reconnects and establish advancing data age.
+A checkbox declaration over the current fixture frame does not establish Runtime
+baseline eligibility. No UI merge was performed during this review.
+
 Correction commit `acd61d31f5ff722669b4d27359d01ac37fac6701` was source-reviewed and
 its UI suite passed 7/7. It now calls HTML media playback with event-derived status,
 separately labels confidence tolerance and interval, preserves inactive/unsupported
@@ -13,18 +27,18 @@ labels, discloses static fixture age, and matches rehearsal frame families to th
 declared configuration. These supersede the corresponding original-code findings
 below. Actual audible/browser validation was not performed by the Lead.
 
-Remaining fixture polish: the generated anomaly still carries interval [-1.1,1.2]
+Historical findings at `acd61d3`: the generated anomaly still carries interval [-1.1,1.2]
 beside +4.1 dB, and normal cards still use joint_anomaly_numeric_correct. Correct those
 fixtures before the integrated demo; the formatter itself now preserves the fields.
-The live-integration follow-ups below (Resume, text-safe rendering, explicit acceptance
-selection/choice and current Runtime policy) still apply. Fixture rendering can continue.
+The later correction above resolves Resume, text-safe rendering, explicit human choice
+and the fixture policy step. Runtime interval selection and actual integration remain.
 
 Setup payloads and transport selection are now available in
 `contracts/PA_SETUP_TRANSPORT_V1.md`; this is not a listener-availability announcement.
 
 ## Disposition
 
-The commit is a fixture-rendering checkpoint with useful session command binding
+The original `33a68e1` commit was a fixture-rendering checkpoint with useful session command binding
 helpers. It is not yet accepted as a runnable playback demo or a completed UI
 integration checkpoint. No cherry-pick/merge was performed in this review.
 
