@@ -1,11 +1,12 @@
 # Current engineering status — 2026-09-20
 
-The active convergence milestone is **MVP_PRE_MODEL_READY**. Checkpoint 1 is integrated;
-accepted CP2 ML readiness and native Runtime are now on main at integration
-`ff1806c3655e6fbcc208d808a5aba5109e8a789c`. Guided rehearsal's minimal companion
-request/state contract was frozen at `53577717e482da3c794d89c2fd11436c1a333572`.
-See `docs/implementation/MVP_PRE_MODEL_READY.md` for the live module matrix and final
-acceptance status; later Git commits take precedence over this starting snapshot.
+**MVP_PRE_MODEL_READY is READY for model-independent software.** The complete
+executable integration is `af342d89b0504d51af3319061dd8ce7b18527899`; subsequent
+release/documentation commits retain that implementation. ML `fa706815`, Runtime
+`25f8808b` plus launcher correction `eaf5b73d`, and UI `947dae26` are accepted.
+See `docs/implementation/MVP_PRE_MODEL_READY.md` for the complete module matrix and
+`docs/implementation/MVP_PRE_MODEL_VALIDATION.md` for exact test/browser/native
+report evidence. Latest pushed main remains the authoritative source revision.
 
 Canonical writers remain Lead, CP2-ML, **Continue CP2 native audio runtime**, and
 CP2-UI in the existing `C:/Coding/MeiChuHackathon26-wt-cp2-*` worktrees. The duplicate
@@ -13,8 +14,8 @@ Runtime audit task has stopped. Nano4 and MI300 are independent execution/traini
 environments, not source worktrees. Either may supply the first engineering bundle;
 the final competition artifact still requires meaningful official MI300 lineage.
 
-Current development completes the full Fake/native/API/UI product, generic bundle
-intake, empirical-policy consumers, deployment tooling and English release materials.
+Completed work covers the Fake/native/API/UI product, generic bundle intake,
+empirical-policy consumers, deployment tooling and English release materials.
 It does not assert measured real-music accuracy, fitted calibration or PN54 readiness.
 No remote campaign result is accepted merely because it produces numerical outputs.
 
@@ -23,6 +24,12 @@ is retained locally but excluded from tracked/public source. Private Git history
 remain private. `scripts/release_audit.py` produces a scanned history-free source
 export; see `docs/release/RELEASE_READINESS.md`. Do not paste private credentials,
 signed dataset URLs or restricted data into evidence, docs or task messages.
+
+The remaining critical path is remote artifact/evidence acceptance, winner-specific
+backend completion if required, held-out evaluation/calibration, bundle freeze,
+PN54 model parity/profile, physical speaker-room-mic validation and final measured
+metrics/video. Stop unrelated non-ML feature development; do not invent a supported
+family envelope or enable numerical production confidence before empirical approval.
 
 Everything below is the historical CP1 handoff for context. Its pending cleanup,
 branch, dispatch and compute-access status does not override actual current Git,

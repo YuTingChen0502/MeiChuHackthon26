@@ -1,10 +1,9 @@
 {
   "milestone": "MVP_PRE_MODEL_READY",
-  "status": "IN_PROGRESS",
+  "status": "MVP_PRE_MODEL_READY",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_pushed_main": "3b12c787f7bb69bef75114088e0d57d6dc05d163",
-  "latest_integration_commit": "6e49fb270d2f1a428a085e1d0f5837d5b88a8e9e",
+  "latest_integration_commit": "af342d89b0504d51af3319061dd8ce7b18527899",
   "lanes": {
     "ML": {
       "commit": "fa7068155461e42ece413235347a6bd5f43667ee",
@@ -13,12 +12,12 @@
       "empirical_claim": "No trained artifact or real-audio capability accepted"
     },
     "Runtime": {
-      "commit": "25f8808b751e25abb287c1b3126b898509640637",
-      "status": "RUNTIME_PRE_MODEL_READY accepted; integration52 passed; native and300s reports integrated"
+      "commit": "eaf5b73dd6bc398498771ebd38b26b8e8f7e501b",
+      "status": "RUNTIME_PRE_MODEL_READY accepted; final integration54 passed; native and300s evidence verified"
     },
     "UI": {
       "commit": "947dae26f2410023d71f0b4a024e14f5e7e75592",
-      "status": "UI_PRE_MODEL_READY accepted and integrated; final whole-main validation running"
+      "status": "UI_PRE_MODEL_READY accepted and integrated; final UI34 and whole-main validation passed"
     }
   },
   "pending_reviews": [],
@@ -36,7 +35,7 @@
     {
       "id": "launcher-custom-port-origin",
       "owner": "Runtime",
-      "status": "CORRECTION_RECEIVED eaf5b73; focused2 tests independently pass"
+      "status": "RESOLVED at af342d8; exact-port defaults preserve explicit allowlist"
     }
   ],
   "events": {
@@ -52,19 +51,30 @@
     "CP2-RUNTIME/CHECKPOINT_COMMIT/170f1c1": "recorded; superseded by continuing coherent16bf1d3 review",
     "CP2-RUNTIME/CROSS_LANE_REQUEST/e4884bdacf2ab0a17e4ad8cb43a0f38804f78ffb": "ML merge acknowledged; actual-loader validation continuing",
     "CP2-UI/CHECKPOINT_COMMIT/947dae26f2410023d71f0b4a024e14f5e7e75592": "accepted; clean ownership/ancestry verified, UI34 independently passed; merged at6e49fb2",
-    "CP2-UI/CORRECTION_COMPLETE/947dae26f2410023d71f0b4a024e14f5e7e75592": "read-only old IAB origin cache diagnosis; fresh origin correct; no source issue"
+    "CP2-UI/CORRECTION_COMPLETE/947dae26f2410023d71f0b4a024e14f5e7e75592": "read-only old IAB origin cache diagnosis; fresh origin correct; no source issue",
+    "CP2-RUNTIME/CORRECTION_COMPLETE/eaf5b73dd6bc398498771ebd38b26b8e8f7e501b": "accepted; launcher2 independently passed; merged af342d8; integration54 passed"
   },
   "integration_validation": {
-    "commit": "6e49fb270d2f1a428a085e1d0f5837d5b88a8e9e",
-    "python_tests": 207,
+    "commit": "af342d89b0504d51af3319061dd8ce7b18527899",
+    "python_tests": 209,
     "ui_tests": 34,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS zero findings; source archive pending final clean commit",
-    "documented_launch": "PASS on local Python3.12: explicit fake mode, health example_only, 7 actual native input entries, UI HTTP200"
+    "release_scan": "PASS zero eligible-source findings; clean-commit source archive checked before readiness push",
+    "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
+    "browser": "PASS actual setup/upload/reference/rehearsal/EOF/resume/saved-song reopen; UI owner actual probe cancellation/resume PASS"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
     "credential_value_recorded": false,
-    "user_design_references": "13 verified originals preserved in temporary backup; identical UI-owned references now tracked through accepted merge"
-  }
+    "user_design_references": "13 verified originals preserved in temporary backup; identical UI-owned references now tracked through accepted merge",
+    "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
+  },
+  "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
+  "latest_approved_main_implementation": "af342d89b0504d51af3319061dd8ce7b18527899",
+  "remaining": [
+    "TRAINED_MODEL",
+    "EMPIRICAL_CALIBRATION",
+    "PN54_MODEL_DEPLOYMENT",
+    "PHYSICAL_VALIDATION"
+  ]
 }

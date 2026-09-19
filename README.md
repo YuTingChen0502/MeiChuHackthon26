@@ -8,8 +8,9 @@ after the human adjusts. It never controls a mixer or silently changes the basel
 
 ## Current milestone
 
-MVP_PRE_MODEL_READY finishes the product workflow, model intake and release preparation that
-can be validated without final trained weights. Checkpoint 1 demonstrated the full
+**MVP_PRE_MODEL_READY: READY for model-independent software.** Product workflow,
+generic model intake and release preparation are implemented and tested without final
+trained weights. Checkpoint 1 demonstrated the full
 workflow with explicit Fake evidence. CP2 adds native continuous audio and real-audio
 experiment infrastructure. A passing software test is not musical feasibility,
 calibrated confidence, MI300 adaptation, PN54 performance or acoustic demonstration.
