@@ -1,0 +1,295 @@
+{
+  "git_commit": "7809b168e3531d5c09c207d6903929206718bcd7",
+  "git_dirty": false,
+  "source_hashes": {
+    "core\\audio\\frontend.py": "d11a7a59c4d77380d9bbbfefd2e1d2a7f53562e42864cea4429510e9fc5c27c3",
+    "core\\audio\\inputs.py": "f4b46f34515191cba10ed0e8e6844f97e0f08d635784728452dc8d21eb4b7b60",
+    "core\\audio\\native.py": "cf01b7e5c2143daff5eb5b7cb7b5a39ace54529f55dc52dedbe45a6fa571a29d",
+    "core\\audio\\pipeline.py": "c7b0dbbb7ababa4d1edc2fa4bf539b5082c3a7a0c873976704521d5052b3804e",
+    "core\\audio\\types.py": "58455a59640f1036147aa041104b9ce858104ffaab7180e0e749c77aec6d50b9",
+    "core\\audio\\__init__.py": "357a2ccc31779d909b812eb16e5fc72e116ed988cb0083b805e12a960490b37c",
+    "core\\runtime\\analyzer_lifecycle.py": "376703f200328e501ddc0b3d8a594f7be137b035aa8b509ad1fb6030fc6e4a1a",
+    "core\\runtime\\calibration.py": "a1aaa0f14b65dec5024122e5084ae0c98a96f763a2022db010940b888f05ce11",
+    "core\\runtime\\deviation.py": "142a264a2de26410bafa76ec4a1a142d7b515a716938cfd4ff0dcb8ae006a898",
+    "core\\runtime\\fake_analyzer.py": "8d508c5170ee5abf2968333742030ce3480345d287633bc9e473f1fe43310c67",
+    "core\\runtime\\parity.py": "d084ea13c0fef3541bcb4d203e99bcfc87ce9e3811db1a9ff8ab21b9010151ac",
+    "core\\runtime\\quality.py": "a3a27bcdfaf303d54c4a9a09e2e8a96eece6b52a7cacd61d93f722d3641d7f2c",
+    "core\\runtime\\real_analyzer.py": "07f5bb0acabb99b664e16ec93658465af7980dc153ac917b2bb4c6e3462d5001",
+    "core\\runtime\\worker.py": "4a65f2499a6e9c2e56477eb8db8a2104174cca57cccd22fb7b0054634e8819d7",
+    "core\\runtime\\__init__.py": "372a67459b009074432db9c10d821211e658ff84375c6d4cf4336dcfe7817d69",
+    "core\\profiles\\baselines.py": "03368d9b84edf95a34339a65532bc97579f268f519cfc4dcd02b41f43935ae5d",
+    "core\\profiles\\references.py": "04237051cd8c17b399a5b04bef97ffcc29fa8e82f9e8017155d912b6b6dc1183",
+    "core\\profiles\\__init__.py": "c7d589d9c4987cf76401777c6e69535edfccaff8b77c99541a6fdbab45afdc31",
+    "roles\\pa\\policy.py": "c90f04f0623855dcff8d12fd2d487bf023f111a43b4cf9fcf530ef53066dd18e",
+    "roles\\pa\\session.py": "d014c6616a10e746f9d038f9f5462f1dcf93e6d3ea70266e0ec2af421d43e1a9",
+    "roles\\pa\\__init__.py": "ed85bed5724cbff2db92cb0a8b34e03eabc883c78a9718672a8c34363af5db0d",
+    "apps\\api\\commands.py": "aef53bf036f1515dc36d7583e43ffe6029488c5b19d47d46b256ff34f17a903e",
+    "apps\\api\\config.py": "339e3759faa4e79fd8a737e217bd103f79c3f4b049d45b701c138d57225fd804",
+    "apps\\api\\inventory.py": "0761c992bed0b21c957e63a102d5002d340074d15283f250989579c98e9033f4",
+    "apps\\api\\launch.py": "c9004190d6926d16359014cb215c01dcad990c656cdeb60f5badee71a1e17a3e",
+    "apps\\api\\persistence.py": "f5641d4a4cf98efb300045979b6374c4ad1615d209476af2253e1312ae6740d0",
+    "apps\\api\\probes.py": "791bac5a8837506576425edd590af4738fa565059afeaebedefbec009f647cf4",
+    "apps\\api\\service.py": "68099f86d72bfbd3814ae8483dbed0c5d99d8049459f7b119954852ed6c86697",
+    "apps\\api\\transport.py": "1f8a45a5cb16ef845cecee332a89f65934da0890924bb2802b866c8886871e4f",
+    "apps\\api\\__init__.py": "16fdd848eef96070b9ab5912a0f18f26ad3904f8e2ed815d7bda6053e55d133a",
+    "tests\\runtime\\native_continuity_probe.py": "7af18aa81203db8ac8df4bb9534c50fae85f9a306e971f4acd0b7f75edaa0cd0",
+    "tests\\runtime\\native_probe.py": "af2d29ab3fe06bf5bd1d6a8284572459f6a1c129a5d01a6aa40cb5760527ce67",
+    "tests\\runtime\\native_session_probe.py": "9e53adafd4423a56e34e353cfb4b2c7fd5e7195ab12c411cbd85d292de4adced",
+    "tests\\runtime\\sustained_probe.py": "27358a3be92aed5a0469980173ffd5f7c9f11dc9d50c005e70e77b682cb83779",
+    "tests\\runtime\\test_audio_and_state.py": "d9c5623f5d72faf16bf689c9f0765594689ea07124749722ede6704b3ef4a7c3",
+    "tests\\runtime\\test_calibration.py": "63455366e6b703a0ba771852227d44538144cfcea8e20b32fef36c2df0ea3693",
+    "tests\\runtime\\test_frontend.py": "063123a10bf91d610f60ce388db4270a5d2be3b72a96eb152e89fc909ea7b411",
+    "tests\\runtime\\test_streaming.py": "457bd125b98a8ec0c491a66e7eb55d3159566f36d42a42d788bd4e83a0d64e04",
+    "tests\\runtime\\__init__.py": "48e88aa8d56f57f1a82cfc0668bfe601c562d401cc31419bd6d269a6f733e26a"
+  },
+  "python": "3.12.14",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "config": {
+    "duration_s": 300.0,
+    "rate_hz": 48000,
+    "window_samples": 192000,
+    "hop_samples": 48000,
+    "queue_capacity": 2,
+    "max_age_s": 2,
+    "chunk_samples": 4800,
+    "seed": 0,
+    "pcm_amplitude": 0.05,
+    "noise": "none",
+    "snr_db": null,
+    "model": "continuous-fake-abstaining",
+    "labels": "No instrument/gain labels. Constant mono PCM tests transport and retention only.",
+    "dataset": "Deterministic generated constant PCM; no external assets or train/test split."
+  },
+  "status": "completed",
+  "elapsed_s": 300.3439999999973,
+  "metrics": {
+    "processed_windows": 297,
+    "dropped_windows": 0,
+    "stale_windows": 0,
+    "discontinuities": 0,
+    "queue_depth": 0,
+    "max_queue_depth": 1,
+    "processing_p50_ms": 78.00000000133878,
+    "processing_p95_ms": 125.0,
+    "publication_age_p95_s": 0.1559999999954016,
+    "error": null
+  },
+  "memory": [
+    {
+      "audio_seconds": 4.0,
+      "rss_bytes": 53293056,
+      "frames": 1,
+      "hashes": 1,
+      "events": 1
+    },
+    {
+      "audio_seconds": 14.0,
+      "rss_bytes": 55144448,
+      "frames": 11,
+      "hashes": 11,
+      "events": 11
+    },
+    {
+      "audio_seconds": 24.0,
+      "rss_bytes": 56078336,
+      "frames": 21,
+      "hashes": 21,
+      "events": 21
+    },
+    {
+      "audio_seconds": 34.0,
+      "rss_bytes": 56045568,
+      "frames": 31,
+      "hashes": 31,
+      "events": 31
+    },
+    {
+      "audio_seconds": 44.0,
+      "rss_bytes": 55173120,
+      "frames": 41,
+      "hashes": 41,
+      "events": 41
+    },
+    {
+      "audio_seconds": 54.0,
+      "rss_bytes": 55459840,
+      "frames": 51,
+      "hashes": 51,
+      "events": 51
+    },
+    {
+      "audio_seconds": 64.0,
+      "rss_bytes": 55119872,
+      "frames": 61,
+      "hashes": 61,
+      "events": 61
+    },
+    {
+      "audio_seconds": 74.0,
+      "rss_bytes": 55439360,
+      "frames": 71,
+      "hashes": 71,
+      "events": 71
+    },
+    {
+      "audio_seconds": 84.0,
+      "rss_bytes": 56131584,
+      "frames": 81,
+      "hashes": 81,
+      "events": 81
+    },
+    {
+      "audio_seconds": 94.0,
+      "rss_bytes": 56295424,
+      "frames": 91,
+      "hashes": 91,
+      "events": 91
+    },
+    {
+      "audio_seconds": 104.0,
+      "rss_bytes": 56606720,
+      "frames": 101,
+      "hashes": 101,
+      "events": 101
+    },
+    {
+      "audio_seconds": 114.0,
+      "rss_bytes": 56893440,
+      "frames": 111,
+      "hashes": 111,
+      "events": 111
+    },
+    {
+      "audio_seconds": 124.0,
+      "rss_bytes": 57044992,
+      "frames": 121,
+      "hashes": 121,
+      "events": 121
+    },
+    {
+      "audio_seconds": 134.0,
+      "rss_bytes": 56733696,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 144.0,
+      "rss_bytes": 56938496,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 154.0,
+      "rss_bytes": 57331712,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 164.0,
+      "rss_bytes": 57249792,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 174.0,
+      "rss_bytes": 60506112,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 184.0,
+      "rss_bytes": 56811520,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 194.0,
+      "rss_bytes": 57065472,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 204.0,
+      "rss_bytes": 56741888,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 214.0,
+      "rss_bytes": 60641280,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 224.0,
+      "rss_bytes": 61247488,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 234.0,
+      "rss_bytes": 56434688,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 244.0,
+      "rss_bytes": 57081856,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 254.0,
+      "rss_bytes": 60289024,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 264.0,
+      "rss_bytes": 60608512,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 274.0,
+      "rss_bytes": 60321792,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 284.0,
+      "rss_bytes": 61321216,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    },
+    {
+      "audio_seconds": 294.0,
+      "rss_bytes": 56811520,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128
+    }
+  ],
+  "final_buffers": {
+    "frames": 128,
+    "hashes": 128,
+    "events": 128
+  },
+  "claims": "Local synthetic paced runtime only; not native microphone, PN54, calibration or ML accuracy evidence."
+}

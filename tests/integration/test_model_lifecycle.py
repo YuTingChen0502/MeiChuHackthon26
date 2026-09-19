@@ -134,3 +134,35 @@ class ModelLifecycleTests(unittest.TestCase):
                 self.assertEqual("REHEARSAL",api.get_session(sid)[1]["song"]["workflow_state"])
             finally:api.close()
             self.assertEqual([1,1,1,1],[item.closes for item in created])
+
+    def test_native_packet_timeout_suspends_and_operator_reconnects(self):
+        from test_continuous_runtime import Backend
+        import struct
+        import time
+        from types import SimpleNamespace
+        class CapturingBackend(Backend):
+            def open(self,**kwargs):
+                self.callback=kwargs["callback"]
+                return super().open(**kwargs)
+        with tempfile.TemporaryDirectory() as directory:
+            backend=CapturingBackend()
+            api=RuntimeAPI(storage_dir=directory,window_size_samples=10,native_backend=backend,managed_audio=True)
+            try:
+                snapshot=fixtures.RuntimeAPIServiceTests.create_rehearsal_session(api)[3];sid=snapshot["session_id"]
+                first=api.workers[sid];first.audio_input.timeout_s=.15
+                backend.callback(struct.pack("=10f",*([.1]*10)),10,
+                                 SimpleNamespace(inputBufferAdcTime=1,currentTime=2),False)
+                deadline=time.monotonic()+2
+                while api.get_session(sid)[1]["song"]["workflow_state"]!="SUSPENDED" and time.monotonic()<deadline:
+                    time.sleep(.01)
+                state=api.get_session(sid)[1]
+                self.assertEqual(["capture_dropout_timeout"],state["suspension_reasons"])
+                self.assertTrue(backend.streams[0].closed)
+                self.assertIsNone(state["latest_verification"])
+                old_analyzer=api.runtime_session(sid).analyzer
+                api.post_action(sid,fixtures.command(state,"reconnect-device","resume"))
+                self.assertEqual(2,len(backend.streams))
+                self.assertIs(old_analyzer,api.runtime_session(sid).analyzer)
+                self.assertIsNot(first,api.workers[sid])
+                self.assertEqual("REHEARSAL",api.get_session(sid)[1]["song"]["workflow_state"])
+            finally:api.close()
