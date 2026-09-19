@@ -1,9 +1,9 @@
 {
   "milestone": "FINAL_MVP_PRODUCT_INTEGRATION",
-  "status": "MVP_CANDIDATE_INTEGRATION_IN_PROGRESS",
+  "status": "MVP_CANDIDATE_ENGINEERING_INTEGRATION_COMPLETE",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_integration_commit": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
+  "latest_integration_commit": "a84d026f931463efa5485e36c98f2f136b4db2b7",
   "lanes": {
     "ML": {
       "commit": "795f179bde8bbae9b3e25b8a591e2d25735ddfde",
@@ -16,13 +16,11 @@
       "status": "CHECKPOINT_ACCEPTED; integrated42695c4; full234Python/34UI and actual CPU Runtime probe PASS"
     },
     "UI": {
-      "commit": "95656cb723affac55d794d1dce1a86fd866b5ff3",
-      "status": "CORRECTIONS_REQUIRED: read-only baseline interval must recover from missing/new-run evidence; UI39 independently pass"
+      "commit": "6cef9d5006f2a72847227297ba6766f19bfb464f",
+      "status": "CHECKPOINT_ACCEPTED; integrated a84d026; corrected baseline interval recovery; UI39 and full integrated suite PASS"
     }
   },
-  "pending_reviews": [
-    "UI corrected baseline interval binding/recovery and actual form acceptance"
-  ],
+  "pending_reviews": [],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -59,16 +57,17 @@
     "CP2-ML/CROSS_LANE_REQUEST/a7bfd34683000dfef3ff5dcba9b18c93e4eb6bed": "resolved: candidate raw bass evidence may be implemented; unsupported invalid/null and Core valid-source identifiability rules unchanged",
     "ML/REAL_ANALYZER_CANDIDATE_READY/795f179bde8bbae9b3e25b8a591e2d25735ddfde": "accepted and merged df62ce9; exact artifact hashes, restricted-fixture provenance and candidate gates retained",
     "UI/MVP_PRODUCT_UI_READY/95656cb723affac55d794d1dce1a86fd866b5ff3": "corrections required, directly routed; no-frame draft remains stale indefinitely and run/clock binding cannot be refreshed",
-    "Runtime/MVP_NATIVE_RUNTIME_READY/f9098018d0bfd2f501058ce6190d1403a48be12c": "accepted and merged42695c4; native/soak source lineage checked; full main suite and clean-SHA P1 Runtime probe pass"
+    "Runtime/MVP_NATIVE_RUNTIME_READY/f9098018d0bfd2f501058ce6190d1403a48be12c": "accepted and merged42695c4; native/soak source lineage checked; full main suite and clean-SHA P1 Runtime probe pass",
+    "UI/MVP_PRODUCT_UI_READY/6cef9d5006f2a72847227297ba6766f19bfb464f": "accepted and merged a84d026; no-frame/run/clock recovery, explicit fresh interval selection and reviewed clock submission; full234Python/39UI/Fake smoke PASS"
   },
   "integration_validation": {
-    "commit": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
+    "commit": "a84d026f931463efa5485e36c98f2f136b4db2b7",
     "python_tests": 234,
-    "ui_tests": 34,
+    "ui_tests": 39,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS clean main zero findings",
+    "release_scan": "PASS zero findings; final clean documentation commit scanned separately",
     "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
-    "browser": "PASS actual setup/upload/reference/rehearsal/EOF/resume/saved-song reopen; UI owner actual probe cancellation/resume PASS",
+    "browser": "Prior product browser evidence retained; UI owner reported corrected actual form-to-baseline submission, operator preservation and enforced unverified-capture Live rejection",
     "actual_p1_runtime_probe": "PASS clean42695c4,20.052s,actual CPU reference/cache/file+synthetic-mic abstention,HTTP200/WS replay; docs/implementation/evidence/p1_runtime_42695c4.json"
   },
   "release": {
@@ -78,9 +77,8 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "42695c4f122fff0297989ec787ff8187fbe6a6c6",
+  "latest_approved_main_implementation": "a84d026f931463efa5485e36c98f2f136b4db2b7",
   "remaining": [
-    "UI baseline interval recovery correction and final integration",
     "empirical calibration and supported operating envelope",
     "MI300 final adaptation lineage",
     "PN54 model deployment/performance",

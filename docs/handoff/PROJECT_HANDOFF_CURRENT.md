@@ -1,24 +1,36 @@
-# Candidate adapter and Runtime integration — 2026-09-20
+# Current MVP candidate integration — 2026-09-20
 
-Accepted ML `795f179bde8bbae9b3e25b8a591e2d25735ddfde` and Runtime
-`f9098018d0bfd2f501058ce6190d1403a48be12c` are integrated at
-`42695c4f122fff0297989ec787ff8187fbe6a6c6`. Full main validation:234 Python,
-34 UI, full Fake correction loop and source audit PASS. Lead also ran actual P1
-CPU reference/cache/file and synthetic-mic abstention through HTTP/WS on that clean
-commit; see `docs/implementation/evidence/p1_runtime_42695c4.json`.
+**Engineering candidate integration is complete.** Accepted ML
+`795f179bde8bbae9b3e25b8a591e2d25735ddfde`, Runtime
+`f9098018d0bfd2f501058ce6190d1403a48be12c`, and corrected UI
+`6cef9d5006f2a72847227297ba6766f19bfb464f` are integrated at
+`a84d026f931463efa5485e36c98f2f136b4db2b7`.
 
-UI `95656cb` is NOT accepted: the new read-only baseline interval can retain missing
-or old-run evidence with no operator recovery path. The existing UI owner is fixing
-that concrete issue and must prove form-to-baseline acceptance before integration.
-Final MVP product integration therefore remains IN_PROGRESS. Existing main UI stays
-unchanged until the correction is accepted.
+Full main validation: **234 Python + 39 UI tests PASS**, unchanged complete Fake
+HTTP/WS/SQLite correction-loop smoke PASS, release audit/self-tests PASS.
+The actual CPU candidate Runtime probe remains recorded against clean `42695c4`
+in `docs/implementation/evidence/p1_runtime_42695c4.json`; only UI and Lead records
+changed afterward. See `docs/implementation/MVP_CANDIDATE_INTEGRATION.md` for exact
+acceptance, hardware-report boundaries and remaining execution gates.
 
-Candidate startup: `python -m apps.api.launch --mode candidate-p1 --storage .pa-runtime
---bundle models/candidates/nano4-p1-adapted-mvp-v1` (one command; optional model
-packages documented in `models/P1_CANDIDATE_INTEGRATION.md`). It is uncalibrated,
-bass-only matched-digital diagnostics; microphone input abstains and public numerical
-actions remain disabled. Local CPU observation7.929s per4s window is not realtime.
-No MI300-final, PN54 or physical validation claim is made. Frozen contracts unchanged.
+The UI correction is accepted: missing evidence has no fabricated interval;
+run/clock changes rebind review; the operator can explicitly select fresh evidence;
+the command submits the reviewed clock. No checkpoint reviews or generic product
+implementation tasks remain assigned. Existing workers sync latest origin/main
+and remain on standby for evidence-driven corrections. No new worktrees or research.
+
+Candidate startup (one command):
+
+```text
+python -m apps.api.launch --mode candidate-p1 --storage .pa-runtime --bundle models/candidates/nano4-p1-adapted-mvp-v1
+```
+
+Optional model packages are documented in `models/P1_CANDIDATE_INTEGRATION.md`.
+This is uncalibrated, bass-only matched-digital diagnostics. Microphone evidence
+abstains and public numerical actions remain disabled. CPU observation 7.929 seconds
+per four-second window is not realtime. MI300 final lineage, held-out calibration,
+PN54 parity/performance and physical validation remain required. Frozen contracts
+are unchanged. The prior records below are historical, not current pending work.
 
 ---
 

@@ -93,8 +93,10 @@ python -m apps.api.launch --mode candidate-p1 --storage .pa-runtime --bundle mod
 ```
 
 The host fixes the model's 44.1 kHz/four-second geometry. Native capture negotiation
-remains separate. The final UI candidate-parity checkpoint is still under correction
-review; see the [current handoff](docs/handoff/PROJECT_HANDOFF_CURRENT.md). Production
+remains separate. The candidate-aware UI is integrated: reference job progress,
+source/model status, unsupported and uncalibrated states, and explicit baseline
+interval review use authoritative Runtime data. See the
+[integration record](docs/implementation/MVP_CANDIDATE_INTEGRATION.md). Production
 acceptance, MI300 lineage, held-out calibration, PN54 and physical trials remain gates.
 
 ## Run locally
