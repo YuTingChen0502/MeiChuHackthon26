@@ -1,20 +1,21 @@
-# AI Performance Controller — PA Module
+# Harmonix — Live Sound Reference
 
 A local, human-operated PA assistant for a known song and instrument configuration.
-It compares one mixed-room microphone (or an uploaded recording) with an uploaded
-ideal reference during rehearsal, then with a baseline explicitly accepted by the
-human PA during Live monitoring. It recommends a volume correction and listens again
-after the human adjusts. It never controls a mixer or silently changes the baseline.
+The current product policy compares one mixed-room microphone (or an uploaded
+recording) against an uploaded ideal reference during Live. The operator can change
+microphones without re-uploading or re-analyzing the reference. Perception and PA
+action confidence are separate: a source can be detected while numerical advice is
+withheld. Humans adjust the sound; Harmonix never controls a mixer.
 
 ## Current milestone
 
-**MVP_PRE_MODEL_READY: READY for model-independent software.** Product workflow,
-generic model intake and release preparation are implemented and tested without final
-trained weights. Checkpoint 1 demonstrated the full
-workflow with explicit Fake evidence. CP2 adds native continuous audio and real-audio
-experiment infrastructure. A passing software test is not musical feasibility,
-calibrated confidence, MI300 adaptation, PN54 performance or acoustic demonstration.
-See the [module inventory](docs/implementation/MVP_PRE_MODEL_READY.md) for exact status.
+**Real microphone candidate integration: acceptance in progress.** The user-approved
+[Live-reference contract](docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md) supersedes
+the historical rehearsal/baseline product flow. Existing baseline sessions remain
+explicitly legacy; the new console does not expose rehearsal or acceptance controls.
+A passing software test is not musical feasibility, calibrated confidence, MI300
+adaptation, PN54 performance or acoustic accuracy. Earlier milestone records describe
+their exact historical commits, not completion of this new acceptance gate.
 
 Nano4 and MI300 execute independent experiments at exact repository commits. The
 first usable artifact/evidence may unblock engineering integration. The final
@@ -31,7 +32,9 @@ flowchart LR
     B[Validated local model bundle] --> A
     A --> E[Frozen AnalyzerEvidence]
     E --> C[Core deviation / calibrated confidence / abstention]
-    R[Ideal reference or accepted baseline] --> C
+    R[Uploaded ideal reference] --> C
+    E --> PS[Source perception]
+    PS --> API
     C --> PA[PA state / recommendation / verification]
     PA --> API[Local HTTP / WebSocket]
     API --> UI[Operator console]
@@ -82,9 +85,13 @@ the unchanged full Fake correction-loop smoke, and the source release audit.
 
 The Nano4 P1 candidate adapter and Runtime host mode are integrated for engineering
 use. It reconstructs the exact offline HTDemucs base plus adapted projections and
-emits frozen AnalyzerEvidence. Support is bass-only matched-digital; confidence is
-uncalibrated, microphone evidence abstains, and public numerical actions remain
-disabled. CPU observation time was 7.929 seconds per four-second window, not realtime.
+emits frozen AnalyzerEvidence. Compatible matched microphone PCM executes the real
+model; lack of room calibration is not an execution rejection. Product evidence
+support remains bass-only, and confidence is uncalibrated. Other model sources are
+produced internally but do not become supported product claims. Public numerical
+actions remain disabled. Prior CPU observation time was 7.929 seconds per four-second
+window; this does not meet the one-second offered hop. Slow results remain stale and
+uncertain, with bounded old-window dropping rather than an accumulating backlog.
 Install the optional tested model packages listed in
 [the candidate runbook](models/P1_CANDIDATE_INTEGRATION.md), then run:
 
@@ -92,12 +99,13 @@ Install the optional tested model packages listed in
 python -m apps.api.launch --mode candidate-p1 --storage .pa-runtime --bundle models/candidates/nano4-p1-adapted-mvp-v1
 ```
 
-The host fixes the model's 44.1 kHz/four-second geometry. Native capture negotiation
-remains separate. The candidate-aware UI is integrated: reference job progress,
-source/model status, unsupported and uncalibrated states, and explicit baseline
-interval review use authoritative Runtime data. See the
-[integration record](docs/implementation/MVP_CANDIDATE_INTEGRATION.md). Production
-acceptance, MI300 lineage, held-out calibration, PN54 and physical trials remain gates.
+The host fixes 44.1 kHz, four-second windows and a one-second hop. Native capture
+negotiation remains separate. The narrow demonstration assumes synchronized entry:
+each new capture generation starts at relative sample zero and compares against the
+same reference span. Restart playback/performing from the reference beginning after
+a microphone restart/switch. Missing reference coverage is alignment unavailable.
+Tempo drift, section jumps and arbitrary entry are not solved. Production accuracy,
+MI300 lineage, held-out calibration and PN54 performance remain separate gates.
 
 ## Run locally
 
@@ -171,8 +179,10 @@ CPU profile can be a fallback; remote inference is not a critical-path fallback.
 No absolute per-instrument SPL, specific mixer-fault inference, autonomous mixing,
 tone/EQ, section-aware remixing or arbitrary unknown-song recognition is claimed.
 Silence, stale data, source inactivity and disconnection cannot establish recovery.
-Baselines require explicit acceptance and remain immutable in Live. Verification
-requires fresh, observable post-adjustment audio.
+The new Live-reference policy never creates or silently substitutes a baseline.
+Historical baseline records are retained under legacy policy. Verification requires
+fresh, observable post-adjustment audio. Perception labels do not authorize calibrated
+confidence percentages or physical-room numerical accuracy claims.
 
 Assets and model weights have separate rights/provenance requirements. See the
 [source release policy and audit](docs/release/RELEASE_READINESS.md). The existing
