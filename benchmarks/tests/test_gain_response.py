@@ -2,6 +2,8 @@ import json
 import unittest
 from pathlib import Path
 
+import numpy as np
+
 from benchmarks.run_gain_response import DEFAULT_CONFIG, run
 
 
@@ -30,6 +32,45 @@ class GainResponseBenchmarkTests(unittest.TestCase):
             "common_gain_input_db", "centered_balance_db", "valid_source_mask", "noise",
         ):
             self.assertIn(field, first)
+
+    def test_manifested_input_provenance_replaces_synthetic_identity(self):
+        config = json.loads(Path(DEFAULT_CONFIG).read_text(encoding="utf-8"))
+        config["gain_grid_db"] = [0]
+        config["noise_conditions"] = [{"kind": "none", "snr_db": None}]
+        count = int(config["sample_rate_hz"] * config["duration_s"])
+        time = np.arange(count, dtype=np.float64) / config["sample_rate_hz"]
+        frequencies = {"bass": 100, "guitar": 500, "vocals": 1800, "drums": 5000}
+        stems = {
+            name: 0.1 * np.sin(2 * np.pi * frequency * time)
+            for name, frequency in frequencies.items()
+        }
+        result = run(
+            config,
+            "synthetic_band_masks_v1",
+            ["unit-test-manifested"],
+            input_stems=stems,
+            input_provenance={
+                "dataset_id": "manifested-test-v1",
+                "recording_id": "recording-1",
+                "license_or_permission": "unit-test generated",
+            },
+            input_split_identity={
+                "split_id": "manifested-test-v1:test",
+                "dataset_id": "manifested-test-v1",
+                "recording_id": "recording-1",
+                "parent_group_id": "song-1",
+                "split": "test",
+                "all_augmentations_grouped": True,
+            },
+        )
+        self.assertEqual("manifested_multitrack", result["asset_mode"])
+        self.assertEqual("manifested_multitrack_probe", result["evidence_class"])
+        self.assertEqual(
+            "recording-1", result["metadata"]["asset_provenance"][0]["recording_id"]
+        )
+        self.assertEqual(
+            "manifested-test-v1:test", result["pair_metadata"][0]["split_id"]
+        )
 
 
 if __name__ == "__main__":

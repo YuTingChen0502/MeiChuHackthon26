@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "replace-with-versioned-dataset-id",
+  "provenance": {
+    "origin": "replace-with-origin-or-creator",
+    "license_or_permission": "replace-with-exact-license-or-written-permission",
+    "attribution": "replace-or-null",
+    "allowed_publication_status": "private_eval_only"
+  },
+  "recordings": [
+    {
+      "recording_id": "song-or-take-001",
+      "parent_group_id": "underlying-song-001",
+      "split": "test",
+      "sample_rate_hz": 44100,
+      "sample_count": 441000,
+      "stems": [
+        {
+          "instrument_id": "guitar",
+          "family": "guitar",
+          "relative_path": "song-or-take-001/guitar.wav",
+          "sha256": "replace-with-lowercase-64-character-sha256"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "config_id": "direct-training-smoke-v1",
+  "seed": 260919,
+  "deterministic_algorithms": true,
+  "batch_size": 16,
+  "embedding_dim": 12,
+  "scale_feature_dim": 8,
+  "source_count": 4,
+  "hidden_dim": 32,
+  "optimizer_steps": 8,
+  "learning_rate": 0.01,
+  "weight_decay": 0.0001,
+  "consistency_pairs": [
+    [0, 1],
+    [2, 3]
+  ],
+  "loss_weights": {
+    "level": 1.0,
+    "activity": 0.25,
+    "event": 0.25,
+    "common": 0.5,
+    "consistency": 0.25
+  }
+}

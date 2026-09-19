@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "config_id": "manifested-pair-plan-v1",
+  "root_seed": 260919,
+  "splits": [
+    "train",
+    "validation",
+    "calibration",
+    "test"
+  ],
+  "excerpt_duration_s": 4.0,
+  "hop_duration_s": 4.0,
+  "max_excerpts_per_recording": 4,
+  "shared_scale": 0.2,
+  "single_source_gain_grid_db": [
+    -6,
+    -4,
+    -2,
+    2,
+    4,
+    6
+  ],
+  "common_gain_grid_db": [
+    -4,
+    4
+  ],
+  "multi_source_gain_cycles_db": [
+    [
+      -2,
+      4,
+      0,
+      2
+    ]
+  ],
+  "noise_profiles": [
+    {
+      "kind": "none",
+      "reference_snr_db": null,
+      "observation_snr_db": null
+    },
+    {
+      "kind": "white_gaussian",
+      "reference_snr_db": 20,
+      "observation_snr_db": 20
+    },
+    {
+      "kind": "white_gaussian",
+      "reference_snr_db": null,
+      "observation_snr_db": 10
+    }
+  ]
+}

@@ -26,3 +26,50 @@ the official `htdemucs_6s` checkpoint available. The adapter reads in-memory ten
 it never uses independently rescaled saved stems. Replace the synthetic assets with a
 rights-cleared grouped split before treating results as music-domain evidence.
 
+After validating a rights-cleared four-family recording, run the same measurement
+path without exposing stems to the separator:
+
+```text
+python -m benchmarks.run_gain_response \
+  --config training/configs/htdemucs_gain_response.json \
+  --backend htdemucs_6s \
+  --asset-manifest assets/manifests/my_dataset.json \
+  --dataset-root D:/pa-datasets/my_dataset \
+  --recording-id held-out-take-001 \
+  --sample-start 0 \
+  --output-dir benchmarks/results/htdemucs_6s_held_out_take_001
+```
+
+The runner verifies every stem hash, loads one stable excerpt, builds reference and
+observation mixtures, and passes only mixtures to the separator. Exactly one manifested
+stem must map to each of `bass`, `guitar`, `vocals` and `drums`. Results retain dataset,
+parent-group, split, excerpt, manifest and per-stem hash provenance.
+
+Before a remote training or systematic benchmark run, freeze deterministic pair work:
+
+```text
+python -m training.pair_plan \
+  --manifest assets/manifests/my_dataset.json \
+  --config training/configs/manifested_pair_plan_v1.json \
+  --output assets/manifests/my_dataset_pair_plan.json
+```
+
+The plan fixes grouped splits, exact excerpts, scenario/noise grids, seeds, gains,
+manifest/config hashes and asset identities. Audio is still hash-verified when a plan
+entry is materialized. Requested gains do not imply observability: silent stems receive
+null regression labels from the oracle and remain useful abstention examples.
+
+The direct path has a finite training-mechanics smoke that loads no audio encoder and
+makes no task-feasibility claim:
+
+```text
+python -m training.direct_smoke \
+  --config training/configs/direct_training_smoke_v1.json \
+  --device auto \
+  --output benchmarks/results/direct_training_smoke.json
+```
+
+Run it before a real MI300 job to record the Torch/ROCm device, verify non-zero
+gradients, prove optimizer weight changes, and reject non-finite masked losses. The
+real adaptation job must replace synthetic features with the approved pretrained
+encoder and manifested controlled pairs.

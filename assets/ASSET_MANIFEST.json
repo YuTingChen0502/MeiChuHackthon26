@@ -14,6 +14,9 @@
   ],
   "pending_empirical_assets": {
     "status": "not_supplied",
+    "manifest_template": "assets/manifests/multitrack_manifest.template.json",
+    "validation_command": "python -m benchmarks.validate_multitrack_assets --manifest <manifest.json> --dataset-root <dataset-root>",
+    "pair_plan_command": "python -m training.pair_plan --manifest <manifest.json> --config training/configs/manifested_pair_plan_v1.json --output <pair-plan.json>",
     "requirement": "Rights-cleared multitracks with origin, permission/license, attribution, hashes, grouped split, and publication status are required before empirical separator/direct comparison."
   }
 }
