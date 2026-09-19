@@ -20,6 +20,7 @@ class AudioChunk:
     sample_start: int
     capture_end_monotonic_s: float
     samples: tuple[float, ...]
+    input_clipped_fraction: float = 0.0
 
     @property
     def sample_end(self) -> int:
@@ -41,6 +42,7 @@ class AudioWindow:
     sample_end: int
     capture_end_monotonic_s: float
     samples: tuple[float, ...]
+    input_clipped_fraction: float = 0.0
 
     def identity(self) -> dict:
         return {

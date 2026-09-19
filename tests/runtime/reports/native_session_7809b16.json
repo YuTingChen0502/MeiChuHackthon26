@@ -1,0 +1,62 @@
+{
+  "git_commit": "7809b168e3531d5c09c207d6903929206718bcd7",
+  "git_dirty": false,
+  "recording": "No microphone PCM saved",
+  "device_id": "portaudio:b0f45d7b7c5f04d95e39",
+  "claim": "Local native transport/lifecycle only; Fake abstains; no model/calibration/PN54 claim.",
+  "duration_s": 12.31300000000192,
+  "runs": [
+    {
+      "metrics": {
+        "processed_windows": 10,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 16.00000000325963,
+        "processing_p95_ms": 31.000000002677552,
+        "publication_age_p95_s": 0.024999999994179234,
+        "error": null
+      },
+      "analysis_run_id": "run:eb7321148cd84ddaa76b95b515907a98",
+      "callback_max_queue": 1,
+      "callback_drops": 0,
+      "adc_residual_s": 0.0032128000020748004,
+      "rss_bytes": 53297152,
+      "all_abstained": true
+    },
+    {
+      "metrics": {
+        "processed_windows": 10,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 30.999999995401595,
+        "processing_p95_ms": 30.999999995401595,
+        "publication_age_p95_s": 0.025999999990744982,
+        "error": null
+      },
+      "analysis_run_id": "run:9812ef55d3904c44a74eb3f6162dab9b",
+      "callback_max_queue": 1,
+      "callback_drops": 0,
+      "adc_residual_s": 0.0031212999965646304,
+      "rss_bytes": 53276672,
+      "all_abstained": true
+    }
+  ],
+  "final_workflow": "STOPPED",
+  "capture": {
+    "device_id": "portaudio:b0f45d7b7c5f04d95e39",
+    "profile_id": "unverified-native-probe",
+    "native_sample_rate_hz": 48000,
+    "channels": 1,
+    "gain_setting": null,
+    "enhancements_verified_disabled": null,
+    "geometry_id": null,
+    "provenance": "unverified"
+  },
+  "status": "passed"
+}

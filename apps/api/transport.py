@@ -203,6 +203,17 @@ async def session_events(websocket: WebSocket):
         return
 
 
+async def get_probe(request: Request):
+    return await _call(request, lambda: asyncio.to_thread(_api(request).get_probe, request.path_params["session_id"]))
+
+
+async def post_probe(request: Request):
+    async def operation():
+        body = await _json_body(request)
+        return await asyncio.to_thread(_api(request).post_probe, request.path_params["session_id"], body)
+    return await _call(request, operation)
+
+
 ROUTES = [
     Route("/v1/health", health, methods=["GET"]),
     Route("/v1/audio-devices", audio_devices, methods=["GET"]),
@@ -216,6 +227,8 @@ ROUTES = [
     Route("/v1/sessions/{session_id:str}/actions", post_action, methods=["POST"]),
     Route("/v1/sessions/{session_id:str}/baseline", accept_baseline, methods=["POST"]),
     WebSocketRoute("/v1/sessions/{session_id:str}/events", session_events),
+    Route("/v1/sessions/{session_id:str}/probes", get_probe, methods=["GET"]),
+    Route("/v1/sessions/{session_id:str}/probes", post_probe, methods=["POST"]),
 ]
 
 
@@ -223,6 +236,7 @@ def create_app(
     runtime_api: RuntimeAPI | None = None,
     *,
     ui_directory: str | Path | None = None,
+    bundle_registry: dict | None = None,
 ) -> Starlette:
     @asynccontextmanager
     async def lifespan(application):
@@ -235,10 +249,13 @@ def create_app(
                     str(Path(tempfile.gettempdir()) / "pa-controller-runtime"),
                 )
             )
+            from .config import runtime_options
             application.state.runtime_api = RuntimeAPI(
                 storage_dir=storage,
                 window_size_samples=int(os.environ.get("PA_WINDOW_SIZE_SAMPLES", "192000")),
                 hop_size_samples=int(os.environ.get("PA_HOP_SIZE_SAMPLES", "48000")),
+                analysis_sample_rate_hz=int(os.environ.get("PA_ANALYSIS_RATE_HZ", "48000")),
+                **runtime_options(registry=bundle_registry),
             )
         origins = os.environ.get("PA_ALLOWED_ORIGINS")
         application.state.allowed_origins = (
@@ -247,10 +264,12 @@ def create_app(
             else set(DEFAULT_ORIGINS)
         )
         application.state.background_tasks = set()
-        yield
-        await asyncio.to_thread(application.state.runtime_api.close)
-        if application.state.background_tasks:
-            await asyncio.gather(*application.state.background_tasks, return_exceptions=True)
+        try:
+            yield
+        finally:
+            if application.state.background_tasks:
+                await asyncio.gather(*application.state.background_tasks, return_exceptions=True)
+            await asyncio.to_thread(application.state.runtime_api.close)
 
     selected_ui = (
         Path(ui_directory)

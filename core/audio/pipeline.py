@@ -4,10 +4,12 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Iterator
 from .types import AudioChunk, AudioWindow
+from .frontend import AudioFrontend
 
 
 class SharedAudioPipeline:
-    def __init__(self, *, window_size_samples: int, hop_size_samples: int | None = None) -> None:
+    def __init__(self, *, window_size_samples: int, hop_size_samples: int | None = None, sample_rate_hz: int | None = None) -> None:
+        self.frontend = AudioFrontend(sample_rate_hz)
         self.window_size_samples = window_size_samples
         self.hop_size_samples = window_size_samples if hop_size_samples is None else hop_size_samples
         if not 0 < self.hop_size_samples <= self.window_size_samples:
@@ -22,10 +24,11 @@ class SharedAudioPipeline:
         # At most one window of PCM is retained, irrespective of stream duration.
         first = None
         samples = []
+        clipping = []
         expected_start = 0
         window_start = 0
         origin = 0.0
-        for chunk in chunks:
+        for chunk in self.frontend.chunks(chunks):
             if (chunk.sample_rate_hz <= 0 or chunk.sample_start < 0 or not chunk.samples
                     or not math.isfinite(chunk.capture_end_monotonic_s)
                     or not all(math.isfinite(value) for value in chunk.samples)):
@@ -47,6 +50,7 @@ class SharedAudioPipeline:
             while offset < len(chunk.samples):
                 take = min(self.window_size_samples - len(samples), len(chunk.samples) - offset)
                 samples.extend(chunk.samples[offset:offset + take])
+                clipping.extend([chunk.input_clipped_fraction]*take)
                 offset += take
                 if len(samples) == self.window_size_samples:
                     end = window_start + self.window_size_samples
@@ -55,6 +59,8 @@ class SharedAudioPipeline:
                         analysis_run_id=analysis_run_id, input_kind=first.input_kind,
                         input_asset_or_device_id=first.input_asset_or_device_id, clock_id=first.clock_id,
                         sample_rate_hz=first.sample_rate_hz, sample_start=window_start, sample_end=end,
-                        capture_end_monotonic_s=origin + end / first.sample_rate_hz, samples=tuple(samples))
+                        capture_end_monotonic_s=origin + end / first.sample_rate_hz, samples=tuple(samples),
+                        input_clipped_fraction=max(clipping))
                     del samples[:self.hop_size_samples]
+                    del clipping[:self.hop_size_samples]
                     window_start += self.hop_size_samples

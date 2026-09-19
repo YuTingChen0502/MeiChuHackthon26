@@ -24,6 +24,7 @@ data/
 datasets/
 
 # Runtime
+/.pa-runtime/
 *.db
 *.sqlite
 *.sqlite3
@@ -32,3 +33,5 @@ datasets/
 .DS_Store
 Thumbs.db
 .vscode/
+# Local authority material containing access details; never distribute.
+/docs/official/AMD工作坊簡報.pdf

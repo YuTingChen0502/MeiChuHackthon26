@@ -35,7 +35,9 @@ class SoundDeviceBackend:
     def discover(self):
         hosts = self.module.query_hostapis()
         devices = []
-        for index, item in enumerate(self.module.query_devices()):
+        inventory = list(self.module.query_devices())
+        identities = [(hosts[item["hostapi"]]["name"], item["name"]) for item in inventory if item["max_input_channels"] > 0]
+        for index, item in enumerate(inventory):
             if item['max_input_channels'] < 1:
                 continue
             name = item['name']
@@ -43,19 +45,35 @@ class SoundDeviceBackend:
             if any(term in name.lower() for term in ('loopback', 'stereo mix', 'stereo input', 'what u hear', 'monitor of', 'speaker', '喇叭', '立體聲混音')):
                 continue
             host = hosts[item['hostapi']]['name']
-            digest = hashlib.sha256(f'{host}\0{name}\0{index}'.encode()).hexdigest()[:20]
+            # Withhold ambiguous devices; indices are not stable identities.
+            if identities.count((host, name)) != 1:
+                continue
+            digest = hashlib.sha256(f'{host}\0{name}'.encode()).hexdigest()[:20]
             devices.append(NativeDevice(f'portaudio:{digest}', index, name, host,
                                        item['max_input_channels'], int(item['default_samplerate'])))
         return devices
 
-    def open(self, *, device_id, sample_rate_hz, block_size, callback):
+    def negotiate(self, *, device_id, sample_rate_hz):
+        device = next((item for item in self.discover() if item.device_id == device_id), None)
+        if device is None:
+            raise RuntimeError("native_device_unavailable")
+        for rate in dict.fromkeys((sample_rate_hz, device.default_sample_rate_hz)):
+            for channels in dict.fromkeys((1, min(2, device.max_channels))):
+                try:
+                    self.module.check_input_settings(device=device.index, channels=channels, dtype="float32", samplerate=rate)
+                    return {"sample_rate_hz":rate, "channels":channels}
+                except Exception:
+                    continue
+        raise RuntimeError("native_capture_format_unavailable")
+
+    def open(self, *, device_id, sample_rate_hz, block_size, callback, channels=1):
         # Resolve again so a cached index cannot silently select a different device.
         device = next((item for item in self.discover() if item.device_id == device_id), None)
         if device is None:
             raise RuntimeError('native_device_unavailable')
-        self.module.check_input_settings(device=device.index, channels=1,
+        self.module.check_input_settings(device=device.index, channels=channels,
                                          dtype='float32', samplerate=sample_rate_hz)
-        return self.module.RawInputStream(device=device.index, channels=1, dtype='float32',
+        return self.module.RawInputStream(device=device.index, channels=channels, dtype='float32',
                                            samplerate=sample_rate_hz, blocksize=block_size,
                                            callback=callback, clip_off=True, dither_off=True)
 
@@ -68,11 +86,12 @@ class NativeMicAudioInput:
     that marker is never synthesized as silence or sent across an analysis window.
     """
     def __init__(self, *, backend, device_id, clock_id, sample_rate_hz,
-                 block_size=1024, queue_capacity=8, clock=time.monotonic, timeout_s=2.0, clock_tolerance_s=0.05):
-        if min(sample_rate_hz, block_size, queue_capacity) <= 0 or min(timeout_s, clock_tolerance_s) <= 0:
+                 block_size=1024, queue_capacity=8, clock=time.monotonic, timeout_s=2.0, clock_tolerance_s=0.05, channels=1):
+        if min(sample_rate_hz, block_size, queue_capacity, channels) <= 0 or min(timeout_s, clock_tolerance_s) <= 0:
             raise ValueError('positive capture settings required')
         self.backend, self.device_id, self.clock_id = backend, device_id, clock_id
         self.sample_rate_hz, self.block_size = sample_rate_hz, block_size
+        self.channels = channels
         self.clock, self.timeout_s = clock, timeout_s
         self.clock_tolerance_s = clock_tolerance_s
         self.max_adc_residual_s = 0.0
@@ -92,7 +111,7 @@ class NativeMicAudioInput:
             return
         try:
             now = self.clock()
-            if frames <= 0 or frames > self.block_size or len(data) != frames * 4:
+            if frames <= 0 or frames > self.block_size or len(data) != frames * 4 * self.channels:
                 raise ValueError('invalid_native_packet')
             adc = float(timing.inputBufferAdcTime)
             current = float(timing.currentTime)
@@ -128,8 +147,9 @@ class NativeMicAudioInput:
     def start(self):
         if self._stream is not None or self._stop.is_set():
             raise RuntimeError('capture_instance_cannot_restart')
+        options = {"channels": self.channels} if self.channels != 1 else {}
         stream = self.backend.open(device_id=self.device_id, sample_rate_hz=self.sample_rate_hz,
-                                   block_size=self.block_size, callback=self._callback)
+                                   block_size=self.block_size, callback=self._callback, **options)
         self._stream = stream
         try:
             stream.start()
@@ -149,8 +169,11 @@ class NativeMicAudioInput:
                 continue
             last_packet = self.clock()
             samples = struct.unpack(f'={len(raw) // 4}f', raw)
+            clipping = sum(abs(x) >= 32767/32768 for x in samples)/len(samples)
+            if self.channels > 1:
+                samples = tuple(sum(samples[i:i+self.channels])/self.channels for i in range(0,len(samples),self.channels))
             yield AudioChunk('live_microphone', self.device_id, self.clock_id,
-                             self.sample_rate_hz, start, end, samples)
+                             self.sample_rate_hz, start, end, samples, clipping)
         if self.error:
             raise RuntimeError(self.error)
 

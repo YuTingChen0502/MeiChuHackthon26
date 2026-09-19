@@ -30,7 +30,7 @@ class _MemoryAudioInput:
         self.sample_rate_hz = sample_rate_hz
         self.samples = values
         self.origin_monotonic_s = float(origin_monotonic_s)
-        self.chunk_size_samples = chunk_size_samples or len(values)
+        self.chunk_size_samples = chunk_size_samples or min(1024, len(values))
         if self.chunk_size_samples <= 0:
             raise ValueError("chunk_size_samples must be positive")
 
