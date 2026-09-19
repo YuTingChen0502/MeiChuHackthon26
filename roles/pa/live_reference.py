@@ -1,0 +1,84 @@
+"""Live-reference policy helpers; legacy rehearsal behavior remains separate."""
+import copy
+
+
+class LiveReferencePolicy:
+    @property
+    def live_reference(self):
+        return self.workflow_policy == "live_reference_v1"
+
+    def _init_capture(self):
+        self.capture=dict(state="starting",source_generation=0,requested_microphone_id=None,
+            logical_microphone_id=None,name=None,native_device_id=None,clock_id=self.source["clock_id"],
+            analysis_run_id=None,frame_fresh=False,timestamp_mode="unknown",operation_id=None,
+            switch_result="none",reason_codes=[])
+        self._current_masks={}
+        self._switch_previous=None
+        self._switch_paused=False
+
+    def _perception(self):
+        supported=self.analyzer.capabilities().get("supported_families")
+        rows=[]
+        frame=self.latest_frame
+        fresh=bool(frame and self.capture["frame_fresh"] and not frame["quality"]["stale"] and not frame["quality"]["dropout"])
+        states={s["instrument_id"]:s for s in frame["instruments"]} if frame else {}
+        for configured in self.instrument_config["instruments"]:
+            identity=configured["instrument_id"]
+            raw=self._current_masks.get(identity,{})
+            state=states.get(identity,{})
+            reasons=[]
+            if supported is not None and configured["family"] not in supported:
+                value="unsupported";reasons=["unsupported_family"]
+            elif supported is None:
+                value="uncertain";reasons=["capabilities_unavailable"]
+            elif not fresh:
+                value="listening" if self.capture["state"]=="listening" else "uncertain"
+                reasons=list(self.capture["reason_codes"])
+            elif raw.get("activity")=="inactive":value="not_heard"
+            elif (raw.get("activity")=="active" and raw.get("observability")=="observable"
+                  and raw.get("validity")=="valid" and not state.get("confidence",{}).get("abstained",True)):
+                value="detected"
+            else:
+                value="uncertain";reasons=list(state.get("confidence",{}).get("reasons",[]))
+            rows.append(dict(**configured,state=value,frame_id=frame["frame_id"] if fresh else None,
+                             reason_codes=list(dict.fromkeys(reasons))))
+        return rows
+
+    def _clear_source_evidence(self,reason):
+        if self.incident is not None or self.adjustment is not None:
+            self._audit("source_interrupted",dict(reason=reason,incident=copy.deepcopy(self.incident),
+                adjustment=copy.deepcopy(self.adjustment),outcome="inconclusive"))
+        self.incident=None;self.adjustment=None;self.incident_state="none"
+        self.latest_frame=None;self.latest_verification=None;self.recommendations=[]
+        self._frames.clear();self._frame_audio_hashes.clear();self._baseline_windows.clear()
+        self._baseline_pcm_samples=0;self._guided_frame_ids.clear();self._current_masks={}
+        self._incident_before_balance=None;self._verification_armed=False;self._detector.reset()
+        self._cancel_probe();self.capture["frame_fresh"]=False
+
+    def _accept_source_switch(self,command):
+        from .session import SessionCommandError
+        if not self.live_reference:raise SessionCommandError("legacy_source_fixed","Create a live-reference session.")
+        if self.capture["switch_result"]=="pending":raise SessionCommandError("switch_in_progress","A microphone switch is pending.")
+        if self.song["workflow_state"]=="STOPPED":raise SessionCommandError("session_stopped","Stopped sessions cannot switch.")
+        self._switch_previous=dict(source=copy.deepcopy(self.source),capture=copy.deepcopy(self.capture),
+            fingerprint=copy.deepcopy(self.capture_fingerprint))
+        self._switch_paused=self.capture["state"]=="paused"
+        self.capture.update(state="switching",source_generation=self.capture["source_generation"]+1,
+            requested_microphone_id=command["payload"]["microphone_id"],operation_id=command["idempotency_key"],
+            switch_result="pending",reason_codes=[])
+        self._clear_source_evidence("source_changed")
+        self._transition()
+
+    def _live_lifecycle_command(self,action):
+        from .session import SessionCommandError
+        if action in ("accept_baseline","start_live"):
+            raise SessionCommandError("legacy_action_unavailable","Live reference sessions do not accept baselines.")
+        if action in ("pause","stop"):
+            self.capture["source_generation"]+=1
+            self._clear_source_evidence(action)
+            self.capture.update(state="paused" if action=="pause" else "stopped",frame_fresh=False,
+                switch_result="failed" if self.capture["switch_result"]=="pending" else self.capture["switch_result"],
+                reason_codes=["operation_cancelled"] if self.capture["switch_result"]=="pending" else [])
+        elif action=="resume":
+            self._clear_source_evidence("source_reopened")
+            self.capture.update(state="starting",frame_fresh=False,reason_codes=[],operation_id=None,requested_microphone_id=None,switch_result="none")

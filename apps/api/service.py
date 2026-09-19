@@ -131,6 +131,8 @@ class RuntimeAPI:
         }
         self._store = SQLiteRuntimeStore(self.storage_dir / "runtime.sqlite3")
         self._load_state()
+        from .live_audio import LiveAudioController
+        self.live_audio = LiveAudioController(self)
 
     def _runtime_state_payload(self) -> dict:
         return {
@@ -273,11 +275,13 @@ class RuntimeAPI:
                 if type(default) is bool:
                     descriptor["is_default"] = default
                 descriptors.append(descriptor)
-            return 200, {"devices": descriptors,
+            inventory=self.live_audio.inventory()
+            return 200, {"devices": descriptors,"microphones":inventory.microphones,
+                         "default_microphone_id":inventory.default_microphone_id,
                          "discovery_status": "available" if devices else "no_input_devices"}
         except Exception as exc:
             self.native_error = str(exc)
-            return 200, {"devices": [], "discovery_status": "native_backend_unavailable"}
+            return 200, {"devices": [], "microphones":[],"default_microphone_id":None, "discovery_status": "native_backend_unavailable"}
 
     def create_project(self, request: dict) -> tuple[int, dict]:
         self._validate("CreateProjectRequest", request)
@@ -449,6 +453,8 @@ class RuntimeAPI:
 
     def create_session(self, request: dict) -> tuple[int, dict]:
         self._validate("CreateSessionRequest", request)
+        if request.get("workflow_policy")=="live_reference_v1":
+            return self.live_audio.create_session(request)
         song = self.songs.get(request.get("song_id"))
         reference_id = request.get("reference_id")
         reference = self.references.get(reference_id)
@@ -618,6 +624,8 @@ class RuntimeAPI:
                 self.close_errors.append(f"{session_id}: {exc}")
 
     def close(self):
+        self._closed = True
+        self.live_audio.close()
         with self._lifecycle_lock:
             self._closed = True
             for session_id, worker in list(self.workers.items()):
@@ -646,6 +654,11 @@ class RuntimeAPI:
             raise APIError(422, "wrong_endpoint", "accept_baseline must use the baseline endpoint.")
         with self._lifecycle_lock:
             response = self.handlers[session_id].handle(command)
+            if self.sessions[session_id].live_reference:
+                self.live_audio.reconcile(self.sessions[session_id],command,response)
+                if self.sessions[session_id].song["workflow_state"]=="STOPPED":
+                    self._close_session_analyzer(session_id)
+                return response["http_status"],response
             # Reconcile against current authoritative state, never a cached retry's
             # historical snapshot. Retrying resume after stop cannot restart capture.
             if self.managed_audio:
