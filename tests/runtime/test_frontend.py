@@ -63,3 +63,10 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual({"channels":2,"sample_rate_hz":44100},backend.negotiate(device_id=identity,sample_rate_hz=48000))
         module.devices.append(dict(module.devices[1]))
         self.assertFalse(any(d.device_id==identity for d in backend.discover()))
+
+    def test_resampling_does_not_erase_input_clipping(self):
+        source=FileAudioInput(input_asset_or_device_id="a",clock_id="c",sample_rate_hz=48000,
+            samples=[1.0 if i==25 else .1 for i in range(480)],origin_monotonic_s=10,chunk_size_samples=64)
+        chunks=list(AudioFrontend(16000).chunks(source.chunks()))
+        self.assertTrue(any(chunk.input_clipped_fraction > 0 for chunk in chunks))
+        self.assertTrue(all(max(chunk.samples) < 1.0 for chunk in chunks))

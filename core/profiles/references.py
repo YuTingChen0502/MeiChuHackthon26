@@ -71,7 +71,7 @@ class ReferenceBuilder:
             "coverage": coverage,
             "context_policy": "fixed_target_with_comparability_gate",
             "model_specific_context_asset": prepared["model_specific_context_asset"],
-            "limitations": ["Simulated fake-analyzer reference; example only."] if example_only else ["Per-source reference coverage is unvalidated."],
+            "limitations": ["Simulated fake-analyzer reference; example only."] if example_only else (["Per-source reference coverage is unvalidated."] if any(item["status"] != "adequate" for item in coverage) else ["Coverage is analyzer-derived inside the reviewed operating envelope."]),
             "comparison_regime": "matched_excerpt",
         }
         validate_record(profile, PUBLIC, "ReferenceProfile")

@@ -23,6 +23,7 @@ from core.runtime.real_analyzer import RealAnalyzerAdapter
 from roles.pa import PASession
 
 from .commands import CommandHandler
+from .probes import ProbeCommandHandler
 from .persistence import SQLiteCommandLedger, SQLiteRuntimeStore
 
 
@@ -452,6 +453,9 @@ class RuntimeAPI:
                 raise APIError(503, "audio_device_unavailable", "Microphone is not available to this runtime.")
             else:
                 runtime_verified = bool(self.analyzer_capabilities()["example_only"])
+        if source["input_kind"] == "uploaded_file" and self.managed_audio:
+            capture["native_sample_rate_hz"] = self.assets[source_id]["sample_rate_hz"]
+            capture["channels"] = 1
         approved_capture = None
         if self.evidence_policy is not None:
             approved_capture = self.evidence_policy.capture(capture, model=model, source_kind=source["input_kind"])
@@ -598,6 +602,8 @@ class RuntimeAPI:
         return 200, self.sessions[session_id].snapshot()
 
     def post_action(self, session_id: str, command: dict) -> tuple[int, dict]:
+        if command.get("record_type") != "SessionCommand":
+            raise APIError(422, "wrong_endpoint", "Actions require SessionCommand.")
         if session_id not in self.handlers or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
         if command.get("action") == "accept_baseline":
@@ -614,7 +620,7 @@ class RuntimeAPI:
                     if worker is not None:
                         worker.stop()
                         self.workers.pop(session_id, None)
-                elif worker is None or worker._finished.is_set():
+                elif worker is None or worker._finished.is_set() or worker.error or worker._stop.is_set():
                     if worker is not None:
                         worker.stop()
                     self._start_worker(session)
@@ -623,12 +629,29 @@ class RuntimeAPI:
             return response["http_status"], response
 
     def accept_baseline(self, session_id: str, command: dict) -> tuple[int, dict]:
+        if command.get("record_type") != "SessionCommand":
+            raise APIError(422, "wrong_endpoint", "Baseline requires SessionCommand.")
         if command.get("action") != "accept_baseline":
             raise APIError(422, "wrong_endpoint", "Baseline endpoint requires accept_baseline.")
         if session_id not in self.handlers or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
         response = self.handlers[session_id].handle(command)
         return response["http_status"], response
+
+    def get_probe(self, session_id):
+        if session_id not in self.sessions:
+            raise APIError(404, "unknown_session", "Session does not exist.")
+        return 200, self.sessions[session_id].probe_state()
+
+    def post_probe(self, session_id, command):
+        if session_id not in self.sessions or command.get("session_id") != session_id:
+            raise APIError(422, "session_mismatch", "URL and probe session IDs must match.")
+        if command.get("record_type") != "RehearsalProbeCommand" or not command.get("idempotency_key"):
+            raise APIError(422, "invalid_probe", "A guided rehearsal command envelope is required.")
+        with self._lifecycle_lock:
+            handler = ProbeCommandHandler(session=self.sessions[session_id], ledger=self.handlers[session_id].ledger)
+            response = handler.handle(command)
+            return response["command"]["http_status"], response
 
     def connect_events(self, session_id: str, *, after_sequence: int | None = None) -> tuple[int, dict]:
         if session_id not in self.sessions:

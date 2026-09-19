@@ -73,12 +73,17 @@ acceptance. Operating ranges and capture fingerprints come from host review.
         return ApprovedCalibration(analyzer, self.settings)
 
     def capture(self, fingerprint, *, model, source_kind):
+        matches = []
         for profile in self.settings.get("capture_profiles", []):
+            # Device/rate/channels are resolved by the Runtime adapter. Physical
+            # gain/geometry/provenance come ONLY from this reviewed host profile.
             if (profile["model"] == model and profile["source_kind"] == source_kind and
-                profile["fingerprint"] == fingerprint and profile["reviewed_by"] and
+                all(profile["fingerprint"].get(key) == fingerprint.get(key)
+                    for key in ("device_id", "native_sample_rate_hz", "channels")) and
+                profile["reviewed_by"] and
                 profile["operating_envelope_id"] == self.settings["acceptance"]["operating_envelope_id"]):
-                return copy.deepcopy(profile["fingerprint"])
-        return None
+                matches.append(profile)
+        return copy.deepcopy(matches[0]["fingerprint"]) if len(matches) == 1 else None
 
 
 class ApprovedCalibration:
@@ -122,6 +127,16 @@ class ApprovedCalibration:
             not envelope["minimum_window_samples"] <= observation["sample_end"]-observation["sample_start"] <= envelope["maximum_window_samples"] or
             hard_gate_reasons(quality)):
             reason = "calibration_out_of_envelope"
+        if "minimum_snr_db" in envelope:
+            snr = quality.get("snr_estimate_db")
+            if not finite(snr) or snr < envelope["minimum_snr_db"]:
+                reason = "calibration_out_of_envelope"
+        for bound in envelope.get("uncertainty_feature_bounds", []):
+            values = [f["value"] for f in measurement["uncertainty_features"]
+                      if f["name"] == bound["name"] and f["unit"] == bound["unit"]]
+            if (len(values) != 1 or not finite(values[0]) or
+                not bound["minimum"] <= values[0] <= bound["maximum"]):
+                reason = "calibration_out_of_envelope"
         mapping = self.mappings.get(event)
         item = mapping.lookup(measurement["uncertainty_features"]) if mapping else None
         if reason is None and item is None:

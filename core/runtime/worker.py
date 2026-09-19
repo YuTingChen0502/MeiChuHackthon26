@@ -95,6 +95,8 @@ class AudioWorker:
         previous = None
         gap = False
         dropped_seen = 0
+        discontinuities_seen = 0
+        input_faults_seen = 0
         try:
             while not self._stop.is_set():
                 try:
@@ -110,13 +112,16 @@ class AudioWorker:
                     self.stale_windows += 1
                     gap = True
                     continue
+                input_faults = getattr(self.audio_input, "discontinuities", 0) + getattr(self.audio_input, "dropped_packets", 0)
+                gap |= self.discontinuities != discontinuities_seen or input_faults != input_faults_seen
+                discontinuities_seen, input_faults_seen = self.discontinuities, input_faults
                 gap |= self.dropped_windows != dropped_seen
                 dropped_seen = self.dropped_windows
                 if previous is not None:
                     gap |= (window.analysis_run_id != previous.analysis_run_id or
                             window.sample_start != previous.sample_start + self.pipeline.hop_size_samples)
                 quality = quality_state(
-                    clipped_fraction=pcm_clipped_fraction(window.samples),
+                    clipped_fraction=max(window.input_clipped_fraction, pcm_clipped_fraction(window.samples)),
                     dropout=gap,
                     comparability='weak' if not any(window.samples) else 'comparable')
                 begin = self.clock()

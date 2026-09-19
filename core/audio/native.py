@@ -169,10 +169,11 @@ class NativeMicAudioInput:
                 continue
             last_packet = self.clock()
             samples = struct.unpack(f'={len(raw) // 4}f', raw)
+            clipping = sum(abs(x) >= 32767/32768 for x in samples)/len(samples)
             if self.channels > 1:
                 samples = tuple(sum(samples[i:i+self.channels])/self.channels for i in range(0,len(samples),self.channels))
             yield AudioChunk('live_microphone', self.device_id, self.clock_id,
-                             self.sample_rate_hz, start, end, samples)
+                             self.sample_rate_hz, start, end, samples, clipping)
         if self.error:
             raise RuntimeError(self.error)
 

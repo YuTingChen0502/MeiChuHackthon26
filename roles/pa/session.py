@@ -7,6 +7,7 @@ import hashlib
 import json
 import struct
 import time
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
@@ -22,6 +23,7 @@ from core.contracts.validation import (
     validate_record,
     validate_snapshot,
 )
+from core.contracts.guided import GUIDED, validate_probe_request
 from core.profiles.baselines import BaselineStore, build_baseline_profile
 from core.runtime.deviation import FrameBuilder
 from core.runtime.quality import pcm_clipped_fraction, quality_is_usable, quality_state
@@ -146,6 +148,8 @@ class PASession:
         self._baseline_windows = {}
         self._baseline_pcm_samples = 0
         self._baseline_pcm_limit = 1_000_000
+        self._probe = {"mode":"idle", "instrument_id":None, "probe_id":None, "not_before_monotonic_s":None}
+        self._guided_frame_ids = set()
         self._frame_sequence = 0
         self._incident_counter = 0
         self._adjustment_counter = 0
@@ -255,6 +259,8 @@ class PASession:
             "audit_total": self._audit_total,
             "frames": copy.deepcopy(self._frames),
             "frame_audio_hashes": dict(self._frame_audio_hashes),
+            "probe": copy.deepcopy(self._probe),
+            "guided_frame_ids": sorted(self._guided_frame_ids),
             "frame_sequence": self._frame_sequence,
             "incident_counter": self._incident_counter,
             "adjustment_counter": self._adjustment_counter,
@@ -344,6 +350,8 @@ class PASession:
         self._audit_total = state.get("audit_total", len(self._audit_records))
         self._frames = copy.deepcopy(state["frames"])
         self._frame_audio_hashes = dict(state["frame_audio_hashes"])
+        self._probe = copy.deepcopy(state.get("probe", {"mode":"idle", "instrument_id":None, "probe_id":None, "not_before_monotonic_s":None}))
+        self._guided_frame_ids = set(state.get("guided_frame_ids", []))
         self._frame_sequence = state["frame_sequence"]
         self._incident_counter = state["incident_counter"]
         self._adjustment_counter = state["adjustment_counter"]
@@ -420,6 +428,8 @@ class PASession:
         return copy.deepcopy(event)
 
     def _transition(self) -> dict:
+        if self.session_mode != "rehearsal" or self.song["workflow_state"] != "REHEARSAL" or self.adjustment is not None:
+            self._cancel_probe()
         self.state_version += 1
         # A snapshot event must carry its own newly allocated cursor.
         self.event_sequence += 1
@@ -437,6 +447,36 @@ class PASession:
         if len(self._events) > self.event_retention:
             self._events = self._events[-self.event_retention :]
         return payload
+
+    def _cancel_probe(self):
+        if self._probe["mode"] != "idle":
+            self._probe = {"mode":"idle", "instrument_id":None, "probe_id":None, "not_before_monotonic_s":None}
+            self._detector.reset()
+
+    @_synchronized
+    def probe_state(self):
+        state = {"record_type":"RehearsalProbeState", "schema_version":"1.0", "session_id":self.session_id,
+                 "state_version":self.state_version, **copy.deepcopy(self._probe)}
+        validate_record(state, GUIDED, "RehearsalProbeState")
+        return state
+
+    @_synchronized
+    def apply_probe(self, command):
+        try:
+            validate_probe_request(command, self.snapshot())
+        except ValueError as exc:
+            if self.song["workflow_state"] == "SUSPENDED":
+                raise SessionCommandError("probe_input_unavailable", "Resume a healthy rehearsal input first.", http_status=503) from exc
+            raise SessionCommandError("probe_state_conflict", str(exc)) from exc
+        instrument = command["instrument_id"]
+        if instrument is not None and instrument not in {item["instrument_id"] for item in self.instrument_config["instruments"]}:
+            raise SessionCommandError("invalid_probe_instrument", "Instrument is not configured.", http_status=422)
+        self._probe = {"mode":command["mode"], "instrument_id":instrument,
+                       "probe_id":f"probe:{uuid.uuid4().hex}" if command["mode"] != "idle" else None,
+                       "not_before_monotonic_s":self.monotonic_clock() if command["mode"] != "idle" else None}
+        self._detector.reset()
+        self._transition()
+        return self.snapshot()
 
     @staticmethod
     def _audio_hash(window) -> str:
@@ -475,6 +515,14 @@ class PASession:
             raise ValueError("runtime model/profile changed; create a revalidated session")
         if self.capture_profile_enforced and window.sample_rate_hz != self.analysis_sample_rate_hz:
             raise ValueError("capture sample rate changed; revalidate the input profile")
+        if quality and quality["dropout"] and self._probe["mode"] != "idle":
+            self._cancel_probe()
+            self._transition()
+        if self._probe["mode"] != "idle":
+            if window.start_monotonic_s - clock_uncertainty_s < self._probe["not_before_monotonic_s"]:
+                return None
+            purpose = "guided_probe" if self._probe["mode"] == "instrument" else "rehearsal"
+            probe_instrument_id = self._probe["instrument_id"]
         if purpose is None:
             purpose = "verification" if self._verification_armed else ("live" if self.session_mode == "live" else "rehearsal")
         context = self._context(window, purpose=purpose, probe_instrument_id=probe_instrument_id)
@@ -487,7 +535,7 @@ class PASession:
             quality["stale"] = True
             if "stale_evidence" not in quality["reason_codes"]:
                 quality["reason_codes"].append("stale_evidence")
-        clipped = pcm_clipped_fraction(window.samples)
+        clipped = max(window.input_clipped_fraction, pcm_clipped_fraction(window.samples))
         quality["clipped_fraction"] = max(quality["clipped_fraction"], clipped)
         if not any(window.samples):
             quality["comparability"] = "weak"
@@ -503,6 +551,8 @@ class PASession:
         )
         self.latest_frame = copy.deepcopy(frame)
         self._frames.append(copy.deepcopy(frame))
+        if purpose == "guided_probe":
+            self._guided_frame_ids.add(frame["frame_id"])
         if not evidence["example_only"] and self.session_mode == "rehearsal":
             self._baseline_windows[frame["frame_id"]] = window
             self._baseline_pcm_samples += len(window.samples)
@@ -512,6 +562,7 @@ class PASession:
         self._frame_audio_hashes[frame["frame_id"]] = self._audio_hash(window)
         while len(self._frames) > self.frame_retention:
             retired = self._frames.pop(0)
+            self._guided_frame_ids.discard(retired["frame_id"])
             self._frame_audio_hashes.pop(retired["frame_id"], None)
         self._append_event(frame)
 
@@ -793,6 +844,8 @@ class PASession:
         for left, right in zip(selected, selected[1:]):
             if right["sample_start"] > left["sample_end"]:
                 raise SessionCommandError("invalid_baseline_interval", "Selected interval crosses a gap.", http_status=422)
+        if any(frame["frame_id"] in self._guided_frame_ids for frame in selected):
+            raise SessionCommandError("baseline_requires_full_band", "Choose a full-band rehearsal interval.", http_status=422)
         next_version = 1 if self.baseline is None else self.baseline["version"] + 1
         baseline_id = self.baseline["baseline_id"] if self.baseline else f"baseline:{self.session_id}"
         try:

@@ -29,6 +29,8 @@ class RealAnalyzerAdapter:
         return self.analyzer.prepare_reference(windows, instrument_config)
 
     def analyze(self, window, context):
+        if self._closed:
+            raise RuntimeError("analyzer is closed")
         if self.analyzer.capabilities() != self._capabilities:
             raise ValueError('analyzer capabilities changed; revalidate profiles in a new session')
         if context['model'] != self._capabilities['model'] or context['observation'] != window.identity():

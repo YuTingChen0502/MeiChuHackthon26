@@ -203,6 +203,17 @@ async def session_events(websocket: WebSocket):
         return
 
 
+async def get_probe(request: Request):
+    return await _call(request, lambda: asyncio.to_thread(_api(request).get_probe, request.path_params["session_id"]))
+
+
+async def post_probe(request: Request):
+    async def operation():
+        body = await _json_body(request)
+        return await asyncio.to_thread(_api(request).post_probe, request.path_params["session_id"], body)
+    return await _call(request, operation)
+
+
 ROUTES = [
     Route("/v1/health", health, methods=["GET"]),
     Route("/v1/audio-devices", audio_devices, methods=["GET"]),
@@ -216,6 +227,8 @@ ROUTES = [
     Route("/v1/sessions/{session_id:str}/actions", post_action, methods=["POST"]),
     Route("/v1/sessions/{session_id:str}/baseline", accept_baseline, methods=["POST"]),
     WebSocketRoute("/v1/sessions/{session_id:str}/events", session_events),
+    Route("/v1/sessions/{session_id:str}/probes", get_probe, methods=["GET"]),
+    Route("/v1/sessions/{session_id:str}/probes", post_probe, methods=["POST"]),
 ]
 
 

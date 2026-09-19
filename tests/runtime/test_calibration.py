@@ -45,9 +45,37 @@ class CalibrationTests(unittest.TestCase):
 
     def test_capture_requires_exact_reviewed_fingerprint_and_model(self):
         settings={"acceptance":{"operating_envelope_id":"test-envelope"},"capture_profiles":[
-            dict(model={"id":"test"},source_kind="live_microphone",fingerprint={"device":"test"},
+            dict(model={"id":"test"},source_kind="live_microphone",fingerprint={"device_id":"test"},
                  reviewed_by="TEST ONLY",operating_envelope_id="test-envelope")]}
         policy=ReviewedEvidencePolicy(settings)
-        self.assertIsNone(policy.capture({"device":"other"},model={"id":"test"},source_kind="live_microphone"))
-        self.assertIsNone(policy.capture({"device":"test"},model={"id":"replacement"},source_kind="live_microphone"))
-        self.assertEqual({"device":"test"},policy.capture({"device":"test"},model={"id":"test"},source_kind="live_microphone"))
+        self.assertIsNone(policy.capture({"device_id":"other"},model={"id":"test"},source_kind="live_microphone"))
+        self.assertIsNone(policy.capture({"device_id":"test"},model={"id":"replacement"},source_kind="live_microphone"))
+        self.assertEqual({"device_id":"test"},policy.capture({"device_id":"test"},model={"id":"test"},source_kind="live_microphone"))
+
+    def test_both_event_mappings_and_runtime_support_quality_gates(self):
+        # Exercise only the pure evaluate method on an explicit synthetic fixture.
+        # ApprovedCalibration.__init__ is NOT bypassed on a production object.
+        from types import SimpleNamespace
+        from core.runtime.quality import quality_state
+        fixture=SimpleNamespace(candidate={"calibration_id":"synthetic-policy-test-only","model":{"id":"fixture"}},
+            acceptance={"comparison_regimes":["matched_excerpt"],"accepted_families":["guitar"],
+                        "minimum_bin_count":10,"minimum_probability":.8,"maximum_interval_width_db":2},
+            settings={"quality_envelope":{"sample_rates_hz":[10],"minimum_window_samples":10,"maximum_window_samples":10}},
+            mappings={event:CalibrationMapping(mapping(),supported_scores={("error","dB")})
+                      for event in ("normal_within_envelope","joint_anomaly_numeric_correct")})
+        context={"model":{"id":"fixture"},"comparison_regime":"matched_excerpt",
+                 "observation":{"sample_rate_hz":10,"sample_start":0,"sample_end":10}}
+        measurement={"family":"guitar","uncertainty_features":[{"name":"error","unit":"dB","value":.5}]}
+        def evaluate(balance,quality=None):
+            return ApprovedCalibration.evaluate(fixture,context=context,measurement=measurement,
+                quality=quality or quality_state(),balance=balance,anomaly_threshold_db=3)
+        self.assertEqual("normal_within_envelope",evaluate(0)[0]["probability_event"])
+        self.assertEqual([3,5],evaluate(4)[0]["prediction_interval_db"])
+        self.assertEqual("calibration_out_of_envelope",evaluate(4,quality_state(dropout=True))[1])
+        fixture.acceptance["minimum_bin_count"]=11
+        self.assertEqual("calibration_support_insufficient",evaluate(4)[1])
+        fixture.acceptance["minimum_bin_count"]=10
+        fixture.mappings.pop("normal_within_envelope")
+        self.assertEqual("calibration_event_or_score_unavailable",evaluate(0)[1])
+        context["model"]={"id":"replacement"}
+        self.assertEqual("calibration_out_of_envelope",evaluate(4)[1])

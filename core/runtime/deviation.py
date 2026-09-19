@@ -74,6 +74,8 @@ class FrameBuilder:
             instrument_id = measurement["instrument_id"]
             activity = measurement["activity"]
             reasons = list(measurement["reason_codes"])
+            if measurement["validity"] != "valid" and not reasons:
+                reasons.append("measurement_unavailable")
             approved_confidence = None
             if not evidence["example_only"] and self.calibration_policy is None:
                 reasons.append("empirical_calibration_unavailable")
@@ -123,6 +125,8 @@ class FrameBuilder:
                 ),
                 "tone": None,
             }
+            if not evidence["example_only"] and self.calibration_policy is not None and abstained:
+                state["confidence"]["calibration_status"] = "out_of_envelope"
             validate_record(state, PUBLIC, "InstrumentState")
             instruments.append(state)
 

@@ -99,3 +99,38 @@ class ModelLifecycleTests(unittest.TestCase):
             with self.assertRaises(APIError) as error: api._new_analyzer()
             self.assertEqual("model_identity_changed",error.exception.code)
             self.assertEqual([1,1],[model.closes for model in created]);api.close()
+
+    def test_runtime_failure_replaces_exact_identity_on_resume(self):
+        from test_continuous_runtime import Backend
+        import struct
+        import time
+        from types import SimpleNamespace
+        class CapturingBackend(Backend):
+            def open(self,**kwargs):
+                self.callback=kwargs["callback"]
+                return super().open(**kwargs)
+        created=[]
+        def factory():
+            model=Tracked();created.append(model)
+            if len(created)==3:
+                model.analyze=lambda *a,**k: (_ for _ in ()).throw(RuntimeError("inference fixture failure"))
+            return model
+        with tempfile.TemporaryDirectory() as directory:
+            backend=CapturingBackend()
+            api=RuntimeAPI(storage_dir=directory,window_size_samples=10,native_backend=backend,
+                           managed_audio=True,analyzer_factory=factory)
+            try:
+                snapshot=fixtures.RuntimeAPIServiceTests.create_rehearsal_session(api)[3];sid=snapshot["session_id"]
+                backend.callback(struct.pack("=10f",*([.1]*10)),10,
+                                 SimpleNamespace(inputBufferAdcTime=1,currentTime=2),False)
+                deadline=time.monotonic()+3
+                while api.get_session(sid)[1]["song"]["workflow_state"]!="SUSPENDED" and time.monotonic()<deadline:
+                    time.sleep(.01)
+                state=api.get_session(sid)[1]
+                self.assertIn("analyzer_or_processing_failure",state["suspension_reasons"])
+                api.post_action(sid,fixtures.command(state,"resume-model","resume"))
+                self.assertEqual(4,len(created));self.assertEqual(1,created[2].closes)
+                self.assertIs(created[3],api.runtime_session(sid).analyzer)
+                self.assertEqual("REHEARSAL",api.get_session(sid)[1]["song"]["workflow_state"])
+            finally:api.close()
+            self.assertEqual([1,1,1,1],[item.closes for item in created])

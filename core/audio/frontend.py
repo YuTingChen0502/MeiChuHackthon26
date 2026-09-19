@@ -19,12 +19,15 @@ class AudioFrontend:
     def chunks(self, chunks):
         first = previous = None
         buffer = []
+        clipping = []
         offset = output = 0
         origin = 0.0
         kernels = {}
         for chunk in chunks:
             if not chunk.samples or chunk.sample_rate_hz <= 0 or not all(math.isfinite(x) for x in chunk.samples):
                 raise ValueError("invalid frontend PCM")
+            fraction = max(chunk.input_clipped_fraction, sum(abs(x) >= 32767/32768 for x in chunk.samples)/len(chunk.samples))
+            chunk = replace(chunk, input_clipped_fraction=fraction)
             target = self.sample_rate_hz or chunk.sample_rate_hz
             if target == chunk.sample_rate_hz:
                 yield chunk
@@ -40,6 +43,7 @@ class AudioFrontend:
                   abs(chunk.capture_end_monotonic_s - origin - chunk.sample_end/chunk.sample_rate_hz) > 1/chunk.sample_rate_hz):
                 raise ValueError("frontend run discontinuity")
             buffer.extend(chunk.samples)
+            clipping.extend([fraction]*len(chunk.samples))
             # Output only when the entire right half of the filter is available.
             # Discard incomplete tails instead of inventing post-disconnect audio.
             values = []
@@ -63,8 +67,9 @@ class AudioFrontend:
                 output += 1
             if values:
                 yield replace(chunk, sample_rate_hz=target, sample_start=start,
-                              capture_end_monotonic_s=origin+output/target, samples=tuple(values))
+                              capture_end_monotonic_s=origin+output/target, samples=tuple(values), input_clipped_fraction=max(clipping))
             keep_from = max(offset, (output*chunk.sample_rate_hz)//target-15)
             del buffer[:keep_from-offset]
+            del clipping[:keep_from-offset]
             offset = keep_from
             previous = chunk

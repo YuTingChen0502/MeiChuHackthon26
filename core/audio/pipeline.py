@@ -24,6 +24,7 @@ class SharedAudioPipeline:
         # At most one window of PCM is retained, irrespective of stream duration.
         first = None
         samples = []
+        clipping = []
         expected_start = 0
         window_start = 0
         origin = 0.0
@@ -49,6 +50,7 @@ class SharedAudioPipeline:
             while offset < len(chunk.samples):
                 take = min(self.window_size_samples - len(samples), len(chunk.samples) - offset)
                 samples.extend(chunk.samples[offset:offset + take])
+                clipping.extend([chunk.input_clipped_fraction]*take)
                 offset += take
                 if len(samples) == self.window_size_samples:
                     end = window_start + self.window_size_samples
@@ -57,6 +59,8 @@ class SharedAudioPipeline:
                         analysis_run_id=analysis_run_id, input_kind=first.input_kind,
                         input_asset_or_device_id=first.input_asset_or_device_id, clock_id=first.clock_id,
                         sample_rate_hz=first.sample_rate_hz, sample_start=window_start, sample_end=end,
-                        capture_end_monotonic_s=origin + end / first.sample_rate_hz, samples=tuple(samples))
+                        capture_end_monotonic_s=origin + end / first.sample_rate_hz, samples=tuple(samples),
+                        input_clipped_fraction=max(clipping))
                     del samples[:self.hop_size_samples]
+                    del clipping[:self.hop_size_samples]
                     window_start += self.hop_size_samples
