@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "threshold_set_id": "cp2b-frozen-action-thresholds-v1",
+  "selection_status": "FROZEN_NO_RETUNING",
+  "activity_floor_dbfs": -70.0,
+  "missing_prediction_penalty_db": 12.0,
+  "confidence": {
+    "status": "UNCALIBRATED",
+    "permitted_output": "qualitative evidence availability only",
+    "probability_output_permitted": false
+  },
+  "target_constraints": {
+    "attribution_precision_min": 0.90,
+    "attribution_recall_including_abstentions_min": 0.75,
+    "sign_accuracy_min": 0.95,
+    "balance_mae_db_max": 2.0,
+    "balance_coverage_min": 0.60
+  },
+  "family_operating_points": {
+    "bass": {
+      "status": "SUPPORTED",
+      "minimum_evaluated_anomaly_magnitude_db": 2.0,
+      "alert_threshold_db": 1.5,
+      "eligibility": "Both reference and observation source estimates exceed the activity floor and centered balance is identifiable from at least three configured numeric model sources."
+    },
+    "drums": {"status": "UNSUPPORTED", "alert_threshold_db": null},
+    "guitar": {"status": "UNSUPPORTED", "alert_threshold_db": null},
+    "keys": {"status": "UNSUPPORTED", "alert_threshold_db": null},
+    "vocals": {"status": "UNSUPPORTED", "alert_threshold_db": null}
+  },
+  "common_diagnostic_threshold_db": 3.0,
+  "common_diagnostic_actionable": false,
+  "abstention_rules": [
+    "Abstain for every unsupported or insufficient-evidence family.",
+    "Abstain when reference or observation source activity is below -70 dBFS.",
+    "Abstain from centered balance when fewer than three configured model sources have numeric source deltas.",
+    "Do not interpret unavailable evidence as Normal."
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "deterministic_payload_sha256": "57c9fab2521471fd91d4c719e974a7e09382df4d1b18f6bd63e21d3df71c68c0",
+  "inference_contract": {
+    "confidence": "UNCALIBRATED_QUALITATIVE_ONLY",
+    "hidden_benchmark_labels_accepted_as_inputs": false,
+    "independent_normalization": false,
+    "matched_reference": true
+  },
+  "instrument_config_identity": {
+    "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/runtime_smoke/instrument_config.json",
+    "sha256": "b89c9a955040d9305cf1a573e07963c92e8beb2187576805221a74d2e58030b5"
+  },
+  "logical_output": {
+    "balance_identifiable": true,
+    "bundle_checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+    "common_mode_gain_db": -0.05556652353986635,
+    "configured_families": [
+      "bass",
+      "drums",
+      "guitar",
+      "keys",
+      "vocals"
+    ],
+    "family_evidence": [
+      {
+        "activity": {
+          "activity_floor_dbfs": -70.0,
+          "observation_active": true,
+          "reference_active": true
+        },
+        "alert_state": "ANOMALY_CANDIDATE",
+        "alert_threshold_db": 1.5,
+        "centered_balance_db": 4.011834528284773,
+        "confidence_status": "UNCALIBRATED_QUALITATIVE_AVAILABLE",
+        "configured_family": "bass",
+        "model_source": "bass",
+        "observation_source_level_dbfs": -46.347027232548726,
+        "raw_source_delta_db": 3.9562680047449064,
+        "reason": null,
+        "reference_source_level_dbfs": -50.30329523729363,
+        "support_status": "SUPPORTED",
+        "validity": {
+          "balance_identifiable": true,
+          "centered_balance_available": true,
+          "numeric_source_delta_available": true
+        }
+      },
+      {
+        "activity": {
+          "activity_floor_dbfs": -70.0,
+          "observation_active": null,
+          "reference_active": null
+        },
+        "alert_state": "ABSTAIN",
+        "centered_balance_db": null,
+        "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+        "configured_family": "drums",
+        "model_source": "drums",
+        "observation_source_level_dbfs": null,
+        "raw_source_delta_db": null,
+        "reason": "Failed the frozen CP2B fresh-final precision floor: 0.8767123287671232 < 0.90.",
+        "reference_source_level_dbfs": null,
+        "support_status": "UNSUPPORTED",
+        "validity": {
+          "balance_identifiable": false,
+          "centered_balance_available": false,
+          "numeric_source_delta_available": false
+        }
+      },
+      {
+        "activity": {
+          "activity_floor_dbfs": -70.0,
+          "observation_active": null,
+          "reference_active": null
+        },
+        "alert_state": "ABSTAIN",
+        "centered_balance_db": null,
+        "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+        "configured_family": "guitar",
+        "model_source": "guitar",
+        "observation_source_level_dbfs": null,
+        "raw_source_delta_db": null,
+        "reason": "Adaptation improved diagnostics, but no calibration operating point met all frozen targets.",
+        "reference_source_level_dbfs": null,
+        "support_status": "UNSUPPORTED",
+        "validity": {
+          "balance_identifiable": false,
+          "centered_balance_available": false,
+          "numeric_source_delta_available": false
+        }
+      },
+      {
+        "activity": {
+          "activity_floor_dbfs": -70.0,
+          "observation_active": null,
+          "reference_active": null
+        },
+        "alert_state": "ABSTAIN",
+        "centered_balance_db": null,
+        "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+        "configured_family": "keys",
+        "model_source": "piano",
+        "observation_source_level_dbfs": null,
+        "raw_source_delta_db": null,
+        "reason": "No calibration operating point met all frozen targets; generic HTDemucs other is not mapped to keys.",
+        "reference_source_level_dbfs": null,
+        "support_status": "UNSUPPORTED",
+        "validity": {
+          "balance_identifiable": false,
+          "centered_balance_available": false,
+          "numeric_source_delta_available": false
+        }
+      },
+      {
+        "activity": {
+          "activity_floor_dbfs": -70.0,
+          "observation_active": null,
+          "reference_active": null
+        },
+        "alert_state": "ABSTAIN",
+        "centered_balance_db": null,
+        "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+        "configured_family": "vocals",
+        "model_source": "vocals",
+        "observation_source_level_dbfs": null,
+        "raw_source_delta_db": null,
+        "reason": "Failed the frozen CP2B fresh-final precision floor: 0.8617511520737328 < 0.90.",
+        "reference_source_level_dbfs": null,
+        "support_status": "UNSUPPORTED",
+        "validity": {
+          "balance_identifiable": false,
+          "centered_balance_available": false,
+          "numeric_source_delta_available": false
+        }
+      }
+    ],
+    "observation_sha256": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+    "reference_sha256": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+    "reliable_configured_model_source_count": 4
+  },
+  "model_identity": {
+    "adapted_checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "adapted_module_sha256": {
+      "decoder.3.conv_tr": "8a2641c7a21182b894cf9921bef4616ad865725de3478f66720c5b4c73f10cd2",
+      "tdecoder.3.conv_tr": "405cfda359fed3d8c87fa68a4829c094d209093c6a6f73cd1dd9c8fe462bcb63"
+    },
+    "architecture": "HTDemucs 6-source matched-reference gain-response with task-adapted final output projections",
+    "base_module_sha256": {
+      "decoder.3.conv_tr": "6c584dabeb632fd7fcc33c5c8d9e5baff3e9cbb5f324a4f856503477cc14593d",
+      "tdecoder.3.conv_tr": "e7505e0036e11a8765a8485c776f73d4e56837c06aefbabb585c14dad69d0918"
+    },
+    "bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+    "repository_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+    "task_specific_weights_differ": true,
+    "upstream_checkpoint_sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+  },
+  "observation_identity": {
+    "input_channels": 1,
+    "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/runtime_smoke/observation.wav",
+    "sample_count": 176400,
+    "sample_rate_hz": 44100,
+    "sample_width_bytes": 4,
+    "sha256": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7"
+  },
+  "record_type": "Nano4MVPExperimentalInferenceEvidence",
+  "reference_identity": {
+    "input_channels": 1,
+    "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/runtime_smoke/reference.wav",
+    "sample_count": 176400,
+    "sample_rate_hz": 44100,
+    "sample_width_bytes": 4,
+    "sha256": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e"
+  },
+  "runtime": {
+    "cuda": "12.6",
+    "demucs": "4.0.1",
+    "device": "cuda",
+    "numpy": "2.0.2",
+    "torch": "2.8.0+cu126"
+  },
+  "runtime_memory": {
+    "peak_cuda_allocated_bytes": 668539392,
+    "process_max_rss_kib": 1379808
+  },
+  "schema_version": "1.0",
+  "timing": {
+    "model_load_and_adaptation_seconds": 0.589837709441781,
+    "observation_separation_seconds": 0.08196693938225508,
+    "reference_separation_seconds": 0.5275942552834749,
+    "total_seconds": 1.2050594249740243
+  }
+}

@@ -1,3 +1,18 @@
+# Final MVP integration update — 2026-09-20
+
+The current milestone is **FINAL_MVP_PRODUCT_INTEGRATION / MVP_BASE_READY**.
+Nano4 publication `01eaf5ddcc439efe799be61e54589d331c8556c6` is accepted as
+engineering candidate material and merged at `80f6df0103c3cd436a919b92db9fb82e8e703536`.
+See `docs/implementation/MVP_BASE_READY.md` and `NANO4_MVP_BASE_REVIEW.json`.
+The model-independent readiness record below remains valid but its waiting-for-
+artifact language is historical. The frozen candidate has now arrived; repository-
+native adapter, Runtime orchestration and UI parity proceed in the same three lanes.
+Bass-only matched-digital support, uncalibrated confidence, no production numerical
+authorization. MI300 lineage, calibration, PN54 and physical validation remain gates.
+No shared contract meaning changed. Latest origin/main is the source of truth.
+
+---
+
 # Current engineering status — 2026-09-20
 
 **MVP_PRE_MODEL_READY is READY for model-independent software.** The complete

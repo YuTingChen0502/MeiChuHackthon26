@@ -1,0 +1,8 @@
+b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229  ./checkpoint.pt
+4c6dc82cd63b53fe5f61cd2c718832bcd2cfcb8a3c4aca5d91eeb517af804b14  ./evidence/cp2b-external-sha256-manifest.txt
+dfb6581635e08aa930efeaad915f3c1f4bde80c068cf4803a87505da669c832e  ./evidence/cp2b-final-evidence-v1.json
+4716cdd048aa3d1c3180ec005af3dcf6b3ababd6a291d3f5a745c8980881f4ed  ./evidence/CP2B_METHOD_COMPARISON_REPORT.md
+9d41e2cc89e8a35de2f4ca75a06a7a01d9692868bcb15f6490d7b06d6018f969  ./evidence/cp2b-slurm-job-ledger-v1.json
+81da7e94058c6b11e962ce8e612a4f8b4045973baedc5c13d1ce2058623a8bbf  ./evidence/selected-mi300-adaptation-config-v1.json
+ef86e061862f82c5568ae1c345066e436d0cfd4be5ab3e6dc42069326b7f263f  ./manifest.json
+b736eab2aaef8bd4267d26e9ca59154845afa82d2d47179ba7bf640c20fbf648  ./SNAPSHOT_SOURCE_SHA256.txt

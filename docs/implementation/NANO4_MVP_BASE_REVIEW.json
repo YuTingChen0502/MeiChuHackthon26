@@ -1,0 +1,24 @@
+{
+  "publication": "01eaf5ddcc439efe799be61e54589d331c8556c6",
+  "common_ancestor": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+  "changed_files": 53,
+  "ownership": "models/candidates only",
+  "shared_contract_changes": false,
+  "artifact_hash_entries_verified": 45,
+  "archive_only_verified_files": [
+    "model_bundle/checkpoint.pt",
+    "model_bundle/torch_cache/hub/checkpoints/5c90dfd2-34c22ccb.th"
+  ],
+  "archive_sha256": "5963e80929e2fa987f223056dacf70659066ef07154b169447e1864dd5e933ad",
+  "archive_path_link_safety": "PASS",
+  "archive_metadata_matches_git": true,
+  "recorded_smoke_logical_hashes_recomputed": "PASS",
+  "recorded_smoke_checks": 12,
+  "redacted_secret_scan_findings": [],
+  "local_inference_reexecuted": false,
+  "acceptance_scope": "private engineering candidate material only; no production numerical authorization",
+  "supported_envelope": "bass only, matched digital",
+  "confidence": "uncalibrated; probability null",
+  "remaining": "repository-native adapter; held-out calibration; MI300 lineage; PN54 and physical evidence",
+  "media_policy": "two MoisesDB-derived validation WAVs are research fixtures, not public/demo-rights approval; existing source-only exporter excludes audio/archive/checkpoints"
+}

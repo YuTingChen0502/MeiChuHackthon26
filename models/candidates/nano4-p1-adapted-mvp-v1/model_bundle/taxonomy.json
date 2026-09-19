@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "taxonomy_id": "cp2b-mvp-family-support-v1",
+  "model_source_order": ["drums", "bass", "other", "vocals", "guitar", "piano"],
+  "families": {
+    "bass": {
+      "model_source": "bass",
+      "status": "SUPPORTED",
+      "reason": "Passed the frozen CP2B calibration and untouched fresh-final targets at its frozen operating point."
+    },
+    "drums": {
+      "model_source": "drums",
+      "status": "UNSUPPORTED",
+      "reason": "Failed the frozen CP2B fresh-final precision floor: 0.8767123287671232 < 0.90."
+    },
+    "guitar": {
+      "model_source": "guitar",
+      "status": "UNSUPPORTED",
+      "reason": "Adaptation improved diagnostics, but no calibration operating point met all frozen targets."
+    },
+    "keys": {
+      "model_source": "piano",
+      "status": "UNSUPPORTED",
+      "reason": "No calibration operating point met all frozen targets; generic HTDemucs other is not mapped to keys."
+    },
+    "vocals": {
+      "model_source": "vocals",
+      "status": "UNSUPPORTED",
+      "reason": "Failed the frozen CP2B fresh-final precision floor: 0.8617511520737328 < 0.90."
+    }
+  },
+  "unknown_configured_family_policy": {
+    "status": "INSUFFICIENT_EVIDENCE",
+    "numeric_output": null,
+    "reason": "The family is absent from the frozen canonical taxonomy."
+  },
+  "generic_other_policy": "Never map generic other to a specific configured instrument family.",
+  "unsupported_output_policy": "Return a row with null numeric evidence, ABSTAIN, and the recorded reason; never silently omit or classify as Normal."
+}

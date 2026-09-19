@@ -1,0 +1,62 @@
+{
+  "record_type": "CP2CMI300SourceArtifactManifest",
+  "schema_version": "1.0",
+  "repository": {
+    "path": "/work/austinhpc25/MeiChuHackathon26",
+    "sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0"
+  },
+  "dataset": {
+    "identity": "MoisesDB v0.1",
+    "archive_path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/incoming/moisesdb.zip",
+    "archive_sha256": "4cde33ce416ac7c868cffcb60eb31f5c741ab7ae5601cbb9d99ed498b72c48c1",
+    "license": "CC BY-NC-SA 4.0 non-commercial research",
+    "raw_audio_in_bundle": false
+  },
+  "model": {
+    "upstream_checkpoint": {
+      "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/model_bundle/torch_cache/hub/checkpoints/5c90dfd2-34c22ccb.th",
+      "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+    },
+    "nano4_adapted_checkpoint": {
+      "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/model_bundle/checkpoint.pt",
+      "sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+    },
+    "bundle_manifest": {
+      "path": "/work/austinhpc25/nano4_cp2_mvp_candidate_v1/model_bundle/manifest.json",
+      "sha256": "c2270b54f59a99f01b7016200db6a35802b058721b3f17f7a19653acf50b3e32"
+    }
+  },
+  "mi300_inputs": {
+    "policy_config": {
+      "path": "adaptation_config.json",
+      "sha256": "81da7e94058c6b11e962ce8e612a4f8b4045973baedc5c13d1ce2058623a8bbf"
+    },
+    "execution_config": {
+      "path": "execution_config.json",
+      "sha256": "02f72c6cb1f5dad4702372605150ce3e211b8cf5b08957495d29da93e9e4ef58"
+    },
+    "training_manifest": {
+      "path": "training_manifest.json",
+      "sha256": "5e3c4e479603c995daf16c8497fb631fbfed40cab4463864abfaffe98046b976"
+    },
+    "pair_plan_config": {
+      "path": "pair_plan_config.json",
+      "sha256": "7759dc40f4bb3a250c9007b7440af268571932e796ef9fac5d0ff0e769dd565d"
+    },
+    "pair_plan": {
+      "path": "pair_plan.json",
+      "sha256": "fc86aedb5d3e0a788322fb8128ad2a15417f8ba4b9ab0d27b81bdee9470ce202"
+    },
+    "exposure_ledger": {
+      "path": "exposure_ledger.json",
+      "sha256": "f3e83c3aac59b3db7106127991b5ed5fdca16047994faf36aec92e85fcc3e3a7"
+    }
+  },
+  "nano4_evidence": {
+    "cp2b_comparison_report_sha256": "4716cdd048aa3d1c3180ec005af3dcf6b3ababd6a291d3f5a745c8980881f4ed",
+    "cp2b_final_evidence_sha256": "dfb6581635e08aa930efeaad915f3c1f4bde80c068cf4803a87505da669c832e",
+    "smoke_result_sha256": "411b36edb72878ee9b393f81bb111ec9c85b9faa87c179c327d7a6bf8e60723c",
+    "inference_harness_sha256": "352a99713b621e72ee2efe23885e4a168f2d8b80d603eb636036a2850e844535"
+  },
+  "mi300_execution_status": "NOT_YET_EXECUTED"
+}
