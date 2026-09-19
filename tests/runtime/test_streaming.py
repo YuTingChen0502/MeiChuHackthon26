@@ -220,6 +220,11 @@ class StreamingTests(unittest.TestCase):
                 worker.start();self.assertTrue(done.wait(2));worker.stop()
                 self.assertEqual(expected_count,len(seen))
 
+    def test_pcm16_positive_rail_is_not_missed_by_clipping_gate(self):
+        from core.runtime.quality import pcm_clipped_fraction
+        self.assertEqual(.5,pcm_clipped_fraction((32767/32768,-1.0,0.0,.5)))
+        self.assertEqual(0.0,pcm_clipped_fraction((.1,-.5,.9)))
+
 
 if __name__=='__main__':
     unittest.main()

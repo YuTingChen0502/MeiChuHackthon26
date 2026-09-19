@@ -7,7 +7,7 @@ import uuid
 from collections import deque
 from threading import Event, Thread
 
-from core.runtime.quality import quality_state
+from core.runtime.quality import pcm_clipped_fraction, quality_state
 
 
 class AudioWorker:
@@ -116,7 +116,7 @@ class AudioWorker:
                     gap |= (window.analysis_run_id != previous.analysis_run_id or
                             window.sample_start != previous.sample_start + self.pipeline.hop_size_samples)
                 quality = quality_state(
-                    clipped_fraction=sum(abs(value) >= 1 for value in window.samples) / len(window.samples),
+                    clipped_fraction=pcm_clipped_fraction(window.samples),
                     dropout=gap,
                     comparability='weak' if not any(window.samples) else 'comparable')
                 begin = self.clock()

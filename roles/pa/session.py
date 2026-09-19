@@ -24,7 +24,7 @@ from core.contracts.validation import (
 )
 from core.profiles.baselines import BaselineStore, build_baseline_profile
 from core.runtime.deviation import FrameBuilder
-from core.runtime.quality import quality_is_usable, quality_state
+from core.runtime.quality import pcm_clipped_fraction, quality_is_usable, quality_state
 
 from .policy import PersistentAnomalyPolicy, recommendation_for
 
@@ -474,7 +474,7 @@ class PASession:
             quality["stale"] = True
             if "stale_evidence" not in quality["reason_codes"]:
                 quality["reason_codes"].append("stale_evidence")
-        clipped = sum(abs(value) >= 1 for value in window.samples) / len(window.samples)
+        clipped = pcm_clipped_fraction(window.samples)
         quality["clipped_fraction"] = max(quality["clipped_fraction"], clipped)
         if not any(window.samples):
             quality["comparability"] = "weak"

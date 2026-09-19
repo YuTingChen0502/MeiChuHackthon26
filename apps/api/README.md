@@ -54,7 +54,10 @@ at most 1024 samples into an eight-packet queue; two planned windows may wait fo
 analysis. Oldest queued windows and results older than two seconds are dropped or
 abstained, with discontinuity gates. Timing uses ADC-anchored sample counts and a
 50 ms clock-jitter budget; gross drift, status errors and lost samples start a new
-run. These are transport settings, not a validated ML operating envelope.
+run. The same 50 ms budget permits clock-resolution jitter at the publication
+boundary and is conservatively added to native verification freshness requirements.
+Clipping gates include PCM16 positive full scale (32767/32768), not just amplitude
+1.0. These are transport settings, not a validated ML operating envelope.
 
 Recent retention is 128 frames with PCM hashes and 128 events per session. Baseline
 selection must fit entirely within retained coverage. Overlap contributes unique
@@ -70,7 +73,8 @@ RealAnalyzerAdapter and its evidence remains uncalibrated, with null probabiliti
 intervals and instrument advice. Production confidence requires a Lead-approved
 empirical bundle; there is no bypass flag. Client-supplied physical provenance,
 gain, enhancements and geometry remain unverified. Native opening alone cannot
-qualify Live. No public schemas or UI routes were added.
+qualify Live. Unverified native capture also marks frame quality incompatible.
+No public schemas or UI routes were added.
 
 `RuntimeAPI(available_audio_devices={...})` retains the in-process CP1 scripted Fake
 harness, with managed capture disabled by default for that explicit test seam. It is
