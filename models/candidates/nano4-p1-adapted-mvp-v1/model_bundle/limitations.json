@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "candidate_status": "EXPERIMENTAL_MVP_INTEGRATION_CANDIDATE",
+  "supported_claim": "Bass relative-level anomaly evidence in the tested matched-digital-reference regime at the frozen operating point.",
+  "limitations": [
+    "Only bass passed all frozen CP2B fresh-final action targets.",
+    "Drums and vocals failed fresh-final precision at their frozen family thresholds.",
+    "Guitar improved materially but failed calibration and is unsupported.",
+    "Keys is unsupported; generic other is not mapped to keys.",
+    "Confidence is uncalibrated and qualitative; no probability claim is allowed.",
+    "The tested comparison uses matched digital excerpts and cannot establish real-room microphone performance.",
+    "Noise evidence is selective validation-only digital injection: bass/drums/vocals passed tested 20 dB cells, but the bundle may claim action support only for bass and may not generalize beyond tested noise.",
+    "The acoustic check is simulated only and is not physical evidence.",
+    "No absolute per-instrument SPL can be inferred from one microphone.",
+    "No MI300 adaptation, PN54 deployment, production RealAnalyzer enablement, live-PA validation, or mixer-control authorization has occurred.",
+    "The bundle contains an adapted projection delta and its exact upstream checkpoint; it is not a newly trained full separator checkpoint."
+  ],
+  "prohibited_behavior": [
+    "Emit numeric evidence for unsupported or unknown configured families.",
+    "Convert abstention into Normal.",
+    "Retune thresholds against opened CP2 or CP2B final evidence.",
+    "Independently normalize reference and observation amplitudes.",
+    "Treat this bundle as a production or competition-compliance artifact."
+  ]
+}

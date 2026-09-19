@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+  "bundle_status": "FROZEN_EXPERIMENTAL_MVP_CANDIDATE",
+  "source_repository": "/work/austinhpc25/MeiChuHackathon26",
+  "source_repository_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+  "source_nano4_checkpoint": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/htdemucs6s-output-projections-adapted.pt",
+    "sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+  },
+  "bundled_adapted_checkpoint": {
+    "path": "checkpoint.pt",
+    "sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "bytes": 60361,
+    "format": "PyTorch dictionary containing the two adapted projection module state dictionaries"
+  },
+  "upstream_pretrained_checkpoint": {
+    "identity": "facebookresearch-demucs:htdemucs_6s",
+    "path": "torch_cache/hub/checkpoints/5c90dfd2-34c22ccb.th",
+    "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+    "bytes": 54996327
+  },
+  "architecture": "HTDemucs 6-source matched-reference gain-response with task-adapted final output projections",
+  "task_adapted_parameter_subset": [
+    "decoder.3.conv_tr.weight",
+    "decoder.3.conv_tr.bias",
+    "tdecoder.3.conv_tr.weight",
+    "tdecoder.3.conv_tr.bias"
+  ],
+  "parameter_counts": {
+    "upstream_model_total": 27414996,
+    "optimizer_visible_adapted_subset": 13860,
+    "effective_four_family_output_coefficients": 9240
+  },
+  "frontend": "frontend.json",
+  "taxonomy": "taxonomy.json",
+  "thresholds": "thresholds.json",
+  "limitations": "limitations.json",
+  "training_config": "training_config.json",
+  "sample_rate_hz": 44100,
+  "window_duration_seconds": 4.0,
+  "channel_convention": "mono asset mixture duplicated to dual-mono model input",
+  "amplitude_convention": "matched reference/observation scale is preserved; no independent normalization",
+  "supported_families": ["bass"],
+  "unsupported_families": ["drums", "guitar", "keys", "vocals"],
+  "unknown_family_status": "INSUFFICIENT_EVIDENCE",
+  "comparison_regime": "matched real-recorded MoisesDB digital excerpts with deterministic controlled gain interventions",
+  "tested_data_regime": "CP2B artist-isolated calibration and 16-parent/10-artist untouched fresh-final digital benchmark",
+  "tested_noise_regime": "selective validation-only MUSAN ambient/babble/speech at 20 and 10 dB observation SNR; no common 10 dB passing envelope",
+  "calibration_status": "Family-specific thresholds were frozen before fresh-final access; only bass survived all fresh-final targets.",
+  "confidence_status": "UNCALIBRATED_QUALITATIVE_ONLY",
+  "runtime_requirements": {
+    "python": "3.12.13",
+    "torch": "2.8.0+cu126",
+    "torchaudio": "2.8.0+cu126",
+    "demucs": "4.0.1",
+    "numpy": "2.0.2",
+    "validated_gpu": "NVIDIA H200",
+    "other_devices": "not validated by this bundle smoke"
+  },
+  "adaptation_identity": {
+    "expected_upstream_module_sha256": {
+      "decoder.3.conv_tr": "6c584dabeb632fd7fcc33c5c8d9e5baff3e9cbb5f324a4f856503477cc14593d",
+      "tdecoder.3.conv_tr": "e7505e0036e11a8765a8485c776f73d4e56837c06aefbabb585c14dad69d0918"
+    },
+    "expected_adapted_module_sha256": {
+      "decoder.3.conv_tr": "8a2641c7a21182b894cf9921bef4616ad865725de3478f66720c5b4c73f10cd2",
+      "tdecoder.3.conv_tr": "405cfda359fed3d8c87fa68a4829c094d209093c6a6f73cd1dd9c8fe462bcb63"
+    }
+  },
+  "canonical_inference": "reference plus observation -> adapted HTDemucs -> source levels -> source deltas -> configured-source common mode -> centered balance -> support/threshold gate",
+  "production_real_analyzer_authorized": false,
+  "mi300_adaptation_executed": false,
+  "pn54_deployment_executed": false
+}
