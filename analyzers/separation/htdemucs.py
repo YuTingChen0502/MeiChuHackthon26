@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+from importlib.metadata import version
 
 import numpy as np
 
@@ -16,11 +17,17 @@ class SeparationRuntimeUnavailable(RuntimeError):
 class HTDemucs6sSeparator:
     backend_id = "htdemucs_6s"
     checkpoint_id = "facebookresearch-demucs:htdemucs_6s"
+    checkpoint_sha256 = "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
 
     @staticmethod
     def runtime_status() -> dict[str, object]:
         missing = [name for name in ("torch", "demucs") if importlib.util.find_spec(name) is None]
-        return {"available": not missing, "missing_modules": missing}
+        versions = (
+            {name: version(name) for name in ("torch", "demucs", "torchaudio")}
+            if not missing
+            else {}
+        )
+        return {"available": not missing, "missing_modules": missing, "versions": versions}
 
     def __init__(self, *, device: str = "cpu", segment_s: float | None = None) -> None:
         status = self.runtime_status()
@@ -73,4 +80,3 @@ class HTDemucs6sSeparator:
             backend_id=self.backend_id,
             checkpoint_id=self.checkpoint_id,
         )
-

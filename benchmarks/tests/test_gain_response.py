@@ -15,6 +15,8 @@ class GainResponseBenchmarkTests(unittest.TestCase):
         self.assertEqual(metrics["eligible_measurements"], metrics["covered_measurements"])
         self.assertIn("unconditional_mae_db", metrics)
         self.assertIn("attributed_anomaly_f1", metrics)
+        self.assertEqual({"clean", "white_gaussian@20dB", "white_gaussian@5dB"},
+                         set(result["metrics_by_noise"]))
         self.assertEqual(27, len(result["pair_metadata"]))
 
     def test_pair_metadata_contains_required_ground_truth(self):

@@ -252,11 +252,25 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
         model_checkpoint={
             "backend_id": separator.backend_id,
             "checkpoint_id": separator.checkpoint_id,
-            "weights_hash": None,
+            "weights_sha256": getattr(separator, "checkpoint_sha256", None),
+            "runtime": (
+                HTDemucs6sSeparator.runtime_status()
+                if backend == "htdemucs_6s"
+                else {"implementation": "NumPy deterministic FFT masks"}
+            ),
             "adapted": False,
         },
         command=command,
     )
+    metrics_by_noise = {}
+    for noise in config["noise_conditions"]:
+        snr = noise["snr_db"]
+        key = "clean" if snr is None else f"{noise['kind']}@{snr}dB"
+        condition_rows = [
+            row for row in rows
+            if row["noise_kind"] == noise["kind"] and row["snr_db"] == snr
+        ]
+        metrics_by_noise[key] = _metrics(condition_rows, float(config["neutral_tolerance_db"]))
     return {
         "probe_status": "completed",
         "backend": separator.backend_id,
@@ -269,6 +283,7 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
         "metadata": metadata,
         "pair_metadata": pair_metadata,
         "metrics": _metrics(rows, float(config["neutral_tolerance_db"])),
+        "metrics_by_noise": metrics_by_noise,
         "unique_separation_calls": len(separation_cache),
         "rows": rows,
     }
