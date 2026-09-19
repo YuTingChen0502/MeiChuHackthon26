@@ -10,10 +10,10 @@ export const SETUP_ENDPOINT_PLAN = [
 ];
 
 export function displayStatus(instrument) {
+  if (instrument.activity === 'inactive') return instrument.confidence.abstained ? 'Inactive · Abstained' : 'Inactive';
+  if (instrument.activity === 'unsupported' || instrument.status === 'unsupported') return instrument.confidence.abstained ? 'Unsupported · Abstained' : 'Unsupported';
+  if (instrument.activity === 'unknown' || instrument.status === 'unknown') return instrument.confidence.abstained ? 'Unknown / Not Observable · Abstained' : 'Unknown / Not Observable';
   if (instrument.confidence.abstained) return 'Abstained / Unknown';
-  if (instrument.activity === 'inactive') return 'Inactive';
-  if (instrument.activity === 'unknown' || instrument.status === 'unknown') return 'Not Observable';
-  if (instrument.activity === 'unsupported' || instrument.status === 'unsupported') return 'Not Observable';
   return ({ normal: 'Normal', too_loud: 'Too Loud', too_quiet: 'Too Quiet' })[instrument.status] || 'Not Observable';
 }
 
@@ -24,10 +24,12 @@ export function balanceText(instrument) {
   return usable ? `About ${instrument.balance_deviation_db >= 0 ? '+' : ''}${instrument.balance_deviation_db.toFixed(1)} dB balance` : 'Balance unavailable';
 }
 
-export function freshness(frame, now = frame?.published_monotonic_s ?? 0) {
+export function freshness(frame, authoritativeNowMonotonicS = null) {
   if (!frame) return 'No observation received';
-  const age = Math.max(0, now - frame.published_monotonic_s);
-  return `${age.toFixed(1)} s old${frame.quality.stale ? ' — stale; do not act' : ''}`;
+  if (frame.quality.stale) return frame.example_only ? 'Stale fixture frame — do not act' : 'Stale frame — do not act';
+  if (typeof authoritativeNowMonotonicS !== 'number') return frame.example_only ? 'Fixture/static frame — data age unavailable' : 'Data age unavailable';
+  const age = Math.max(0, authoritativeNowMonotonicS - frame.published_monotonic_s);
+  return `${age.toFixed(1)} s old`;
 }
 
 export function commandFor(snapshot, action, payload = {}, idempotencyKey = `ui-${action}-fixture`) {
@@ -39,26 +41,26 @@ export function commandFor(snapshot, action, payload = {}, idempotencyKey = `ui-
     reference, baseline, event, action, payload };
 }
 
-function confidenceText(confidence) {
-  if (confidence.abstained) return `Abstained: ${confidence.reasons.join(', ')}`;
-  if (confidence.probability === null) return `${confidence.calibration_status.replaceAll('_', ' ')}; probability unavailable`;
-  return `${Math.round(confidence.probability * 100)}% confidence · ±${confidence.magnitude_tolerance_db} dB`;
+export function confidenceText(confidence) {
+  const calibration = confidence.calibration_status.replaceAll('_', ' ');
+  if (confidence.abstained) return `Abstained · ${calibration}: ${confidence.reasons.join(', ')}`;
+  const probability = confidence.probability === null ? 'Probability unavailable' :
+    `${Math.round(confidence.probability * 100)}% probability of ${confidence.probability_event.replaceAll('_', ' ')}`;
+  const tolerance = `Magnitude tolerance: ±${confidence.magnitude_tolerance_db} dB`;
+  const interval = confidence.prediction_interval_db === null ? null :
+    `Prediction interval: ${confidence.prediction_interval_db[0]} to ${confidence.prediction_interval_db[1]} dB`;
+  return [calibration, probability, tolerance, interval].filter(Boolean).join(' · ');
 }
 
-function showcaseFrame(snapshot) {
+function showcaseFrame(snapshot, fixtureMode = 'live') {
   const makeConfidence = (abstained, reasons, probability = .91) => ({ record_type:'ConfidenceState', schema_version:'1.0', calibration_status: abstained ? 'out_of_envelope':'calibrated', calibration_id: abstained ? null:'fixture-calibration', probability_event: abstained ? 'not_available':'joint_anomaly_numeric_correct', magnitude_tolerance_db: 1.5, probability: abstained ? null:probability, prediction_interval_db: abstained ? null:[-1.1,1.2], abstained, reasons });
   const item = (instrument_id, activity, status, deviation, confidence) => ({ record_type:'InstrumentState', schema_version:'1.0', instrument_id, family:instrument_id, activity, presence_probability:activity === 'active' ? .92:null, source_level_delta_db:deviation, balance_deviation_db:deviation, status, confidence, tone:null });
   return { record_type:'AnalysisFrame', schema_version:'1.0', example_only:true, frame_id:'fixture-frame-operator', session_id:snapshot.session_id, analysis_run_id:'fixture-run-operator', sequence:9, input_kind:snapshot.source.input_kind, input_asset_or_device_id:snapshot.source.input_asset_or_device_id, clock_id:snapshot.source.clock_id, sample_rate_hz:48000, sample_start:2016000, sample_end:2208000, capture_end_monotonic_s:46, published_monotonic_s:47, model_bundle_id:snapshot.execution.model_bundle_id, frontend_id:snapshot.execution.frontend_id, execution_profile_id:snapshot.execution.execution_profile_id, baseline_id:snapshot.active_baseline?.baseline_id ?? null, baseline_version:snapshot.active_baseline?.version ?? null, reference_id:snapshot.active_reference.reference_id, quality:{clipped_fraction:0,dropout:false,stale:false,comparability:'comparable',capture_compatible:true,reason_codes:[],snr_estimate_db:null,snr_is_ground_truth:false}, observed_mix_level_delta_db:.2,common_mode_gain_db:.1,identifiability_assumption:'majority_active_sources_unchanged',inference_wall_ms:28,
-    instruments:[item('guitar','active','too_loud',4.1,makeConfidence(false,[],.92)), item('bass','active','normal',.2,makeConfidence(false,[],.88)), item('drums','inactive','inactive',null,makeConfidence(true,['source_inactive'])), item('vocal','unknown','unknown',null,makeConfidence(true,['noise_overlap','not_observable']))] };
+    instruments: fixtureMode === 'rehearsal' ? [item('guitar','active','normal',.2,makeConfidence(false,[],.92)), item('bass','inactive','inactive',null,makeConfidence(true,['source_inactive'])), item('drums','unknown','unknown',null,makeConfidence(true,['noise_overlap','not_observable']))] : [item('guitar','active','too_loud',4.1,makeConfidence(false,[],.92)), item('bass','active','normal',.2,makeConfidence(false,[],.88)), item('drums','inactive','inactive',null,makeConfidence(true,['source_inactive']))] };
 }
 
-function fixtureScenario(base) {
+export function fixtureScenario(base) {
   const snapshot = structuredClone(base.live_snapshot);
-  const vocalCoverage = { instrument_id:'vocal', valid_active_seconds:30, qualified_nonoverlap_windows:7, status:'adequate' };
-  snapshot.song.configured_families.push('vocal');
-  snapshot.active_reference.coverage.push(vocalCoverage);
-  snapshot.active_baseline.coverage.push(structuredClone(vocalCoverage));
-  snapshot.active_baseline.normal_envelopes.push({ instrument_id:'vocal', center_db:0, lower_db:-1.5, upper_db:1.5 });
   snapshot.latest_frame = showcaseFrame(snapshot);
   snapshot.incident_state = 'active'; snapshot.song.workflow_state = 'LIVE_ANOMALY';
   const target = { target_kind:'baseline', reference:{reference_id:snapshot.active_reference.reference_id,source_asset_hash:snapshot.active_reference.source_asset_hash}, baseline:{baseline_id:snapshot.active_baseline.baseline_id,baseline_version:snapshot.active_baseline.version} };
@@ -69,12 +71,18 @@ function fixtureScenario(base) {
   return snapshot;
 }
 
+export function fixtureRehearsal(base) {
+  const snapshot = structuredClone(base.rehearsal_snapshot);
+  snapshot.latest_frame = showcaseFrame(snapshot, 'rehearsal');
+  return snapshot;
+}
+
 function render(snapshot) {
   const frame = snapshot.latest_frame;
   document.querySelector('#mode').textContent = `${snapshot.session_mode === 'live' ? 'LIVE' : 'REHEARSAL'} · ${snapshot.incident_state}`;
   document.querySelector('#summary').innerHTML = `<div><span class="eyebrow">SONG / SESSION</span><strong>${snapshot.song.name} · ${snapshot.session_id}</strong></div><div><span class="eyebrow">CAPTURE</span><strong>${snapshot.source.input_kind.replaceAll('_',' ')} · ${snapshot.source.input_asset_or_device_id}</strong></div><div><span class="eyebrow">RUNTIME</span><strong>${snapshot.execution.provider} · ${snapshot.execution.model_bundle_id}</strong></div>`;
   document.querySelector('#profiles').innerHTML = `<div><p class="profile-name">IDEAL REFERENCE</p><strong>${snapshot.active_reference?.reference_id ?? 'Not ready'}</strong><p class="muted">Immutable uploaded mixed reference</p></div><div><p class="profile-name">ACCEPTED BASELINE</p><strong>${snapshot.active_baseline ? `${snapshot.active_baseline.baseline_id} v${snapshot.active_baseline.version}` : 'Not accepted'}</strong><p class="muted">Human acceptance only; never automatic</p></div>`;
-  document.querySelector('#freshness').textContent = freshness(frame, frame ? frame.published_monotonic_s + .6 : 0);
+  document.querySelector('#freshness').textContent = freshness(frame);
   document.querySelector('#instrument-cards').innerHTML = (frame?.instruments ?? []).map(i => `<article class="instrument ${i.status}"><span class="status ${i.status}">${displayStatus(i)}</span><h3>${i.family}</h3><p class="metric">${balanceText(i)}</p><p class="muted">${confidenceText(i.confidence)}</p></article>`).join('') || '<p class="muted">Awaiting analysis frame.</p>';
   const rec = snapshot.recommendations?.[0];
   document.querySelector('#recommendation').innerHTML = rec ? `<strong>${rec.instrument_id}: ${rec.action.replaceAll('_',' ')}</strong><p>${rec.human_control_hint}</p><p class="muted">${rec.suggested_step_db === null ? 'No numeric step is available.' : `Suggested bounded step: ${rec.suggested_step_db} dB`} · Human executes; automatic execution is false.</p>` : '<p class="muted">No current recommendation.</p>';
@@ -100,8 +108,7 @@ async function start() {
   const response = await fetch(FIXTURE_PATH);
   const fixtures = await response.json();
   const liveSnapshot = fixtureScenario(fixtures);
-  const rehearsalSnapshot = structuredClone(fixtures.rehearsal_snapshot);
-  rehearsalSnapshot.latest_frame = showcaseFrame(rehearsalSnapshot);
+  const rehearsalSnapshot = fixtureRehearsal(fixtures);
   let snapshot = liveSnapshot;
   render(snapshot);
   document.querySelector('#fixture-live').addEventListener('click', () => { snapshot = liveSnapshot; render(snapshot); });

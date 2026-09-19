@@ -27,7 +27,10 @@ Runtime lane's handlers.
    as a recording.
 
 `demo_player/player.js` has no imports and does not call the UI, API, analyzer, or
-runtime. Its prepared scenario truth is deliberately private to that process.
+runtime. It plays a real generated audible-output check and may play a locally
+selected rights-cleared audio file. Its status is driven by HTML media events, not by
+button intent. File names and prepared scenario truth are intentionally not rendered
+or transmitted outside that browser process.
 
 ## Runtime integration request
 
