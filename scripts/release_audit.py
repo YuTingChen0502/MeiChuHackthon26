@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {'.py', '.md', '.json', '.toml', '.txt', '.html', '.css', '.js',
                  '.mjs', '.sh', '.ps1', '.yml', '.yaml', '.svg', '.example'}
 SPECIAL_NAMES = {'.gitignore', '.gitattributes', '.gitkeep', 'LICENSE', 'NOTICE'}
-PRIVATE_ROOTS = ('.codex/', 'docs/official/', 'data/', 'datasets/', 'runs/', 'checkpoints/')
+PRIVATE_ROOTS = ('.codex/', '.pa-runtime/', 'docs/official/', 'data/', 'datasets/', 'runs/', 'checkpoints/')
 RULES = {
     'private_key': re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     'access_token': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[A-Z0-9]{16})\b'),
@@ -109,7 +109,7 @@ def self_test():
     assert not findings('password = "<supplied-locally>"')
     assert eligible('models/bundle/manifest.json') and eligible('apps/ui/app.js')
     for name in ('../escape.py', '.env', '.env.local', 'docs/official/source.pdf',
-                 'data/recording.wav', 'models/weights.pt', '.codex/config.toml'):
+                 'data/recording.wav', 'models/weights.pt', '.codex/config.toml', '.pa-runtime/context.json'):
         assert not eligible(name), name
     with tempfile.TemporaryDirectory() as directory:
         try:

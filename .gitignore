@@ -24,6 +24,7 @@ data/
 datasets/
 
 # Runtime
+/.pa-runtime/
 *.db
 *.sqlite
 *.sqlite3

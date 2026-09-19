@@ -3,49 +3,57 @@
   "status": "IN_PROGRESS",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_pushed_main": "31c98c1325f0f0f7e7de0bc84b71335246bd489f",
-  "latest_integration_commit": "31c98c1325f0f0f7e7de0bc84b71335246bd489f",
+  "latest_pushed_main": "07c66486a33a25e87b150f23de5862833ff20658",
+  "latest_integration_commit": "07c66486a33a25e87b150f23de5862833ff20658",
   "lanes": {
     "ML": {
-      "commit": "a3a4695316d0bb5c33559df716b94b053434c6f1",
-      "status": "generic integration and reference coverage corrections accepted; final report pending",
+      "commit": "fa7068155461e42ece413235347a6bd5f43667ee",
+      "status": "ML_INTEGRATION_READY accepted and integrated with final report",
       "go_no_go": "NOT_ISSUED",
       "empirical_claim": "No trained artifact or real-audio capability accepted"
     },
     "Runtime": {
-      "commit": "16bf1d385210f859a3819ecb686d402568b05d22",
-      "status": "independent shared28/runtime30/integration47 passed; actual bundle bridge and sustained report pending"
+      "commit": "c0d60e3b45c2a246c226abbdc8e1f67c791a7870",
+      "status": "integrated; shared28/runtime30/integration51 passed; actual native and sustained evidence report pending"
     },
     "UI": {
-      "commit": "ff1806c3655e6fbcc208d808a5aba5109e8a789c",
-      "status": "full product UX and supplied design references in progress; checkpoint pending"
+      "commit": "abb5229ae35556ef93674cd3ed72cfdf62c7f992",
+      "status": "CORRECTIONS_REQUIRED: form submission, honest freshness/status, guarded controls, rehearsal actions, fixture isolation, form draft preservation"
     }
   },
   "pending_reviews": [
-    "ML final evidence report",
-    "Runtime actual ML loader integration and current-source native/soak evidence",
-    "UI full product flow, authoritative guided state, reconnect and demo isolation"
+    "Runtime final current-source native/soak evidence",
+    "UI six concrete functional corrections and actual guided product flow"
   ],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
       "owner": "Runtime with ML",
-      "status": "Concrete registry and acceptance types available; actual-loader test in progress"
+      "status": "RESOLVED: actual generic-loader integration tests passed on main07c6648"
+    },
+    {
+      "id": "UI/guided-route",
+      "owner": "Runtime",
+      "status": "RESOLVED: GET/POST guided routes pushed main07c6648; UI notified to sync"
     }
   ],
   "events": {
     "CP2-ML/CHECKPOINT_COMMIT/096238a0ce5068d4e9a14971a3f66f7152d0bd11": "accepted and merged; follow-up correction integrated",
     "CP2-ML/CORRECTION_COMPLETE/1477275744f40faff95386986185d9e87d259622": "bounded accepted reference coverage reviewed and merged",
     "CP2-ML/CORRECTION_COMPLETE/a3a4695316d0bb5c33559df716b94b053434c6f1": "accepted; analyzer30 and release audit passed on main31c98c1",
+    "CP2-ML/CHECKPOINT_COMMIT/fa7068155461e42ece413235347a6bd5f43667ee": "accepted and integrated atfc6e4ad; final report retained",
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/c0d60e3": "reviewed and integrated via4a99d74 at07c6648; sustained evidence pending",
+    "CP2-UI/CHECKPOINT_COMMIT/abb5229ae35556ef93674cd3ed72cfdf62c7f992": "six concrete corrections requested; not integrated",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/170f1c1": "recorded; superseded by continuing coherent16bf1d3 review",
     "CP2-RUNTIME/CROSS_LANE_REQUEST/e4884bdacf2ab0a17e4ad8cb43a0f38804f78ffb": "ML merge acknowledged; actual-loader validation continuing"
   },
   "integration_validation": {
-    "commit": "8173c5249cd932c334f269e2dce2ea86d4bac0cc",
-    "python_tests": 179,
+    "commit": "07c66486a33a25e87b150f23de5862833ff20658",
+    "python_tests": 206,
     "ui_tests": 12,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS after correction at31c98c1; analyzer suite now30; full final integration run still required"
+    "release_scan": "PASS with zero findings; final UI integration run still required",
+    "documented_launch": "PASS on local Python3.12: explicit fake mode, health example_only, 7 actual native input entries, UI HTTP200"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",

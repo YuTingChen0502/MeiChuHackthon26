@@ -79,18 +79,29 @@ the unchanged full Fake correction-loop smoke, and the source release audit.
 
 ## Run locally
 
-See [Runtime launch and deployment](apps/api/README.md) for exact model selection,
-inventory, cache and native microphone options as implemented. Basic server command:
+Start the local native-audio application with an explicitly simulated analyzer:
 
 ```text
-python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 1 --loop asyncio --http h11 --ws websockets-sansio
+python -m apps.api.launch --storage .pa-runtime --mode fake
 ```
 
 Open `http://127.0.0.1:8000/apps/ui/`. Reference uploads currently accept bounded
-PCM16 WAV. The server stores local state in its configured Runtime storage directory.
-Missing or unaccepted production artifacts must remain unavailable/abstained;
-simulation is explicit and is not an accuracy demonstration. Use the scripted Fake
-end-to-end test to exercise deterministic recommendations and recovery.
+PCM16 WAV. Select a microphone from Runtime's actual inventory. The server stores
+state, uploaded audio and context cache under the chosen local storage directory;
+the recommended `.pa-runtime/` directory is ignored by Git and excluded from release.
+Unscripted Fake capture abstains: it does not invent instrument measurements from
+microphone audio. Use the scripted Fake end-to-end test to exercise deterministic
+recommendations and recovery; fixture UI is labeled and isolated from real commands.
+
+See [Runtime deployment and host review](apps/api/RUNTIME_PRE_MODEL_READY.md) for
+model selection, cache, approved capture profiles, native probes and PN54 procedure.
+The default `--mode bundle` requires a validated local bundle and host registration;
+missing or unaccepted production artifacts remain unavailable/abstained. There is
+no automatic download or silent fallback to Fake. Inventory is read-only:
+
+```text
+python -m apps.api.inventory
+```
 
 Run the isolated playback page separately, not through the Runtime data path:
 
@@ -114,7 +125,8 @@ Compare separation and direct candidates on identical pairs, then report attribu
 direction, dB error, coverage, abstention, noise/SNR and latency with denominators.
 The [ML readiness runbook](benchmarks/CP2_READINESS.md) provides commands. Model intake,
 export/parity and calibration handoff follow the
-[internal seam](docs/implementation/MODEL_HANDOFF_INTERNAL_V1.md). Real numerical
+[internal seam](docs/implementation/MODEL_HANDOFF_INTERNAL_V1.md) and the implemented
+[bundle layout and commands](models/CP2_ARTIFACT_BUNDLE_V1.md). Real numerical
 advice requires held-out evidence, a supported envelope, separate calibration and
 host-reviewed matching identities. A sigmoid value is not calibrated confidence.
 
