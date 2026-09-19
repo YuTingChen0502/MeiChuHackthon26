@@ -3,7 +3,7 @@
   "status": "MVP_CANDIDATE_ENGINEERING_INTEGRATION_COMPLETE",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "7f884e6",
-  "latest_integration_commit": "252d8221fc85b8ca0537ef456e6359158d5b7513",
+  "latest_integration_commit": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
   "lanes": {
     "ML": {
       "commit": "795f179bde8bbae9b3e25b8a591e2d25735ddfde",
@@ -16,8 +16,8 @@
       "status": "CHECKPOINT_ACCEPTED; reference progress/lifecycle and additive native device metadata integrated"
     },
     "UI": {
-      "commit": "d377b571c4dfc5646ec4d539358e673c3a475881",
-      "status": "CHECKPOINT_ACCEPTED; progress-sensitive polling, request deadlines and friendly microphone labels integrated"
+      "commit": "55ccfa069ac2c782f0b357cef4b59b67de562496",
+      "status": "CHECKPOINT_ACCEPTED; Harmonix production presentation merged f4d8718; Runtime/API/evidence behavior preserved"
     }
   },
   "pending_reviews": [],
@@ -61,17 +61,19 @@
     "UI/MVP_PRODUCT_UI_READY/6cef9d5006f2a72847227297ba6766f19bfb464f": "accepted and merged a84d026; no-frame/run/clock recovery, explicit fresh interval selection and reviewed clock submission; full234Python/39UI/Fake smoke PASS",
     "CP2-RUNTIME/CORRECTION_COMPLETE/605e868fe2064a82909a476a00cb86c768a79b0c": "accepted; running progress and durable input-construction failure regressions pass",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/221c401cfdbf76e51d699490c6901c4681584a9b": "accepted; metadata/default/legacy/filter regressions pass, no guessed physical deduplication",
-    "UI/CORRECTION_COMPLETE/d377b571c4dfc5646ec4d539358e673c3a475881": "accepted; UI43 and full suite pass; unrelated later visual checkpoint excluded"
+    "UI/CORRECTION_COMPLETE/d377b571c4dfc5646ec4d539358e673c3a475881": "accepted; UI43 and full suite pass; unrelated later visual checkpoint excluded",
+    "UI/HARMONIX_STYLE_READY/55ccfa069ac2c782f0b357cef4b59b67de562496": "accepted and merged f4d8718; exact9dbe03b ancestry and clean pushed branch verified; four UI-owned files; full239Python/44UI/Fake smoke/source audit PASS"
   },
   "integration_validation": {
-    "commit": "252d8221fc85b8ca0537ef456e6359158d5b7513",
+    "commit": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
     "python_tests": 239,
-    "ui_tests": 43,
+    "ui_tests": 44,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS clean executable integration zero findings",
+    "release_scan": "PASS clean executable merge zero findings",
     "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
     "browser": "PASS long226s44.1kstereo upload -> advancing progress -> completed -> native rehearsal; one transient WASAPI start failure recovered via Resume; fresh native frames observed. See ACCEPTANCE_REFERENCE_MIC_FIX.md.",
-    "actual_p1_runtime_probe": "PASS clean42695c4,20.052s,actual CPU reference/cache/file+synthetic-mic abstention,HTTP200/WS replay; docs/implementation/evidence/p1_runtime_42695c4.json"
+    "actual_p1_runtime_probe": "PASS clean42695c4,20.052s,actual CPU reference/cache/file+synthetic-mic abstention,HTTP200/WS replay; docs/implementation/evidence/p1_runtime_42695c4.json",
+    "production_ui_route": "PASS /apps/ui/ title Harmonix \u2014 Live Sound Reference; served index.html/app.js/styles.css byte-equal to canonical main; health fake-simulated"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
@@ -80,7 +82,7 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "252d8221fc85b8ca0537ef456e6359158d5b7513",
+  "latest_approved_main_implementation": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
   "remaining": [
     "empirical calibration and supported operating envelope",
     "MI300 final adaptation lineage",

@@ -1,3 +1,15 @@
+# Harmonix production UI integrated — 2026-09-20
+
+Approved UI `55ccfa069ac2c782f0b357cef4b59b67de562496` is merged at
+`f4d87181c27fe1172cb92918f45957f218c4f6fa`. Canonical `/apps/ui/` now serves
+Harmonix HTML, JavaScript and styles, verified byte-for-byte through the actual
+Runtime route. Full validation: 239 Python tests, 44 UI tests, complete Fake
+HTTP/WS/SQLite correction loop and release audit PASS. RuntimeAdapter, API,
+contracts, model behavior and evidence gates are unchanged. PN54 may sync latest
+origin/main for this presentation update independently of model/physical gates.
+
+---
+
 # Latest acceptance corrections — 2026-09-20
 
 Reference preparation and microphone selection corrections are integrated at
