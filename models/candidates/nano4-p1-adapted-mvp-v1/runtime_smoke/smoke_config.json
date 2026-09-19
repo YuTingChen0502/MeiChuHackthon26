@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "smoke_id": "nano4-cp2-mvp-candidate-smoke-v1",
+  "device": "cuda",
+  "repeat_count": 2,
+  "expected_repository_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+  "expected_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+  "expected_checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+  "expected_supported_families": ["bass"],
+  "expected_unsupported_families": ["drums", "guitar", "keys", "vocals"],
+  "expected_changed_family": "bass",
+  "expected_injected_gain_db": 4.0,
+  "maximum_smoke_gain_error_db": 2.0,
+  "fresh_final_permitted": false
+}

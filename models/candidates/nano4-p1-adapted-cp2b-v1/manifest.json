@@ -1,0 +1,28 @@
+{
+  "bundle_id": "nano4-p1-adapted-cp2b-v1",
+  "status": "integration_candidate",
+  "source_git_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+  "architecture": "HTDemucs 6-source",
+  "method": "matched-reference separation gain-response",
+  "artifact_kind": "task_adapted_parameter_subset",
+  "checkpoint_file": "checkpoint.pt",
+  "checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+  "upstream_checkpoint_sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+  "sample_rate_hz": 44100,
+  "window_seconds": 4.0,
+  "comparison_regime": "matched_excerpt",
+  "empirical_support": {
+    "bass": "supported_matched_digital_only",
+    "guitar": "unsupported",
+    "drums": "unsupported_after_fresh_final",
+    "vocals": "unsupported_after_fresh_final",
+    "keys": "unsupported"
+  },
+  "limitations": [
+    "Not the final MI300-adapted competition artifact",
+    "Not physically validated through room and microphone",
+    "Not PN54 validated",
+    "Not production RealAnalyzer authorization",
+    "Checkpoint is an adapted subset and requires the compatible upstream HTDemucs base model"
+  ]
+}

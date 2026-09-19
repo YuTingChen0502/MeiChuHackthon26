@@ -1,0 +1,167 @@
+{
+  "bundle_manifest_sha256": "c2270b54f59a99f01b7016200db6a35802b058721b3f17f7a19653acf50b3e32",
+  "checks": {
+    "adapted_weights_present_and_differ": true,
+    "centered_balance_available": true,
+    "checkpoint_loads": true,
+    "confidence_uncalibrated": true,
+    "gain_magnitude_smoke_tolerance": true,
+    "gain_sign_preserved": true,
+    "input_hashes_match_fixture": true,
+    "no_hidden_benchmark_label_input": true,
+    "output_taxonomy_complete": true,
+    "repeat_deterministic": true,
+    "supported_mask_exact": true,
+    "unsupported_abstains": true
+  },
+  "deterministic_payload_sha256": "57c9fab2521471fd91d4c719e974a7e09382df4d1b18f6bd63e21d3df71c68c0",
+  "fixture": {
+    "expected_changed_family": "bass",
+    "expected_injected_gain_db": 4.0,
+    "fresh_final_used": false,
+    "label_usage": "Expected gain is retained only for post-inference smoke assertions and is not passed to inference_harness.py.",
+    "observation_sha256": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+    "pair_id": "25789239-1075-43b9-bfc9-51dff4a29590-excerpt0:0:one_source_bass_+4db:clean:4601c8e90f1ac534",
+    "parent_group_id": "25789239-1075-43b9-bfc9-51dff4a29590",
+    "record_type": "Nano4MVPSmokeFixtureProvenance",
+    "recording_id": "25789239-1075-43b9-bfc9-51dff4a29590-excerpt0",
+    "reference_sha256": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+    "scenario_kind": "one_source_gain",
+    "schema_version": "1.0",
+    "source_manifest_sha256": "f5d3ff8b0dd94b1d779a3493d0f7a87a3a85d310174736f679206fefb66e6021",
+    "source_pair_plan_sha256": "c75c9756983ff1e9405996a7d697d866f97285ad34011cdcf3ce4d6eb96ee995",
+    "source_split": "validation"
+  },
+  "inference_harness_sha256": "352a99713b621e72ee2efe23885e4a168f2d8b80d603eb636036a2850e844535",
+  "inference_run_sha256": [
+    "ea31be10fd81598a0bc27c56a10fb5a7b8dbad715aab0f7d354d1f6a136b73d5",
+    "a36a1daa37e0278d97b97904616a80b35d3e1211f239b98fd532900466d4860b"
+  ],
+  "instrument_config_sha256": "b89c9a955040d9305cf1a573e07963c92e8beb2187576805221a74d2e58030b5",
+  "record_type": "Nano4MVPCandidateSmokeResult",
+  "repeat_timing": [
+    {
+      "model_load_and_adaptation_seconds": 0.5815763203427196,
+      "observation_separation_seconds": 0.08246755879372358,
+      "reference_separation_seconds": 0.5220826389268041,
+      "total_seconds": 1.1917646415531635
+    },
+    {
+      "model_load_and_adaptation_seconds": 0.589837709441781,
+      "observation_separation_seconds": 0.08196693938225508,
+      "reference_separation_seconds": 0.5275942552834749,
+      "total_seconds": 1.2050594249740243
+    }
+  ],
+  "runtime": {
+    "cuda": "12.6",
+    "demucs": "4.0.1",
+    "device": "cuda",
+    "numpy": "2.0.2",
+    "torch": "2.8.0+cu126"
+  },
+  "runtime_memory": {
+    "peak_cuda_allocated_bytes": 668539392,
+    "process_max_rss_kib": 1382988
+  },
+  "schema_version": "1.0",
+  "status": "PASS",
+  "supported_bass_evidence": {
+    "alert_state": "ANOMALY_CANDIDATE",
+    "centered_balance_db": 4.011834528284773,
+    "confidence_status": "UNCALIBRATED_QUALITATIVE_AVAILABLE",
+    "observation_source_level_dbfs": -46.347027232548726,
+    "raw_source_delta_db": 3.9562680047449064,
+    "reference_source_level_dbfs": -50.30329523729363
+  },
+  "unsupported_family_outputs": {
+    "drums": {
+      "activity": {
+        "activity_floor_dbfs": -70.0,
+        "observation_active": null,
+        "reference_active": null
+      },
+      "alert_state": "ABSTAIN",
+      "centered_balance_db": null,
+      "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+      "configured_family": "drums",
+      "model_source": "drums",
+      "observation_source_level_dbfs": null,
+      "raw_source_delta_db": null,
+      "reason": "Failed the frozen CP2B fresh-final precision floor: 0.8767123287671232 < 0.90.",
+      "reference_source_level_dbfs": null,
+      "support_status": "UNSUPPORTED",
+      "validity": {
+        "balance_identifiable": false,
+        "centered_balance_available": false,
+        "numeric_source_delta_available": false
+      }
+    },
+    "guitar": {
+      "activity": {
+        "activity_floor_dbfs": -70.0,
+        "observation_active": null,
+        "reference_active": null
+      },
+      "alert_state": "ABSTAIN",
+      "centered_balance_db": null,
+      "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+      "configured_family": "guitar",
+      "model_source": "guitar",
+      "observation_source_level_dbfs": null,
+      "raw_source_delta_db": null,
+      "reason": "Adaptation improved diagnostics, but no calibration operating point met all frozen targets.",
+      "reference_source_level_dbfs": null,
+      "support_status": "UNSUPPORTED",
+      "validity": {
+        "balance_identifiable": false,
+        "centered_balance_available": false,
+        "numeric_source_delta_available": false
+      }
+    },
+    "keys": {
+      "activity": {
+        "activity_floor_dbfs": -70.0,
+        "observation_active": null,
+        "reference_active": null
+      },
+      "alert_state": "ABSTAIN",
+      "centered_balance_db": null,
+      "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+      "configured_family": "keys",
+      "model_source": "piano",
+      "observation_source_level_dbfs": null,
+      "raw_source_delta_db": null,
+      "reason": "No calibration operating point met all frozen targets; generic HTDemucs other is not mapped to keys.",
+      "reference_source_level_dbfs": null,
+      "support_status": "UNSUPPORTED",
+      "validity": {
+        "balance_identifiable": false,
+        "centered_balance_available": false,
+        "numeric_source_delta_available": false
+      }
+    },
+    "vocals": {
+      "activity": {
+        "activity_floor_dbfs": -70.0,
+        "observation_active": null,
+        "reference_active": null
+      },
+      "alert_state": "ABSTAIN",
+      "centered_balance_db": null,
+      "confidence_status": "UNCALIBRATED_UNAVAILABLE",
+      "configured_family": "vocals",
+      "model_source": "vocals",
+      "observation_source_level_dbfs": null,
+      "raw_source_delta_db": null,
+      "reason": "Failed the frozen CP2B fresh-final precision floor: 0.8617511520737328 < 0.90.",
+      "reference_source_level_dbfs": null,
+      "support_status": "UNSUPPORTED",
+      "validity": {
+        "balance_identifiable": false,
+        "centered_balance_available": false,
+        "numeric_source_delta_available": false
+      }
+    }
+  }
+}

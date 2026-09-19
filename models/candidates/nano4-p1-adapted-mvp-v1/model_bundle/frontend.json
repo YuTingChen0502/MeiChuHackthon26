@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+  "sample_rate_hz": 44100,
+  "window_duration_seconds": 4.0,
+  "window_samples": 176400,
+  "asset_channel_convention": "mono or stereo PCM; stereo is mean-downmixed to mono",
+  "model_channel_convention": "mono mixture duplicated to dual-mono two-channel HTDemucs input",
+  "reference_semantics": "accepted baseline or otherwise comparable matched reference window",
+  "observation_semantics": "current comparable observation window",
+  "amplitude_convention": "preserve the reference/observation amplitude relationship",
+  "normalization": {
+    "independent_peak_normalization": false,
+    "independent_rms_normalization": false,
+    "automatic_clipping_rescale": false,
+    "runtime_note": "HTDemucs internal common normalization is restored by the model; no per-input or per-source post-normalization is allowed."
+  },
+  "separator_execution": {
+    "split": true,
+    "overlap": 0.25,
+    "shifts": 0,
+    "seed": 260920,
+    "deterministic_algorithms": true
+  },
+  "activity_floor_dbfs": -70.0
+}
