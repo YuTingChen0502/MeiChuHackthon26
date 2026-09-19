@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator, ValidationError
 
 from core.contracts import analyzer
 from core.contracts.validation import (
-    ANALYZER, PUBLIC, WIRE, SCHEMAS, baseline_binding, event_binding,
+    ANALYZER, PUBLIC, WIRE, SETUP, SCHEMAS, baseline_binding, event_binding,
     reference_binding, validate_analyzer_pair, validate_command_binding,
     validate_event, validate_record, validate_response, validate_snapshot,
 )
@@ -110,7 +110,7 @@ def python_shape(annotation):
 
 class SharedContractTests(unittest.TestCase):
     def test_all_schemas_are_valid_draft_2020_12(self):
-        self.assertEqual({PUBLIC, ANALYZER, WIRE}, set(SCHEMAS))
+        self.assertEqual({PUBLIC, ANALYZER, WIRE, SETUP}, set(SCHEMAS))
         for schema in SCHEMAS.values():
             Draft202012Validator.check_schema(schema)
 
