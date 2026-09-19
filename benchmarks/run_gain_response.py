@@ -81,11 +81,17 @@ def _sign(value: float, tolerance: float) -> int:
 
 def _metrics(rows: list[dict[str, object]], neutral_tolerance_db: float) -> dict[str, object]:
     eligible = [row for row in rows if row["target_balance_db"] is not None]
+    numeric_covered = [row for row in eligible if row["predicted_raw_delta_db"] is not None]
     covered = [row for row in eligible if row["predicted_balance_db"] is not None]
     absolute_errors = [float(row["absolute_error_db"]) for row in covered]
+    raw_absolute_errors = [float(row["raw_absolute_error_db"]) for row in numeric_covered]
     penalty_db = 12.0
     unconditional = [
         float(row["absolute_error_db"]) if row["absolute_error_db"] is not None else penalty_db
+        for row in eligible
+    ]
+    unconditional_raw = [
+        float(row["raw_absolute_error_db"]) if row["raw_absolute_error_db"] is not None else penalty_db
         for row in eligible
     ]
     directional = [
@@ -115,8 +121,18 @@ def _metrics(rows: list[dict[str, object]], neutral_tolerance_db: float) -> dict
     )
     return {
         "eligible_measurements": len(eligible),
+        "numeric_covered_measurements": len(numeric_covered),
+        "numeric_coverage": len(numeric_covered) / len(eligible) if eligible else 0.0,
+        "actionable_covered_measurements": len(covered),
+        "actionable_coverage": len(covered) / len(eligible) if eligible else 0.0,
         "covered_measurements": len(covered),
         "coverage": len(covered) / len(eligible) if eligible else 0.0,
+        "raw_delta_mae_db_on_numeric_covered": (
+            float(np.mean(raw_absolute_errors)) if raw_absolute_errors else None
+        ),
+        "unconditional_raw_delta_mae_db": (
+            float(np.mean(unconditional_raw)) if unconditional_raw else None
+        ),
         "mae_db_on_covered": float(np.mean(absolute_errors)) if absolute_errors else None,
         "unconditional_mae_db": float(np.mean(unconditional)) if unconditional else None,
         "missing_prediction_penalty_db": penalty_db,
@@ -205,15 +221,18 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
             )
             reference = separate_cached(pair.reference_mix)
             observation = separate_cached(pair.observation_mix)
-            predicted_raw, predicted_common, predicted_balance = gain_response(
+            response = gain_response(
                 reference.sources,
                 observation.sources,
+                configured_sources=INSTRUMENTS,
                 activity_floor_dbfs=float(config["activity_floor_dbfs_rms"]),
             )
             pair_metadata.append(pair.metadata)
             for name in INSTRUMENTS:
                 target = pair.labels.centered_balance_db[name]
-                predicted = predicted_balance.get(name)
+                predicted_raw = response.raw_source_delta_db.get(name)
+                predicted = response.centered_balance_db.get(name)
+                target_raw = pair.labels.raw_source_delta_db[name]
                 rows.append(
                     {
                         "pair_id": pair_id,
@@ -222,14 +241,21 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
                         "snr_db": snr,
                         "instrument": name,
                         "source_injected_gain_db": pair.labels.source_injected_gain_db[name],
-                        "target_raw_delta_db": pair.labels.raw_source_delta_db[name],
+                        "target_raw_delta_db": target_raw,
                         "target_common_mode_db": pair.labels.common_mode_gain_db,
                         "target_balance_db": target,
-                        "predicted_raw_delta_db": predicted_raw.get(name),
-                        "predicted_common_mode_db": predicted_common,
+                        "predicted_raw_delta_db": predicted_raw,
+                        "raw_absolute_error_db": (
+                            None if target_raw is None or predicted_raw is None
+                            else abs(predicted_raw - target_raw)
+                        ),
+                        "predicted_common_mode_db": response.common_mode_gain_db,
                         "predicted_balance_db": predicted,
                         "absolute_error_db": None if target is None or predicted is None else abs(predicted - target),
                         "valid_source": pair.labels.valid_source_mask[name],
+                        "numeric_available": response.numeric_valid_mask[name],
+                        "reliable_configured_source_count": response.reliable_configured_source_count,
+                        "balance_identifiable": response.balance_identifiable,
                     }
                 )
 
@@ -252,7 +278,11 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
         model_checkpoint={
             "backend_id": separator.backend_id,
             "checkpoint_id": separator.checkpoint_id,
-            "weights_sha256": getattr(separator, "checkpoint_sha256", None),
+            "artifact": getattr(separator, "checkpoint_artifact", {
+                "expected_sha256": None,
+                "actual_sha256": None,
+                "verified": None,
+            }),
             "runtime": (
                 HTDemucs6sSeparator.runtime_status()
                 if backend == "htdemucs_6s"
@@ -284,6 +314,11 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
         "metadata": metadata,
         "pair_metadata": pair_metadata,
         "metrics": _metrics(rows, float(config["neutral_tolerance_db"])),
+        "metric_semantics": {
+            "numeric_coverage": "configured sources with finite raw source delta",
+            "actionable_coverage": "configured sources with centered balance after at least three reliable configured sources",
+            "coverage": "legacy alias of actionable_coverage",
+        },
         "metrics_by_noise": metrics_by_noise,
         "unique_separation_calls": len(separation_cache),
         "rows": rows,

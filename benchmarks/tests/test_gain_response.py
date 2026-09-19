@@ -12,7 +12,9 @@ class GainResponseBenchmarkTests(unittest.TestCase):
         self.assertEqual("completed", result["probe_status"])
         self.assertEqual("synthetic_pipeline_diagnostic_only", result["evidence_class"])
         metrics = result["metrics"]
-        self.assertEqual(metrics["eligible_measurements"], metrics["covered_measurements"])
+        self.assertEqual(metrics["eligible_measurements"], metrics["numeric_covered_measurements"])
+        self.assertEqual(metrics["eligible_measurements"], metrics["actionable_covered_measurements"])
+        self.assertEqual(metrics["actionable_coverage"], metrics["coverage"])
         self.assertIn("unconditional_mae_db", metrics)
         self.assertIn("attributed_anomaly_f1", metrics)
         self.assertEqual({"clean", "white_gaussian@20dB", "white_gaussian@5dB"},

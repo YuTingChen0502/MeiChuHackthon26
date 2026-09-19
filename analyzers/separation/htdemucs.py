@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 from importlib.metadata import version
+from pathlib import Path
 
 import numpy as np
 
@@ -17,7 +19,8 @@ class SeparationRuntimeUnavailable(RuntimeError):
 class HTDemucs6sSeparator:
     backend_id = "htdemucs_6s"
     checkpoint_id = "facebookresearch-demucs:htdemucs_6s"
-    checkpoint_sha256 = "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+    expected_checkpoint_sha256 = "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+    checkpoint_cache_filename = "5c90dfd2-34c22ccb.th"
 
     @staticmethod
     def runtime_status() -> dict[str, object]:
@@ -53,6 +56,22 @@ class HTDemucs6sSeparator:
             # long-lived host must pin it during process initialization instead.
             pass
         self._model = get_model(self.backend_id)
+        checkpoint_path = Path(torch.hub.get_dir()) / "checkpoints" / self.checkpoint_cache_filename
+        if not checkpoint_path.is_file():
+            raise SeparationRuntimeUnavailable(
+                f"Loaded HTDemucs model but checkpoint artifact is not present at {checkpoint_path}"
+            )
+        actual_sha256 = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
+        self._checkpoint_artifact = {
+            "cache_filename": self.checkpoint_cache_filename,
+            "expected_sha256": self.expected_checkpoint_sha256,
+            "actual_sha256": actual_sha256,
+            "verified": actual_sha256 == self.expected_checkpoint_sha256,
+        }
+        if not self._checkpoint_artifact["verified"]:
+            raise SeparationRuntimeUnavailable(
+                "Loaded HTDemucs checkpoint hash does not match the approved artifact"
+            )
         self._model.to(device)
         self._model.eval()
         if segment_s is not None:
@@ -106,3 +125,7 @@ class HTDemucs6sSeparator:
             "torch_num_threads": self._torch.get_num_threads(),
             "torch_num_interop_threads": self._torch.get_num_interop_threads(),
         }
+
+    @property
+    def checkpoint_artifact(self) -> dict[str, object]:
+        return dict(self._checkpoint_artifact)

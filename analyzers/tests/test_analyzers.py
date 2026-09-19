@@ -92,13 +92,34 @@ class AnalyzerFoundationTests(unittest.TestCase):
         separator = SyntheticBandSeparator()
         ref = separator.separate(reference, sample_rate)
         obs = separator.separate(observation, sample_rate)
-        raw, common, centered = gain_response(ref.sources, obs.sources)
-        self.assertAlmostEqual(4.0, raw["guitar"], places=8)
-        self.assertAlmostEqual(0.0, raw["bass"], places=8)
-        # Four configured diagnostic bands include two inactive outputs. They are
-        # masked by the activity floor and do not bias the two-source median.
-        self.assertAlmostEqual(2.0, common, places=8)
-        self.assertAlmostEqual(2.0, centered["guitar"], places=8)
+        response = gain_response(
+            ref.sources, obs.sources, configured_sources=("bass", "guitar")
+        )
+        self.assertAlmostEqual(4.0, response.raw_source_delta_db["guitar"], places=8)
+        self.assertAlmostEqual(0.0, response.raw_source_delta_db["bass"], places=8)
+        self.assertEqual(2, response.reliable_configured_source_count)
+        self.assertFalse(response.balance_identifiable)
+        self.assertIsNone(response.common_mode_gain_db)
+        self.assertIsNone(response.centered_balance_db["guitar"])
+
+    def test_unconfigured_outputs_cannot_shift_configured_center(self):
+        configured = ("bass", "drums", "guitar", "vocals")
+        reference = {name: np.ones(100) for name in (*configured, "piano", "other")}
+        raw_delta = {
+            "bass": 0.0, "drums": 0.0, "guitar": 4.0, "vocals": 0.0,
+            "piano": 20.0, "other": 20.0,
+        }
+        observation = {
+            name: signal * 10 ** (raw_delta[name] / 20.0)
+            for name, signal in reference.items()
+        }
+        response = gain_response(
+            reference, observation, configured_sources=configured
+        )
+        self.assertEqual(set(configured), set(response.raw_source_delta_db))
+        self.assertTrue(response.balance_identifiable)
+        self.assertAlmostEqual(0.0, response.common_mode_gain_db, places=10)
+        self.assertAlmostEqual(4.0, response.centered_balance_db["guitar"], places=10)
 
     def test_silence_has_no_numeric_level(self):
         self.assertIsNone(rms_dbfs(np.zeros(100)))
@@ -110,4 +131,3 @@ class AnalyzerFoundationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
