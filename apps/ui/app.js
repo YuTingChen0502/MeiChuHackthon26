@@ -1,4 +1,7 @@
+import { RuntimeAdapter } from './runtime-adapter.js';
+
 const FIXTURE_PATH = '../../contracts/examples/pa_shared_v1.json';
+let runtimeAdapter = null;
 
 export const SETUP_ENDPOINT_PLAN = [
   'POST /v1/projects  — project and setlist metadata',
@@ -132,18 +135,25 @@ function renderControls(snapshot) {
   const qualified = document.querySelector('#qualified-interval').checked;
   const differenceChoice = document.querySelector('input[name="reference-difference"]:checked')?.value;
   const acceptedBy = document.querySelector('#accepted-by').value.trim();
-  const acceptPayload = { interval:{ analysis_run_id:snapshot.latest_frame?.analysis_run_id ?? 'unavailable', clock_id:snapshot.source.clock_id, sample_rate_hz:snapshot.latest_frame?.sample_rate_hz ?? 48000, sample_start:snapshot.latest_frame?.sample_start ?? 0, sample_end:snapshot.latest_frame?.sample_end ?? 0 }, accepted_by:acceptedBy, reference_difference_accepted:differenceChoice === 'true', acceptance_note:null };
-  const acceptanceReady = qualified && differenceChoice !== undefined && acceptedBy.length > 0 && snapshot.latest_frame !== null;
+  const interval = { analysis_run_id:document.querySelector('#acceptance-run').value.trim(), clock_id:snapshot.source.clock_id, sample_rate_hz:Number(document.querySelector('#acceptance-rate').value), sample_start:Number(document.querySelector('#acceptance-start').value), sample_end:Number(document.querySelector('#acceptance-end').value) };
+  const acceptPayload = { interval, accepted_by:acceptedBy, reference_difference_accepted:differenceChoice === 'true', acceptance_note:null };
+  const acceptanceReady = qualified && differenceChoice !== undefined && acceptedBy.length > 0 && interval.analysis_run_id && Number.isInteger(interval.sample_rate_hz) && interval.sample_rate_hz > 0 && Number.isInteger(interval.sample_start) && Number.isInteger(interval.sample_end) && interval.sample_start >= 0 && interval.sample_end > interval.sample_start;
   const actions = [ ['recheck','Recheck',recheckPayload,false], ['accept_baseline','Accept as Baseline',acceptPayload, snapshot.session_mode !== 'rehearsal' || !acceptanceReady], ['start_adjustment','Start adjustment',{},false], ['complete_adjustment','Complete adjustment',{ adjustment_id:snapshot.adjustment?.adjustment_id ?? 'unavailable' },!snapshot.adjustment], ['start_live','Enter Live',{},!snapshot.active_baseline], ['pause','Pause',{},false], ['resume','Resume',{},false], ['stop','Stop session',{},false] ];
   const controlPanel = document.querySelector('#controls');
   controlPanel.replaceChildren(...actions.map(([action, label, payload, disabled]) => {
     const button = node('button', label);
     button.disabled = disabled;
     button.addEventListener('click', () => {
-      const entry = [action, label, payload, disabled];
-    const command = commandFor(snapshot, entry[0], entry[2], `fixture-${entry[0]}-${crypto.randomUUID()}`);
-    document.querySelector('#command-status').textContent = `Fixture adapter prepared ${command.action}; real submission waits for the Runtime-owned command handler. State bindings are included in the command.`;
-    console.info('PA fixture command (not sent)', command);
+      const command = commandFor(snapshot, action, payload, `${runtimeAdapter ? 'ui' : 'fixture'}-${action}-${crypto.randomUUID()}`);
+      if (!runtimeAdapter) {
+        document.querySelector('#command-status').textContent = `Fixture adapter prepared ${command.action}; Runtime is not connected.`;
+        return;
+      }
+      runtimeAdapter.command(command).then(() => {
+        document.querySelector('#command-status').textContent = `${command.action} accepted by Runtime.`;
+      }).catch(error => {
+        document.querySelector('#command-status').textContent = `Runtime rejected ${command.action}: ${error.message}`;
+      });
     });
     return button;
   }));
@@ -156,6 +166,18 @@ async function start() {
   const rehearsalSnapshot = fixtureRehearsal(fixtures);
   let snapshot = liveSnapshot;
   render(snapshot);
+  const adapter = new RuntimeAdapter({
+    onSnapshot(next) { snapshot = next; render(snapshot); },
+    onStatus(message) { document.querySelector('#command-status').textContent = message; },
+  });
+  try {
+    await adapter.health();
+    runtimeAdapter = adapter;
+    document.querySelector('#source-mode').textContent = 'Local Runtime connected. Live records are authoritative; fixture buttons remain illustrative.';
+    document.querySelector('#command-status').textContent = 'Local Runtime available. Complete setup to start an authoritative session.';
+  } catch {
+    document.querySelector('#command-status').textContent = 'Fixture mode: local Runtime is unavailable.';
+  }
   document.querySelector('#fixture-live').addEventListener('click', () => { snapshot = liveSnapshot; render(snapshot); });
   document.querySelector('#fixture-rehearsal').addEventListener('click', () => { snapshot = rehearsalSnapshot; render(snapshot); });
   document.querySelector('#baseline-acceptance').addEventListener('input', () => renderControls(snapshot));
@@ -164,10 +186,16 @@ async function start() {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const reference = data.get('reference');
-    const selected = { project:data.get('project'), song:data.get('song'), families:data.get('families').split(',').map(value => value.trim()).filter(Boolean), reference_file:reference?.name || null, source:data.get('source') };
+    const selected = { project:data.get('project'), song:data.get('song'), families:data.get('families').split(',').map(value => value.trim()).filter(Boolean), reference, source:data.get('source'), sourceId:data.get('sourceId'), captureProfile:data.get('captureProfile'), geometryId:data.get('geometryId') };
     const plan = document.querySelector('#setup-plan');
+    if (runtimeAdapter) {
+      if (!(reference instanceof File)) { document.querySelector('#command-status').textContent = 'Choose a PCM16 WAV ideal reference before setup.'; return; }
+      document.querySelector('#command-status').textContent = 'Creating project, song, reference profile, and rehearsal session…';
+      runtimeAdapter.setup(selected).then(() => { document.querySelector('#command-status').textContent = 'Authoritative rehearsal session created.'; }).catch(error => { document.querySelector('#command-status').textContent = `Setup failed: ${error.message}`; });
+      return;
+    }
     plan.hidden = false;
-    plan.textContent = `${SETUP_ENDPOINT_PLAN.join('\n')}\n\nFixture request parameters (not sent):\n${JSON.stringify(selected, null, 2)}`;
+    plan.textContent = `${SETUP_ENDPOINT_PLAN.join('\n')}\n\nFixture request plan only; Runtime is not connected.`;
   });
 }
 

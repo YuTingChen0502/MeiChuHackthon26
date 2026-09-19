@@ -12,7 +12,7 @@
         <div><p class="eyebrow">AI PERFORMANCE CONTROLLER</p><h1>PA operator console</h1></div>
         <div id="mode" class="mode">Loading session…</div>
       </header>
-      <p class="fixture-notice">Fixture mode — illustrative contract data only; it is not audio-model or physical-demo evidence. <button id="fixture-live" class="link-button">View Live incident</button> <button id="fixture-rehearsal" class="link-button">View rehearsal</button></p>
+      <p class="fixture-notice"><span id="source-mode">Fixture mode — illustrative contract data only; it is not audio-model or physical-demo evidence.</span> <button id="fixture-live" class="link-button">View Live incident</button> <button id="fixture-rehearsal" class="link-button">View rehearsal</button></p>
       <section class="summary" id="summary"></section>
       <section class="profiles" id="profiles"></section>
       <section aria-labelledby="signal-title">
@@ -31,6 +31,10 @@
           <label><input type="radio" name="reference-difference" value="true" /> Accept the intentional reference difference</label>
           <label><input type="radio" name="reference-difference" value="false" /> Do not accept the reference difference</label>
           <label>Accepted by <input id="accepted-by" value="operator" required /></label>
+          <label>Analysis run ID <input id="acceptance-run" required /></label>
+          <label>Sample rate (Hz) <input id="acceptance-rate" type="number" min="1" required /></label>
+          <label>Selected sample start <input id="acceptance-start" type="number" min="0" required /></label>
+          <label>Selected sample end <input id="acceptance-end" type="number" min="1" required /></label>
         </fieldset>
         <div id="controls" class="control-grid"></div>
         <p id="command-status" class="command-status" aria-live="polite"></p>
@@ -44,6 +48,9 @@
           <label>Known families <input name="families" value="guitar, bass, drums" required /></label>
           <label>Mixed ideal reference <input name="reference" type="file" accept="audio/*" /></label>
           <label>Session source <select name="source"><option value="live_microphone">Live microphone</option><option value="uploaded_file">Uploaded rehearsal audio</option></select></label>
+          <label>Source device or asset ID <input name="sourceId" value="mic-1" required /></label>
+          <label>Capture profile ID <input name="captureProfile" value="capture-1" required /></label>
+          <label>Capture geometry ID <input name="geometryId" value="demo-geometry" required /></label>
           <button type="submit">Prepare setup requests</button>
         </form>
         <ol><li>Create project and song.</li><li>Declare known instrument families.</li><li>Upload the mixed ideal reference.</li><li>Wait for the reference job.</li><li>Start a rehearsal or live-microphone session.</li></ol>

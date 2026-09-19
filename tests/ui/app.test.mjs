@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { balanceText, commandFor, confidenceText, displayStatus, fixtureRehearsal, fixtureScenario, freshness, SETUP_ENDPOINT_PLAN } from '../../apps/ui/app.js';
+import { RuntimeAdapter } from '../../apps/ui/runtime-adapter.js';
 
 const confidence = (abstained = false) => ({ abstained, reasons: abstained ? ['noise_overlap'] : [], calibration_status: abstained ? 'out_of_envelope' : 'calibrated', probability: abstained ? null : .9, magnitude_tolerance_db: 1.5 });
 const active = (status, balance, c = confidence()) => ({ activity:'active', status, balance_deviation_db:balance, confidence:c });
@@ -57,4 +58,22 @@ test('derived fixture frames only contain declared families and correct profile 
   assert.deepEqual(guitar.confidence.prediction_interval_db, [2.6, 5.6]);
   assert.equal(bass.confidence.probability_event, 'normal_within_envelope');
   assert.equal(live.recommendations[0].suggested_step_db, -2);
+});
+test('runtime adapter posts commands to the frozen route and refreshes a conflict snapshot', async () => {
+  const originalFetch = globalThis.fetch;
+  const received = [];
+  const refreshed = [];
+  globalThis.fetch = async (url, options) => {
+    received.push([url, options]);
+    return { ok:false, status:409, json:async () => ({ error:{ message:'stale' }, snapshot:{ session_id:'s-1', state_version:8 } }) };
+  };
+  try {
+    const adapter = new RuntimeAdapter({ onSnapshot:snapshot => refreshed.push(snapshot), onStatus() {} });
+    await assert.rejects(() => adapter.command({ session_id:'s-1', action:'pause' }), /stale/);
+    assert.equal(received[0][0], '/v1/sessions/s-1/actions');
+    assert.equal(received[0][1].method, 'POST');
+    assert.deepEqual(refreshed, [{ session_id:'s-1', state_version:8 }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
