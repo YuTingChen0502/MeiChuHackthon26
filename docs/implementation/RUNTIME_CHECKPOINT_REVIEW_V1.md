@@ -4,6 +4,52 @@ Reviewed commit: `78a362ea184ec3f5302c0cef271c16a06299d316`.
 Parent freeze: `f22f1e161bb69964765ba58305f7f169950f945c`.
 Date: 2026-09-19. Reviewer: engineering Lead.
 
+## Correction review: 1ae54f1
+
+Reviewed `1ae54f19426e999d0060b14b3e0316b043aa9cea`. All changes relative to the
+shared transport freeze remain Runtime-owned. The supplied suite passes 44/44:
+24 shared, 4 Runtime and 16 integration tests, including actual Uvicorn HTTP/WS.
+SQLite now records command outcomes, session state and immutable baseline versions
+in one database transaction. The earlier lifecycle fixes and explicit setup/reference
+bindings are present. This supersedes the original absence-of-listener finding.
+
+Integration is still held on two implementation correction groups; no shared schema
+or product change is needed. The Lead sent both to the Runtime owner.
+
+### Suspended/restarted state authorization
+
+Executed additional probes using the committed RuntimeAPI test fixture:
+
+| Sequence | Observed result |
+|---|---|
+| Pause, then current-binding recheck(null) | HTTP 200, REHEARSAL, with operator_paused still recorded |
+| Cold restore, then pause, then resume | HTTP 200, REHEARSAL, restart suspension reason erased |
+
+Centralize suspended/restart command guards. Pause must not replace the restart reason
+and allow its new-session requirement to be bypassed. Source review also finds that
+armed verification runs before the SUSPENDED check and pause does not disarm it.
+Acceptance/Live transitions must reject unresolved proactive adjustments rather than
+clear their state. Add regressions covering these existing lifecycle requirements.
+
+### Transaction visibility and lock ordering
+
+The Lead blocked `record_command` using thread events and then injected an OSError.
+A concurrent GET observed version 1/SUSPENDED before commit; after rollback GET returned
+version 0/REHEARSAL. Uncommitted state can therefore escape to clients despite SQLite
+atomicity. No implementation files were modified for this temporary-store probe.
+
+Commands acquire the ledger/store lock before acquiring the session lock. Observation
+and event-poll persistence hold the session lock before acquiring the store lock.
+This opposing order can deadlock concurrent command/audio/WS processing. Use one
+consistent lock order and isolate mutation through commit or rollback from snapshot,
+event and observation access. Preserve detector state on rollback/rejection as well;
+the current restore_state resets it. Add deterministic barrier-based regressions.
+
+Secondary transport follow-ups were also sent: terminate idle disconnected WS tasks,
+enforce upload limits during chunk consumption, and provide/document the frozen
+same-origin UI serving path. Native capture and calibrated model integration remain
+separate gates. The listener's existence is not clearance for live UI mutations.
+
 ## Disposition
 
 The in-process facade and first Fake-driven loop are useful implementation progress.
