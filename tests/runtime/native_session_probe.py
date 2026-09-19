@@ -11,19 +11,20 @@ from tests.integration.test_api_service import wav_bytes, command
 from tests.runtime.sustained_probe import memory_bytes
 
 
-def run(device_id, seconds, output):
+def run(device_id, seconds, output, analysis_rate=48000, window_seconds=1, hop_seconds=.5):
     result={"git_commit":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
             "git_dirty":bool(subprocess.check_output(["git","status","--porcelain"],text=True).strip()),
+            "analysis_rate_hz":analysis_rate,"window_seconds":window_seconds,"hop_seconds":hop_seconds,
             "recording":"No microphone PCM saved", "device_id":device_id,
             "claim":"Local native transport/lifecycle only; Fake abstains; no model/calibration/PN54 claim."}
     with tempfile.TemporaryDirectory() as directory:
-        api=RuntimeAPI(storage_dir=directory,window_size_samples=48000,hop_size_samples=24000,
-                       analysis_sample_rate_hz=48000,native_backend=SoundDeviceBackend())
+        api=RuntimeAPI(storage_dir=directory,window_size_samples=int(analysis_rate*window_seconds),hop_size_samples=int(analysis_rate*hop_seconds),
+                       analysis_sample_rate_hz=analysis_rate,native_backend=SoundDeviceBackend())
         try:
             _,project=api.create_project({"name":"Native lifecycle probe"})
             _,song=api.create_song({"project_id":project["project_id"],"name":"Synthetic reference only",
                 "instruments":[{"instrument_id":x,"family":x} for x in ("guitar","bass","drums")]})
-            _,asset=api.upload_audio(wav_bytes([.1]*96000,sample_rate=48000),filename="generated-reference.wav")
+            _,asset=api.upload_audio(wav_bytes([.1]*int(48000*(window_seconds+1)),sample_rate=48000),filename="generated-reference.wav")
             _,job=api.start_reference_job(song["song_id"],{"asset_id":asset["asset_id"]});api.run_reference_job(job["job_id"])
             _,snapshot=api.create_session({"song_id":song["song_id"],"reference_id":job["reference_id"],
                 "source":{"input_kind":"live_microphone","input_asset_or_device_id":device_id},
@@ -60,5 +61,9 @@ def run(device_id, seconds, output):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device-id",required=True);parser.add_argument("--seconds-per-run",type=float,default=6)
-    parser.add_argument("--output",required=True);args=parser.parse_args()
-    run(args.device_id,args.seconds_per_run,args.output)
+    parser.add_argument("--output",required=True)
+    parser.add_argument("--analysis-rate",type=int,default=48000)
+    parser.add_argument("--window-seconds",type=float,default=1)
+    parser.add_argument("--hop-seconds",type=float,default=.5)
+    args=parser.parse_args()
+    run(args.device_id,args.seconds_per_run,args.output,args.analysis_rate,args.window_seconds,args.hop_seconds)
