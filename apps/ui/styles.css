@@ -265,6 +265,10 @@ input, select {
 }
 .model-identity { color: var(--stone); font-weight: 600; }
 .model-support { color: var(--muted); }
+.model-details { margin-top: var(--space-2); color: var(--muted); font-size: 12px; }
+.model-details summary { width: fit-content; padding: var(--space-2) 0; cursor: pointer; }
+.model-details summary:focus-visible { outline: 2px solid var(--stone); outline-offset: 4px; }
+.model-details .model-status { border-bottom: 0; }
 
 .console-layout {
   display: grid;
@@ -275,7 +279,7 @@ input, select {
 .instrument-grid { display: flex; flex-direction: column; align-content: start; }
 .instrument-card {
   display: grid;
-  grid-template-columns: 44px minmax(120px, 1fr) minmax(120px, 0.55fr) minmax(210px, 0.9fr);
+  grid-template-columns: 40px minmax(0, 1fr) minmax(100px, 0.65fr) minmax(0, 1.2fr);
   grid-template-areas: "icon name value status" "icon evidence value confidence";
   gap: var(--space-1) var(--space-4);
   align-items: center;
@@ -288,6 +292,7 @@ input, select {
   transition: opacity 160ms ease;
 }
 .instrument-card:last-child { border-bottom: 1px solid var(--line); }
+.instrument-card > * { min-width: 0; overflow-wrap: anywhere; }
 .instrument-card.too_loud, .instrument-card.too_quiet { border-top-color: var(--attention); }
 .instrument-card.dimmed { opacity: 0.32; }
 .instrument-card.unsupported { color: var(--muted); }

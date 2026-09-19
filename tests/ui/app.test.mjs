@@ -626,7 +626,7 @@ test('isolated demo player has no Runtime transport or filename rendering path',
 test('UI source contains no client-side audio inference or automatic mixer execution', async () => {
   const source = await readFile(new URL('../../apps/ui/app.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /AudioContext|AnalyserNode|getUserMedia|automatic_execution\s*:\s*true/);
-  assert.match(source, /Runtime remains the only evidence source/);
+  assert.match(source, /Measurements come from the audio analysis/);
   assert.match(source, /function button\(text,fn,cls='primary',type='button'\)/);
   assert.match(source, /runtimeAdapter\?\.stopEvents\(\)/);
   assert.match(source, /operationStatus=text/);
@@ -636,7 +636,7 @@ test('UI source contains no client-side audio inference or automatic mixer execu
   assert.match(source, /\['keys',0\]/);
   assert.doesNotMatch(source, /Requested sample rate/);
   assert.match(source, /Analyze reference and start rehearsal/);
-  assert.match(source, /Use latest Runtime evidence/);
+  assert.match(source, /Use latest observation/);
   assert.match(source, /clock_id:d\.get\('clock'\)/);
 });
 test('responsive evidence rows support variable counts without fixed four-card selectors', async () => {
