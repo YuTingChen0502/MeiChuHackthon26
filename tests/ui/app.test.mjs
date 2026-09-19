@@ -380,14 +380,31 @@ test('fixture Live renders normal, anomaly, abstain, and recovered only as examp
   assert.equal(transitioned.song.name, 'Configured locally');
   assert.equal(transitioned.active_baseline.baseline_id, rehearsal.active_baseline.baseline_id);
 });
-test('calibration drafts survive fresh-frame rerenders for the same session', () => {
-  const first = { session_id:'s-1', latest_frame:{ analysis_run_id:'run-1', sample_rate_hz:48000, sample_start:10, sample_end:20 } };
-  const draft = calibrationDraftFor(first);
-  draft.acceptedBy = 'mei';
-  draft.start = '12';
-  const later = { session_id:'s-1', latest_frame:{ analysis_run_id:'run-2', sample_rate_hz:48000, sample_start:30, sample_end:40 } };
-  assert.equal(calibrationDraftFor(later,draft), draft);
-  assert.equal(calibrationDraftFor({...later,session_id:'s-2'},draft).run, 'run-2');
+test('calibration bindings recover from no-frame, run/clock changes and explicit fresh retries', () => {
+  const waiting={session_id:'s-1',source:{clock_id:'clock-1'},latest_frame:null};
+  const empty=calibrationDraftFor(waiting);
+  empty.acceptedBy='mei';
+  empty.difference=true;
+  assert.equal(empty.run,'');
+  assert.equal(empty.start,null);
+  const first={...waiting,latest_frame:{frame_id:'frame-1',analysis_run_id:'run-1',clock_id:'clock-1',sample_rate_hz:48000,sample_start:10,sample_end:20}};
+  const hydrated=calibrationDraftFor(first,empty);
+  assert.equal(hydrated.run,'run-1');
+  assert.equal(hydrated.start,10);
+  assert.equal(hydrated.acceptedBy,'mei');
+  assert.equal(hydrated.difference,true);
+  const laterSameRun={...first,latest_frame:{...first.latest_frame,frame_id:'frame-2',sample_start:30,sample_end:40}};
+  assert.equal(calibrationDraftFor(laterSameRun,hydrated),hydrated);
+  const retry=calibrationDraftFor(laterSameRun,hydrated,true);
+  assert.equal(retry.frameId,'frame-2');
+  assert.equal(retry.start,30);
+  assert.equal(retry.acceptedBy,'mei');
+  const nextRun={...first,source:{clock_id:'clock-2'},latest_frame:{...first.latest_frame,frame_id:'frame-3',analysis_run_id:'run-2',clock_id:'clock-2',sample_start:0,sample_end:48_000}};
+  const rebound=calibrationDraftFor(nextRun,retry);
+  assert.equal(rebound.run,'run-2');
+  assert.equal(rebound.clock,'clock-2');
+  assert.equal(rebound.start,0);
+  assert.equal(rebound.acceptedBy,'mei');
 });
 test('catalog recovery tolerates corruption and preserves validated rehearsal counts', () => {
   assert.deepEqual(normalizeCatalogRows({broken:true}), []);
@@ -535,6 +552,8 @@ test('UI source contains no client-side audio inference or automatic mixer execu
   assert.match(source, /\['keys',0\]/);
   assert.doesNotMatch(source, /Requested sample rate/);
   assert.match(source, /Analyze reference and start rehearsal/);
+  assert.match(source, /Use latest Runtime evidence/);
+  assert.match(source, /clock_id:d\.get\('clock'\)/);
 });
 test('responsive card grid supports variable counts without fixed four-card selectors', async () => {
   const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');
