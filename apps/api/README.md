@@ -139,3 +139,32 @@ versions are stored in one SQLite database. Each command response, resulting ses
 state, and baseline promotion commit atomically; failed commits restore the in-memory
 pre-command state. Restored sessions are suspended because process restart changes
 the monotonic clock and require a newly created session for sensing.
+
+
+## Frozen P1 engineering candidate
+
+Use the ML-owned dependencies in `models/P1_CANDIDATE_INTEGRATION.md`, then launch:
+
+```text
+python -m apps.api.launch --mode candidate-p1 --storage C:/PA/p1-runtime --bundle models/candidates/nano4-p1-adapted-mvp-v1
+```
+
+This explicit host mode injects ML's `make_p1_candidate_loader`, uses the CPU
+provider, and fixes canonical analysis at 44100 Hz, 176400-sample windows and
+44100-sample hops. Device capture rate remains independently negotiated and the
+shared frontend performs conversion. The candidate mode rejects incompatible
+geometry, production host-review settings and registry overrides. It also accepts
+the exact `results/model_bundle.tar.gz` path. No automatic Fake fallback occurs.
+
+P1 provides only uncalibrated bass candidate evidence for matched digital spans;
+room microphone evidence fails closed. Unsupported families retain null correction,
+and all public probabilities remain null. This mode does not authorize production
+confidence, baseline acceptance, or acoustic recovery claims. The full Fake
+workflow remains available through explicit `--mode fake`.
+
+Reference reuse is privately bound to all five exact model identity fields,
+including execution profile and level scale. Legacy references without this
+binding require reanalysis. Baseline acceptance and Start Live also reject model
+identity drift; baselines remain explicit human actions and immutable in Live.
+
+Current validation is recorded in `MVP_NATIVE_RUNTIME_CHECKPOINT.md`.

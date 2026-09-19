@@ -58,7 +58,22 @@ def run(candidate, output):
                 frames[kind]=frame
                 # Close the session before loading another heavyweight candidate.
                 session.analyzer.close()
-            report={"status":"passed","git_commit":revision,"git_dirty":dirty,
+            from starlette.testclient import TestClient
+            from apps.api.transport import create_app
+            with TestClient(create_app(api),base_url="http://127.0.0.1:8000",
+                    headers={"origin":"http://127.0.0.1:8000"}) as client:
+                assert client.get("/v1/health").status_code == 200
+                route=f"/v1/sessions/{session.session_id}"
+                response=client.get(route)
+                assert response.status_code == 200
+                assert response.json()["latest_frame"] == frames["live_microphone"]
+                events=[]
+                for _ in range(2):
+                    with client.websocket_connect(route+"/events?after_sequence=0") as socket:
+                        events.append(socket.receive_json())
+                assert events[0] == events[1]
+                transport={"health_http":200,"session_http":200,"ws_reconnect_same_event":True}
+            report={"transport":transport,"status":"passed","git_commit":revision,"git_dirty":dirty,
                 "duration_s":time.monotonic()-started,"health":health,"reference_job":reference,"frames":frames,
                 "material":"Deterministic generated 110 Hz sine, amplitude 0.15, 44100 Hz, four seconds, PCM16",
                 "claim":"Actual CPU candidate injection/reference/cache/downstream gating only; no instrument labels, accuracy, native candidate inference, or calibration claim."}
