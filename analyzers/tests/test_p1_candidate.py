@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import tarfile
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 import wave
@@ -56,7 +57,7 @@ class TestOnlyRunner:
         self.level = -40.0
     def levels(self, samples):
         self.calls.append(samples)
-        return {"bass": self.level}
+        return {name: self.level for name in ("drums", "bass", "other", "vocals", "guitar", "piano")}
     def close(self):
         self.closed = True
 
@@ -132,10 +133,9 @@ class P1ContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "profile identity"):
             self.analyzer.analyze(self.audio, bad)
 
-    def test_stable_texture_live_clipping_and_unmatched_span_abstain(self):
+    def test_stable_texture_clipping_and_unmatched_span_abstain(self):
         cases = [
             (self.audio, dict(self.ctx, comparison_regime="stable_texture"), "comparison_regime_unsupported"),
-            (replace(self.audio, input_kind="live_microphone"), self.ctx, "real_room_not_validated"),
             (replace(self.audio, input_clipped_fraction=0.1), self.ctx, "clipping_outside_candidate_envelope"),
             (window(start=176400), self.ctx, "matched_reference_span_unavailable"),
         ]
@@ -145,6 +145,53 @@ class P1ContractTests(unittest.TestCase):
             ev = self.analyzer.analyze(audio, ctx)
             self.assertEqual([reason], ev["measurements"][0]["reason_codes"])
             self.assertIsNone(ev["measurements"][0]["source_level_db"])
+
+    def test_live_reference_executes_before_uncalibrated_publication(self):
+        mic = replace(self.audio, input_kind="live_microphone", clock_id="mic-clock",
+                      analysis_run_id="mic-run", input_asset_or_device_id="mic-device")
+        ctx = dict(self.ctx, observation=mic.identity(), observation_purpose="live")
+        before = len(self.runner.calls)
+        evidence = self.analyzer.analyze(mic, ctx)
+        self.assertEqual(before + 1, len(self.runner.calls))
+        validate_analyzer_pair(ctx, evidence)
+        row = evidence["measurements"][0]
+        self.assertEqual("valid", row["validity"])
+        self.assertEqual(-40, row["source_level_db"])
+        self.assertIn("real_room_not_validated", row["reason_codes"])
+        self.assertIn("uncalibrated_candidate", row["reason_codes"])
+        self.assertIsNone(self.analyzer.calibration_metadata())
+
+    def test_model_runs_without_bass_configuration_or_numeric_target(self):
+        for families, ref_level in ((("drums", "guitar"), -40.0), (("bass",), None)):
+            c = configured(families)
+            self.runner.level = ref_level
+            prepared = self.analyzer.prepare_reference([window(name="ref-case")], c)
+            self.runner.level = -40.0
+            mic = replace(self.audio, input_kind="live_microphone")
+            ctx = context(self.analyzer, mic, prepared, c)
+            ctx["observation_purpose"] = "live"
+            before = len(self.runner.calls)
+            evidence = self.analyzer.analyze(mic, ctx)
+            self.assertEqual(before + 1, len(self.runner.calls))
+            self.assertTrue(all(r["source_level_db"] is None for r in evidence["measurements"]))
+
+    def test_relative_hop_and_restart_matching_without_alignment_guessing(self):
+        refs = [replace(window(name="ref-" + str(i), start=i*44100),
+                        input_asset_or_device_id="reference-file") for i in range(2)]
+        prepared = self.analyzer.prepare_reference(refs, self.config)
+        for start, clock, expected in ((0, "generation1", "ref-0"),
+                                       (44100, "generation1", "ref-1"),
+                                       (0, "generation2", "ref-0")):
+            mic = replace(window(start=start), input_kind="live_microphone", clock_id=clock)
+            ctx = context(self.analyzer, mic, prepared, self.config)
+            ctx["observation_purpose"] = "live"
+            self.assertEqual(expected, self.analyzer.analyze(mic, ctx)["matched_context_window_id"])
+        mic = replace(window(start=88200), input_kind="live_microphone")
+        ctx = context(self.analyzer, mic, prepared, self.config)
+        before = len(self.runner.calls)
+        ev = self.analyzer.analyze(mic, ctx)
+        self.assertEqual(before, len(self.runner.calls))
+        self.assertEqual(["matched_reference_span_unavailable"], ev["measurements"][0]["reason_codes"])
 
     def test_silent_source_does_not_become_supported_normal(self):
         self.runner.level = None
@@ -242,6 +289,27 @@ class P1BundleTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "identity mismatch"):
                 validate_p1_bundle(root, trusted_spec=spec)
 
+    def test_diagnostics_status_read_does_not_wait_for_model_execution(self):
+        from analyzers.separation.p1_runner import _EXECUTION_LOCK
+        runner = P1Runner.__new__(P1Runner)  # Diagnostic lock unit test; no simulated model execution.
+        runner._diagnostics_lock = threading.Lock()
+        runner._model_calls_started = 1
+        runner._model_calls_completed = 0
+        runner._last_inference = None
+        finished = threading.Event()
+        observed = []
+        def read_status():
+            observed.append(runner.execution_diagnostics())
+            finished.set()
+        with _EXECUTION_LOCK:
+            thread = threading.Thread(target=read_status, daemon=True)
+            thread.start()
+            nonblocking = finished.wait(1)
+        thread.join(2)
+        self.assertTrue(nonblocking, "Status caller blocked behind actual inference lock")
+        self.assertEqual(1, observed[0]["model_calls_started"])
+        self.assertEqual(0, observed[0]["model_calls_completed"])
+
     def test_invalid_archive_pin_cannot_choose_alternate_upstream(self):
         spec = json.loads(DEFAULT_SPEC.read_text())
         spec["archive_sha256"] = "0" * 64
@@ -265,8 +333,27 @@ class P1ActualCPUSmokeTests(unittest.TestCase):
             ref, obs = window(read("reference"), name="reference"), window(read("observation"))
             prepared = a.prepare_reference([ref], c)
             ctx = context(a, obs, prepared, c)
-            first, second = a.analyze(obs, ctx), a.analyze(obs, ctx)
+            ctx["observation_purpose"] = "live"
+            first = a.analyze(obs, ctx)
+            file_diagnostics = a.execution_diagnostics()
+            second = a.analyze(obs, ctx)
             self.assertEqual(first, second)
+            mic = replace(obs, window_id="mic-window", input_kind="live_microphone",
+                          clock_id="mic-clock", analysis_run_id="mic-run", input_asset_or_device_id="test-mic")
+            mic_context = dict(ctx, observation=mic.identity())
+            mic_evidence = a.analyze(mic, mic_context)
+            validate_analyzer_pair(mic_context, mic_evidence)
+            mic_diagnostics = a.execution_diagnostics()
+            self.assertEqual(2, file_diagnostics["model_calls_completed"])  # reference + file
+            self.assertEqual(4, mic_diagnostics["model_calls_completed"])  # repeat + mic
+            self.assertEqual(4, mic_diagnostics["model_calls_started"])
+            for field in ("source_levels_dbfs", "source_waveform_sha256", "source_order", "source_shape"):
+                self.assertEqual(file_diagnostics["last_inference"][field], mic_diagnostics["last_inference"][field])
+            self.assertEqual(["drums", "bass", "other", "vocals", "guitar", "piano"],
+                             mic_diagnostics["last_inference"]["source_order"])
+            for left, right in zip(first["measurements"], mic_evidence["measurements"]):
+                self.assertEqual(left["source_level_db"], right["source_level_db"])
+                self.assertEqual(left["validity"], right["validity"])
             validate_analyzer_pair(ctx, first)
             bass = first["measurements"][0]
             published = json.loads((CANDIDATE / "runtime_smoke/inference-run-1.json").read_text())
