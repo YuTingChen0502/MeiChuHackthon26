@@ -37,8 +37,8 @@ python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 
 
 Set `PA_RUNTIME_STORAGE_DIR` for durable state. Native discovery uses the optional
 sounddevice/PortAudio backend; the launcher no longer trusts `PA_AUDIO_DEVICE_IDS`.
-The proposed native dependency pins are sounddevice 0.5.6, cffi 2.1.1 and pycparser 3.0;
-Lead integration into the root dependency set remains required. A missing backend
+The Lead-pinned root dependency set includes sounddevice 0.5.6, cffi 2.1.1 and
+pycparser 3.0 via shared commit `42ba903`. A missing backend
 is reported as `native_backend_unavailable`; file execution remains available.
 
 Creating a session starts managed acquisition. File replay is paced on the session

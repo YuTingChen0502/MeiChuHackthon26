@@ -51,7 +51,8 @@ This exception is not exposed in public requests or launcher configuration.
 
 The earlier two-second native diagnostic over-detected callback timestamp jitter.
 The corrected adapter anchors time to sample counts with a declared 50 ms ADC
-residual budget; the six-second probe measured a 4.354 ms maximum residual. Overflow
+residual budget; the committed six-second `b95ce4f` probe measured a 19.5846 ms
+maximum residual (`native_capture_b95ce4f.json`). Overflow
 status and missing sample spans still break continuity. The earlier diagnostic is
 superseded, not positive evidence. A subsequent 120-second diagnostic exposed
 Windows clock-resolution jitter at the consumer boundary: 94 windows were wrongly
@@ -88,7 +89,9 @@ accuracy, calibration, meaningful MI300 adaptation or physical PA verification.
 
 ## Limits and external gates
 
-- Lead must integrate the proposed native dependency pins in `requirements-runtime.txt`.
+- Native dependency routing is resolved: Lead commit `42ba9035b06ca00fab60e8fdd8d07badbcf8b1f3`
+  pins sounddevice 0.5.6, cffi 2.1.1 and pycparser 3.0 in `requirements-runtime.txt`
+  and has been merged into this lane. This does not establish PN54 compatibility.
 - Native input candidates can include virtual drivers; selection does not establish
   physical provenance. Runtime does not promote browser-declared AGC/gain/geometry
   assertions to verified capture. Actionable native Live remains gated.
@@ -109,3 +112,14 @@ accuracy, calibration, meaningful MI300 adaptation or physical PA verification.
   latency. Two independent four-second windows require eight seconds of support in
   the simulated anomaly policy. Empirical change-to-confirmed-alert latency awaits
   calibrated ML and the physical PN54 loop; none of these probes establishes it.
+
+## Accepted checkpoint hold
+
+Lead accepted `8ebaf632e9c19482f199a2e883fb43c7e803b509` as local RT-2A readiness.
+The shared dependency sync and report correction do not authorize new features,
+physical/ML enablement, Gate F acceptance or a merge of the lane implementation.
+No capture or soak was rerun for this maintenance update.
+
+Post-sync checks: all merged dependency pins matched the validation environment;
+PortAudio imported and loaded; 79 shared/Runtime/integration tests and the unchanged
+CP1 JS/HTTP/WebSocket/SQLite smoke passed. No new feature or enablement work began.
