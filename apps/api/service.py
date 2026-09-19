@@ -262,7 +262,18 @@ class RuntimeAPI:
                          "discovery_status": "injected_example_only"}
         try:
             devices = self._native().discover()
-            return 200, {"devices": [{"device_id": item.device_id} for item in devices],
+            descriptors = []
+            for item in devices:
+                descriptor = {"device_id": item.device_id}
+                for key in ("name", "host_api"):
+                    value = getattr(item, key, None)
+                    if isinstance(value, str):
+                        descriptor[key] = value
+                default = getattr(item, "is_default", None)
+                if type(default) is bool:
+                    descriptor["is_default"] = default
+                descriptors.append(descriptor)
+            return 200, {"devices": descriptors,
                          "discovery_status": "available" if devices else "no_input_devices"}
         except Exception as exc:
             self.native_error = str(exc)
