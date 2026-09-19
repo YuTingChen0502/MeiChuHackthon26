@@ -1,0 +1,815 @@
+{
+  "backend": "htdemucs_6s",
+  "checkpoint": "facebookresearch-demucs:htdemucs_6s",
+  "evidence_class": "synthetic_htdemucs_smoke_not_music_domain_feasibility",
+  "metadata": {
+    "asset_provenance": [
+      {
+        "asset_id": "generated-synthetic-four-band-v1",
+        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+        "publication_status": "publishable",
+        "scope": "pipeline diagnostic only; not music-domain feasibility evidence"
+      }
+    ],
+    "command": [
+      "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+      "-m",
+      "benchmarks.run_gain_response",
+      "--config",
+      "training/configs/htdemucs_gain_response_smoke.json",
+      "--backend",
+      "htdemucs_6s",
+      "--output-dir",
+      "benchmarks/results/htdemucs_6s_synthetic_smoke"
+    ],
+    "config": {
+      "activity_floor_dbfs_rms": -70.0,
+      "changed_source": "guitar",
+      "config_id": "htdemucs-6s-synthetic-smoke-fast-v1",
+      "duration_s": 4.0,
+      "gain_grid_db": [
+        -4,
+        0,
+        4
+      ],
+      "neutral_tolerance_db": 1.0,
+      "noise_conditions": [
+        {
+          "kind": "none",
+          "snr_db": null
+        }
+      ],
+      "sample_rate_hz": 44100,
+      "seed": 260919,
+      "shared_scale": 0.2,
+      "split_id": "synthetic-smoke-test-v1"
+    },
+    "environment": {
+      "machine": "AMD64",
+      "pid": 45248,
+      "platform": "Windows-11-10.0.26200-SP0",
+      "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+      "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+      "python_executable": "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe"
+    },
+    "git_commit": "043e154117dcf2dcfeb5d8dd82ba13d649ff354a",
+    "injected_gain": {
+      "controls": [
+        "zero",
+        "common_gain",
+        "one_source",
+        "multi_source_centered"
+      ],
+      "gain_grid_db": [
+        -4,
+        0,
+        4
+      ],
+      "label_procedure": "training.oracle.compute_gain_labels"
+    },
+    "model_checkpoint": {
+      "adapted": false,
+      "artifact": {
+        "actual_sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+        "cache_filename": "5c90dfd2-34c22ccb.th",
+        "expected_sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+        "verified": true
+      },
+      "backend_id": "htdemucs_6s",
+      "checkpoint_id": "facebookresearch-demucs:htdemucs_6s",
+      "execution_settings": {
+        "deterministic_algorithms": true,
+        "device": "cpu",
+        "overlap": 0.25,
+        "seed": 0,
+        "shifts": 0,
+        "split": true,
+        "torch_num_interop_threads": 1,
+        "torch_num_threads": 1
+      },
+      "runtime": {
+        "available": true,
+        "missing_modules": [],
+        "versions": {
+          "demucs": "4.0.1",
+          "torch": "2.11.0",
+          "torchaudio": "2.11.0"
+        }
+      }
+    },
+    "noise_snr": {
+      "conditions": [
+        {
+          "kind": "none",
+          "snr_db": null
+        }
+      ],
+      "independent_within_pair": true
+    },
+    "schema_version": "1.0",
+    "seed": 260919,
+    "split_identity": {
+      "all_augmentations_grouped": true,
+      "parent_group": "generated-synthetic-four-band-v1",
+      "split_id": "synthetic-smoke-test-v1"
+    }
+  },
+  "metric_semantics": {
+    "actionable_coverage": "configured sources with centered balance after at least three reliable configured sources",
+    "coverage": "legacy alias of actionable_coverage",
+    "numeric_coverage": "configured sources with finite raw source delta"
+  },
+  "metrics": {
+    "actionable_coverage": 0.0,
+    "actionable_covered_measurements": 0,
+    "attributed_anomaly_f1": null,
+    "attributed_anomaly_precision": null,
+    "attributed_anomaly_recall": 0.0,
+    "coverage": 0.0,
+    "covered_measurements": 0,
+    "eligible_measurements": 20,
+    "false_negative": 4,
+    "false_positive": 0,
+    "mae_db_on_covered": null,
+    "missing_prediction_penalty_db": 12.0,
+    "non_neutral_covered_count": 0,
+    "numeric_coverage": 0.25,
+    "numeric_covered_measurements": 5,
+    "raw_delta_mae_db_on_numeric_covered": 2.599203365043414,
+    "sign_accuracy_non_neutral_on_covered": null,
+    "true_positive": 0,
+    "unconditional_mae_db": 12.0,
+    "unconditional_raw_delta_mae_db": 9.649800841260852
+  },
+  "metrics_by_noise": {
+    "clean": {
+      "actionable_coverage": 0.0,
+      "actionable_covered_measurements": 0,
+      "attributed_anomaly_f1": null,
+      "attributed_anomaly_precision": null,
+      "attributed_anomaly_recall": 0.0,
+      "coverage": 0.0,
+      "covered_measurements": 0,
+      "eligible_measurements": 20,
+      "false_negative": 4,
+      "false_positive": 0,
+      "mae_db_on_covered": null,
+      "missing_prediction_penalty_db": 12.0,
+      "non_neutral_covered_count": 0,
+      "numeric_coverage": 0.25,
+      "numeric_covered_measurements": 5,
+      "raw_delta_mae_db_on_numeric_covered": 2.599203365043414,
+      "sign_accuracy_non_neutral_on_covered": null,
+      "true_positive": 0,
+      "unconditional_mae_db": 12.0,
+      "unconditional_raw_delta_mae_db": 9.649800841260852
+    }
+  },
+  "pair_metadata": [
+    {
+      "asset_provenance": {
+        "asset_id": "generated-synthetic-four-band-v1",
+        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+        "publication_status": "publishable",
+        "scope": "pipeline diagnostic only; not music-domain feasibility evidence"
+      },
+      "centered_balance_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": -4.0,
+        "vocals": 0.0
+      },
+      "common_gain_input_db": 0.0,
+      "label_common_mode_gain_db": 0.0,
+      "label_procedure": "raw=common+source_injection; center=median(active raw); balance=raw-center; inactive=null",
+      "noise": {
+        "independent_within_pair": true,
+        "kind": "none",
+        "observation_snr_db": null,
+        "reference_snr_db": null
+      },
+      "observation_mix_sha256_f64le": "e7454b463ee0b90d151f5c1aaf9d98e320588e7601915d33f84e26f410172f66",
+      "pair_id": "guitar_minus_4db__none_clean",
+      "raw_source_delta_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": -4.0,
+        "vocals": 0.0
+      },
+      "reference_mix_sha256_f64le": "38ce40edb3056f255092118e5ed78146f48be4e184930caa1820e9a66b65e002",
+      "seed": 260919,
+      "shared_scale": 0.2,
+      "source_injected_gain_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": -4.0,
+        "vocals": 0.0
+      },
+      "split_id": "synthetic-smoke-test-v1",
+      "valid_source_mask": {
+        "bass": true,
+        "drums": true,
+        "guitar": true,
+        "vocals": true
+      }
+    },
+    {
+      "asset_provenance": {
+        "asset_id": "generated-synthetic-four-band-v1",
+        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+        "publication_status": "publishable",
+        "scope": "pipeline diagnostic only; not music-domain feasibility evidence"
+      },
+      "centered_balance_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 0.0,
+        "vocals": 0.0
+      },
+      "common_gain_input_db": 0.0,
+      "label_common_mode_gain_db": 0.0,
+      "label_procedure": "raw=common+source_injection; center=median(active raw); balance=raw-center; inactive=null",
+      "noise": {
+        "independent_within_pair": true,
+        "kind": "none",
+        "observation_snr_db": null,
+        "reference_snr_db": null
+      },
+      "observation_mix_sha256_f64le": "38ce40edb3056f255092118e5ed78146f48be4e184930caa1820e9a66b65e002",
+      "pair_id": "guitar_plus_0db__none_clean",
+      "raw_source_delta_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 0.0,
+        "vocals": 0.0
+      },
+      "reference_mix_sha256_f64le": "38ce40edb3056f255092118e5ed78146f48be4e184930caa1820e9a66b65e002",
+      "seed": 260920,
+      "shared_scale": 0.2,
+      "source_injected_gain_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 0.0,
+        "vocals": 0.0
+      },
+      "split_id": "synthetic-smoke-test-v1",
+      "valid_source_mask": {
+        "bass": true,
+        "drums": true,
+        "guitar": true,
+        "vocals": true
+      }
+    },
+    {
+      "asset_provenance": {
+        "asset_id": "generated-synthetic-four-band-v1",
+        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+        "publication_status": "publishable",
+        "scope": "pipeline diagnostic only; not music-domain feasibility evidence"
+      },
+      "centered_balance_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 4.0,
+        "vocals": 0.0
+      },
+      "common_gain_input_db": 0.0,
+      "label_common_mode_gain_db": 0.0,
+      "label_procedure": "raw=common+source_injection; center=median(active raw); balance=raw-center; inactive=null",
+      "noise": {
+        "independent_within_pair": true,
+        "kind": "none",
+        "observation_snr_db": null,
+        "reference_snr_db": null
+      },
+      "observation_mix_sha256_f64le": "1b1c2d79789b3650b41c290b749cb2ffce1256202a325195725f4a4332b886d5",
+      "pair_id": "guitar_plus_4db__none_clean",
+      "raw_source_delta_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 4.0,
+        "vocals": 0.0
+      },
+      "reference_mix_sha256_f64le": "38ce40edb3056f255092118e5ed78146f48be4e184930caa1820e9a66b65e002",
+      "seed": 260921,
+      "shared_scale": 0.2,
+      "source_injected_gain_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 4.0,
+        "vocals": 0.0
+      },
+      "split_id": "synthetic-smoke-test-v1",
+      "valid_source_mask": {
+        "bass": true,
+        "drums": true,
+        "guitar": true,
+        "vocals": true
+      }
+    },
+    {
+      "asset_provenance": {
+        "asset_id": "generated-synthetic-four-band-v1",
+        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+        "publication_status": "publishable",
+        "scope": "pipeline diagnostic only; not music-domain feasibility evidence"
+      },
+      "centered_balance_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 0.0,
+        "vocals": 0.0
+      },
+      "common_gain_input_db": 4.0,
+      "label_common_mode_gain_db": 4.0,
+      "label_procedure": "raw=common+source_injection; center=median(active raw); balance=raw-center; inactive=null",
+      "noise": {
+        "independent_within_pair": true,
+        "kind": "none",
+        "observation_snr_db": null,
+        "reference_snr_db": null
+      },
+      "observation_mix_sha256_f64le": "564b6a0178d1d3e56c45500008711b771829e44c831de9c91e297e72306638c2",
+      "pair_id": "common_plus_4db__none_clean",
+      "raw_source_delta_db": {
+        "bass": 4.0,
+        "drums": 4.0,
+        "guitar": 4.0,
+        "vocals": 4.0
+      },
+      "reference_mix_sha256_f64le": "38ce40edb3056f255092118e5ed78146f48be4e184930caa1820e9a66b65e002",
+      "seed": 260922,
+      "shared_scale": 0.2,
+      "source_injected_gain_db": {
+        "bass": 0.0,
+        "drums": 0.0,
+        "guitar": 0.0,
+        "vocals": 0.0
+      },
+      "split_id": "synthetic-smoke-test-v1",
+      "valid_source_mask": {
+        "bass": true,
+        "drums": true,
+        "guitar": true,
+        "vocals": true
+      }
+    },
+    {
+      "asset_provenance": {
+        "asset_id": "generated-synthetic-four-band-v1",
+        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+        "publication_status": "publishable",
+        "scope": "pipeline diagnostic only; not music-domain feasibility evidence"
+      },
+      "centered_balance_db": {
+        "bass": -3.0,
+        "drums": 1.0,
+        "guitar": 3.0,
+        "vocals": -1.0
+      },
+      "common_gain_input_db": 1.0,
+      "label_common_mode_gain_db": 2.0,
+      "label_procedure": "raw=common+source_injection; center=median(active raw); balance=raw-center; inactive=null",
+      "noise": {
+        "independent_within_pair": true,
+        "kind": "none",
+        "observation_snr_db": null,
+        "reference_snr_db": null
+      },
+      "observation_mix_sha256_f64le": "1a5ac4d0dd7feaf40a380f1dd1cd353fcbed0352bf5cd554fc87fe1190b3f188",
+      "pair_id": "multi_source_centered__none_clean",
+      "raw_source_delta_db": {
+        "bass": -1.0,
+        "drums": 3.0,
+        "guitar": 5.0,
+        "vocals": 1.0
+      },
+      "reference_mix_sha256_f64le": "38ce40edb3056f255092118e5ed78146f48be4e184930caa1820e9a66b65e002",
+      "seed": 260923,
+      "shared_scale": 0.2,
+      "source_injected_gain_db": {
+        "bass": -2.0,
+        "drums": 2.0,
+        "guitar": 4.0,
+        "vocals": 0.0
+      },
+      "split_id": "synthetic-smoke-test-v1",
+      "valid_source_mask": {
+        "bass": true,
+        "drums": true,
+        "guitar": true,
+        "vocals": true
+      }
+    }
+  ],
+  "probe_status": "completed",
+  "rows": [
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_minus_4db",
+      "instrument": "bass",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_minus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_minus_4db",
+      "instrument": "guitar",
+      "noise_kind": "none",
+      "numeric_available": true,
+      "pair_id": "guitar_minus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": -6.305480433932928,
+      "raw_absolute_error_db": 2.305480433932928,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": -4.0,
+      "target_balance_db": -4.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": -4.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_minus_4db",
+      "instrument": "vocals",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_minus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_minus_4db",
+      "instrument": "drums",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_minus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_0db",
+      "instrument": "bass",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_plus_0db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_0db",
+      "instrument": "guitar",
+      "noise_kind": "none",
+      "numeric_available": true,
+      "pair_id": "guitar_plus_0db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": 0.0,
+      "raw_absolute_error_db": 0.0,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_0db",
+      "instrument": "vocals",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_plus_0db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_0db",
+      "instrument": "drums",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_plus_0db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_4db",
+      "instrument": "bass",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_4db",
+      "instrument": "guitar",
+      "noise_kind": "none",
+      "numeric_available": true,
+      "pair_id": "guitar_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": -0.15001413379618356,
+      "raw_absolute_error_db": 4.150014133796184,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 4.0,
+      "target_balance_db": 4.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 4.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_4db",
+      "instrument": "vocals",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "guitar_plus_4db",
+      "instrument": "drums",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "guitar_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 0.0,
+      "target_raw_delta_db": 0.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "common_plus_4db",
+      "instrument": "bass",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "common_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 4.0,
+      "target_raw_delta_db": 4.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "common_plus_4db",
+      "instrument": "guitar",
+      "noise_kind": "none",
+      "numeric_available": true,
+      "pair_id": "common_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": 4.002053954481546,
+      "raw_absolute_error_db": 0.0020539544815463273,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 4.0,
+      "target_raw_delta_db": 4.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "common_plus_4db",
+      "instrument": "vocals",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "common_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 4.0,
+      "target_raw_delta_db": 4.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "common_plus_4db",
+      "instrument": "drums",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "common_plus_4db__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": 0.0,
+      "target_common_mode_db": 4.0,
+      "target_raw_delta_db": 4.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "multi_source_centered",
+      "instrument": "bass",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "multi_source_centered__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": -2.0,
+      "target_balance_db": -3.0,
+      "target_common_mode_db": 2.0,
+      "target_raw_delta_db": -1.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "multi_source_centered",
+      "instrument": "guitar",
+      "noise_kind": "none",
+      "numeric_available": true,
+      "pair_id": "multi_source_centered__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": -1.538468303006411,
+      "raw_absolute_error_db": 6.538468303006411,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 4.0,
+      "target_balance_db": 3.0,
+      "target_common_mode_db": 2.0,
+      "target_raw_delta_db": 5.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "multi_source_centered",
+      "instrument": "vocals",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "multi_source_centered__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 0.0,
+      "target_balance_db": -1.0,
+      "target_common_mode_db": 2.0,
+      "target_raw_delta_db": 1.0,
+      "valid_source": true
+    },
+    {
+      "absolute_error_db": null,
+      "balance_identifiable": false,
+      "case_id": "multi_source_centered",
+      "instrument": "drums",
+      "noise_kind": "none",
+      "numeric_available": false,
+      "pair_id": "multi_source_centered__none_clean",
+      "predicted_balance_db": null,
+      "predicted_common_mode_db": null,
+      "predicted_raw_delta_db": null,
+      "raw_absolute_error_db": null,
+      "reliable_configured_source_count": 1,
+      "snr_db": null,
+      "source_injected_gain_db": 2.0,
+      "target_balance_db": 1.0,
+      "target_common_mode_db": 2.0,
+      "target_raw_delta_db": 3.0,
+      "valid_source": true
+    }
+  ],
+  "unique_separation_calls": 5
+}

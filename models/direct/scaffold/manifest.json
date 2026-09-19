@@ -1,0 +1,12 @@
+{
+  "model_bundle_id": "direct-efficientat-scaffold-v1",
+  "candidate_encoders": ["EfficientAT-mn10_as", "EfficientAT-mn05_as"],
+  "status": "scaffold_not_fitted",
+  "evidence_mode": "source_level_deltas",
+  "units": "dB",
+  "scale_sensitive_branch": ["rms_dbfs", "peak_dbfs"],
+  "adaptation_plan": "frozen-head warmup then unfreeze final encoder blocks on MI300",
+  "adapted_on_mi300": false,
+  "selection_status": "open_experiment"
+}
+

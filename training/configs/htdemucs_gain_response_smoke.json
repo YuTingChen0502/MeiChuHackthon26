@@ -1,0 +1,15 @@
+{
+  "config_id": "htdemucs-6s-synthetic-smoke-fast-v1",
+  "sample_rate_hz": 44100,
+  "duration_s": 4.0,
+  "seed": 260919,
+  "split_id": "synthetic-smoke-test-v1",
+  "gain_grid_db": [-4, 0, 4],
+  "noise_conditions": [
+    {"kind": "none", "snr_db": null}
+  ],
+  "changed_source": "guitar",
+  "shared_scale": 0.2,
+  "activity_floor_dbfs_rms": -70.0,
+  "neutral_tolerance_db": 1.0
+}

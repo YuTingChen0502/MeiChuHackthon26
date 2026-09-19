@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "assets": [
+    {
+      "asset_id": "generated-synthetic-four-band-v1",
+      "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+      "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+      "attribution": null,
+      "file_hash": null,
+      "allowed_publication_status": "publishable",
+      "split_identity": "synthetic-smoke-test-v1",
+      "limitations": "Pipeline diagnostic only; not real-music, room, or product feasibility evidence."
+    }
+  ],
+  "pending_empirical_assets": {
+    "status": "not_supplied",
+    "requirement": "Rights-cleared multitracks with origin, permission/license, attribution, hashes, grouped split, and publication status are required before empirical separator/direct comparison."
+  }
+}
