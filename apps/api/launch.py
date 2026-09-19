@@ -30,6 +30,8 @@ def main():
             os.environ[key] = value
         else:
             os.environ.pop(key, None)
+    os.environ.setdefault("PA_ALLOWED_ORIGINS",
+        f"http://127.0.0.1:{args.port},http://localhost:{args.port}")
     import uvicorn
     from .transport import create_app
     uvicorn.run(create_app(bundle_registry=registry), host="127.0.0.1", port=args.port,

@@ -17,6 +17,11 @@ python -m apps.api.launch --storage C:/PA/runtime --mode bundle --bundle C:/PA/m
 python -m apps.api.inventory
 ```
 
+The launcher defaults allowed browser origins to `http://127.0.0.1:<port>` and
+`http://localhost:<port>` for its selected `--port` (8000 by default). An explicit
+`PA_ALLOWED_ORIGINS` configuration is preserved; it must include the UI origin
+if that origin should submit requests. Other origins remain rejected.
+
 Adapter imports above are explicit trusted host CLI choices. Bundle manifests
 cannot import executable modules. Applications may instead inject
 `create_app(bundle_registry=BackendRegistry(...))`, or a RuntimeAPI analyzer
