@@ -10,7 +10,7 @@ from typing import Callable, Mapping
 from analyzers.bundle_validation import ValidatedBundle, require, validate_bundle
 from analyzers.calibration_metadata import validate_calibration
 from analyzers.reference_contexts import ReferenceContextStore
-from core.contracts.validation import ANALYZER, validate_analyzer_pair, validate_record
+from core.contracts.validation import ANALYZER, PUBLIC, validate_analyzer_pair, validate_record
 
 
 class BackendUnavailable(RuntimeError):
@@ -190,9 +190,50 @@ class RealAnalyzer:
         prepared = self._backend.prepare_reference(material, copy.deepcopy(instrument_config))
         asset = prepared.get("model_specific_context_asset")
         require(isinstance(asset, str) and asset, "Backend must return opaque context identity")
+        result = {"model_specific_context_asset": asset, "window_count": len(material), "example_only": False}
+        if self._acceptance is not None and prepared.get("coverage") is not None:
+            coverage = copy.deepcopy(prepared["coverage"])
+            require(isinstance(coverage, list), "Reference coverage must be a list")
+            for row in coverage:
+                validate_record(row, PUBLIC, "Coverage")
+            by_id = {row["instrument_id"]: row for row in coverage}
+            require(len(by_id) == len(coverage)
+                    and set(by_id) == {x["instrument_id"] for x in configured},
+                    "Reference coverage/configuration mismatch")
+            # Bound declarations by the union of observed PCM, never double-count overlap.
+            groups = {}
+            for w in material:
+                key = (w.session_id, w.analysis_run_id, w.input_asset_or_device_id, w.clock_id)
+                groups.setdefault(key, []).append((w.sample_start, w.sample_end))
+            total_samples, maximum_nonoverlap = 0, 0
+            for spans in groups.values():
+                start, end = sorted(spans)[0]
+                for a, b in sorted(spans)[1:]:
+                    if a > end:
+                        total_samples += end - start
+                        start, end = a, b
+                    else:
+                        end = max(end, b)
+                total_samples += end - start
+                previous_end = None
+                for a, b in sorted(spans, key=lambda span: span[1]):
+                    if previous_end is None or a >= previous_end:
+                        maximum_nonoverlap += 1
+                        previous_end = b
+            seconds = total_samples / self._manifest["input"]["sample_rate_hz"]
+            for item in configured:
+                row = by_id[item["instrument_id"]]
+                require(row["valid_active_seconds"] <= seconds + 1e-9
+                        and row["qualified_nonoverlap_windows"] <= maximum_nonoverlap,
+                        "Reference coverage exceeds observed PCM")
+                if item["family"] not in self._acceptance["accepted_families"]:
+                    require(row["valid_active_seconds"] == 0
+                            and row["qualified_nonoverlap_windows"] == 0 and row["status"] == "insufficient",
+                            "Reference coverage claims an unaccepted family")
+            result["coverage"] = coverage
         self._context_store.add(self.bundle.manifest_sha256, asset, instrument_config,
                                 [w.window_id for w in material])
-        return {"model_specific_context_asset": asset, "window_count": len(material), "example_only": False}
+        return result
 
     def _invalid(self, context, reason):
         measurements = []
