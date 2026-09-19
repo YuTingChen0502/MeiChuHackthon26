@@ -25,14 +25,22 @@ export function currentSourceFrame(s) {
 
 export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPending=false}={}) {
   const current=currentSourceFrame(s)&&fresh&&connected&&!switchPending;
-  // Suppression is deliberately non-positive; only Runtime may emit a recognition state.
-  if (!connected || switchPending || ['switching','starting','paused','stopped','unavailable'].includes(s?.capture?.state))
-    return {state:'unavailable',label:'Waiting for current audio',numeric:false};
+  // A Runtime support mask is not a claim of current detection; keep it visible.
   if (p?.state==='unsupported') return {state:'unsupported',label:'Unsupported',numeric:false};
+  // Suppression is deliberately non-positive; only Runtime may emit a recognition state.
+  if (!connected) return {state:'unavailable',label:'Input disconnected',numeric:false};
+  const unavailableLabel={paused:'Listening paused',stopped:'Listening stopped',unavailable:'Input unavailable'}[s?.capture?.state];
+  if (unavailableLabel) return {state:'unavailable',label:unavailableLabel,numeric:false};
+  if (switchPending || ['switching','starting'].includes(s?.capture?.state))
+    return {state:'unavailable',label:'Connecting input',numeric:false};
+  const reasons=[...(p?.reason_codes??[]),...(s?.capture?.reason_codes??[]),...(s?.latest_frame?.quality?.reason_codes??[])];
+  if (p?.state==='uncertain' || s?.latest_frame?.quality?.stale ||
+      reasons.some(reason=>['stale_evidence','alignment_unavailable'].includes(reason)))
+    return {state:'uncertain',label:'Uncertain',numeric:false,advice:'Advice withheld'};
   if (p?.state==='listening' && p.frame_id===null && s?.capture?.state==='listening')
     return {state:'listening',label:'Listening',numeric:false};
   if (!current || !p?.frame_id || p.frame_id!==s.latest_frame?.frame_id)
-    return {state:'unavailable',label:'Waiting for current audio',numeric:false};
+    return {state:'uncertain',label:'Uncertain · waiting for current audio',numeric:false,advice:'Advice withheld'};
   const stateLabel={detected:'Detected',not_heard:'Not heard',uncertain:'Uncertain',listening:'Listening'}[p.state]??'Uncertain';
   const label=p.state==='detected'&&p.calibration_status==='uncalibrated'?`${stateLabel} · uncalibrated`:stateLabel;
   const i=s.latest_frame.instruments?.find(i=>i.instrument_id===p.instrument_id);
@@ -53,15 +61,19 @@ export function capturePresentation(s,discovery,{connected=true,fresh=true,switc
   const options=logicalMicrophones(discovery),name=c.name??(s.source?.input_kind==='uploaded_file'?'Uploaded File':'Microphone');
   const requested=options.find(m=>m.id===c.requested_microphone_id)?.label??'the selected microphone';
   if(!connected)return {title:'Input disconnected',detail:'Waiting to reconnect. Previous audio is not current.'};
+  // Present state outranks retained historical switch outcomes.
+  if(c.state==='unavailable')return {title:'Microphone unavailable',detail:'Check the connection or choose another microphone. Your song and reference are kept.'};
+  if(c.state==='stopped')return {title:`${name} · Stopped`,detail:'Listening has stopped. Your song and reference are kept.'};
+  if(c.state==='paused')return {title:`${name} · Paused`,detail:'Resume listening when you are ready.'};
   if(switchPending||c.state==='switching'||c.switch_result==='pending')return {title:'Changing microphone…',detail:`Waiting for ${requested}. Acknowledgement does not mean audio is ready.`};
-  if(c.switch_result==='rolled_back')return {title:c.state==='paused'?`${name} · Paused`:`${name} · Restored`,detail:`Couldn't use ${requested}. The previous input was restored; only fresh audio can be used.`};
-  if(c.state==='unavailable'||c.switch_result==='failed')return {title:'Microphone unavailable',detail:'Check the connection or choose another microphone. Your song and reference are kept.'};
   if(c.state==='active'&&!fresh)return {title:`${name} · Waiting for fresh audio`,detail:'The last observation is no longer current. Previous advice is withheld.'};
+  if(c.switch_result==='rolled_back'&&c.state==='active')return {title:`${name} · Restored`,detail:`Couldn't use ${requested}. The previous input was restored; only fresh audio can be used.`};
   return {title:`${name} · ${{starting:'Connecting',listening:'Listening',active:'Active',paused:'Paused',stopped:'Stopped'}[c.state]??'Unavailable'}`,detail:c.state==='paused'?'Resume listening when you are ready.':c.state==='active'?'Listening against the uploaded reference.':'Waiting for current audio. Recognition may remain uncertain.'};
 }
 
 export function liveReferenceView(s,{connected=true,fresh=true,switchPending=false,acknowledgedRecovery=null,recoveredKey=null}={}) {
   if(!isLiveReference(s))return 'LEGACY';
+  if(['paused','stopped','unavailable'].includes(s.capture?.state))return 'INTERRUPTED';
   if(switchPending||s.capture?.switch_result==='pending'||s.capture?.state==='switching')return 'SWITCHING';
   if(['SUSPENDED','STOPPED','ERROR'].includes(s.song?.workflow_state)||['paused','stopped','unavailable'].includes(s.capture?.state))return 'INTERRUPTED';
   if(!connected||!fresh||!currentSourceFrame(s))return 'LISTENING';

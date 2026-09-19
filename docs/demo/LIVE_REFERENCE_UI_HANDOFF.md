@@ -70,3 +70,12 @@ Neutral Harmonix styling is retained; no new visual features or inference logic.
 Only apps/ui, tests/ui and docs/demo are changed by this lane. Shared commits were
 merged exactly as routed by Lead, not edited by UI. No change to model masks, confidence,
 physical validation or numerical authorization.
+
+## Focused review correction
+
+Current unavailable/paused/stopped capture now outranks retained rollback/pending
+outcomes in the status and page state. Stale or alignment-unavailable observations
+show Uncertain; initial Runtime Listening without a model result stays Listening.
+Input loss is separate, and Runtime Unsupported masks remain visible while waiting.
+No positive recognition or advice is inferred. Added three targeted regressions:
+**72 UI tests passed**. Actual new-policy/candidate integration still awaits Runtime.

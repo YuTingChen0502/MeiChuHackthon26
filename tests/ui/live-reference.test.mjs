@@ -53,6 +53,39 @@ test('200 pending acknowledgement does not become successful capture or old advi
  const copy=capturePresentation(s,{microphones:[{microphone_id:'mic-b',name:'Other microphone'}]});assert.match(copy.title,/Stage microphone.*Restored/);assert.match(copy.detail,/Other microphone/);
  s.capture.switch_result='failed';s.capture.state='unavailable';assert.match(capturePresentation(s,{}).title,/unavailable/);
 });
+
+test('current capture state outranks retained rollback and pending outcomes',()=>{
+ const s=session();
+ for(const result of ['rolled_back','pending']){
+  s.capture.switch_result=result;
+  for(const [state,label]of [['unavailable','unavailable'],['paused','Paused'],['stopped','Stopped']]){
+   s.capture.state=state;const copy=capturePresentation(s,{});assert.match(copy.title,new RegExp(label));assert.doesNotMatch(copy.title,/Restored|Changing/);assert.equal(liveReferenceView(s),'INTERRUPTED');
+  }
+ }
+ s.capture.switch_result='rolled_back';s.capture.state='listening';assert.match(capturePresentation(s,{}).title,/Listening/);
+ s.capture.state='active';assert.match(capturePresentation(s,{}, {fresh:false}).title,/fresh audio/);
+ assert.match(capturePresentation(s,{}).title,/Restored/);
+});
+
+test('initial listening, stale or alignment uncertainty and unavailable input are distinct',()=>{
+ const s=session(),p={...s.perception[0],state:'listening',frame_id:null};
+ s.latest_frame=null;s.capture.state='listening';s.capture.frame_fresh=false;
+ assert.equal(perceptionPresentation(s,p).label,'Listening');
+ for(const reason of ['stale_evidence','alignment_unavailable']){
+  const result=perceptionPresentation(s,{...p,state:'uncertain',reason_codes:[reason]});assert.equal(result.label,'Uncertain');assert.equal(result.numeric,false);
+ }
+ s.capture.state='unavailable';assert.equal(perceptionPresentation(s,p).label,'Input unavailable');
+ const stale=session();stale.latest_frame.quality.stale=true;assert.equal(perceptionPresentation(stale,stale.perception[0]).label,'Uncertain');
+ assert.equal(perceptionPresentation(session(),session().perception[0],{fresh:false}).state,'uncertain');
+});
+
+test('Runtime unsupported mask remains visible during input waiting, loss and switching',()=>{
+ const s=session(),p={...s.perception[0],state:'unsupported',numerical_advice_allowed:false};
+ for(const state of ['starting','listening','switching','unavailable','paused','stopped']){
+  s.capture.state=state;const value=perceptionPresentation(s,p,{fresh:false});assert.equal(value.label,'Unsupported');assert.equal(value.numeric,false);
+ }
+ assert.equal(perceptionPresentation(s,p,{connected:false}).label,'Unsupported');
+});
 test('microphone switching is allowed without fresh evidence in each nonterminal workflow',()=>{
  const s=session(),adapter={snapshot:s};s.latest_frame=null;
  for(const state of ['LIVE_MONITORING','PA_ADJUSTING','VERIFY_RECOVERY','SUSPENDED']){s.song.workflow_state=state;assert.equal(commandGuard('switch_microphone','authoritative',adapter,s,true,null).allowed,true);}
