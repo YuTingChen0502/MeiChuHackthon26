@@ -204,4 +204,20 @@ class SustainedSessionTests(unittest.TestCase):
         f.session.observe_window(f.window('fully-fresh',cutoff+.1),clock_uncertainty_s=.05)
         self.assertEqual('recovered',f.session.latest_verification['outcome'])
 
+    def test_cp1_injected_fake_fixture_can_use_its_scripted_sample_rate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            api=RuntimeAPI(storage_dir=directory,window_size_samples=10,available_audio_devices={'mic-1'})
+            _,_,_,snap=api_fixtures.RuntimeAPIServiceTests.create_rehearsal_session(api)
+            session=api.runtime_session(snap['session_id'])
+            # The frozen UI smoke declares the nominal 48 kHz device while its
+            # private Fake hook deliberately injects a tiny 10 Hz fixture.
+            session.capture_fingerprint['native_sample_rate_hz']=48000
+            source=FileAudioInput(input_asset_or_device_id='mic-1',clock_id=session.source['clock_id'],
+                sample_rate_hz=10,samples=[.1]*10,origin_monotonic_s=1)
+            source.input_kind='live_microphone'
+            w=next(api.pipeline.iter_windows(source,session_id=session.session_id,analysis_run_id='fake-only'))
+            result=session.observe_window(w)
+            self.assertTrue(result['example_only'])
+            self.assertFalse(session.capture_profile_enforced)
+
 if __name__=='__main__':unittest.main()

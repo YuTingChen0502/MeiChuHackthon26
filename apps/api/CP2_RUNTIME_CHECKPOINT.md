@@ -18,28 +18,56 @@ abstention until scripted evidence is supplied by an in-process test harness.
 ## Validation
 
 - Shared contract suite: 24 passed.
-- Runtime suite: 17 passed.
-- Integration suite: 33 passed, including actual loopback transport.
+- Runtime suite: 20 passed.
+- Integration suite: 35 passed, including actual loopback transport. Total: 79 tests.
 - Unchanged CP1 JS RuntimeAdapter + HTTP/WebSocket + SQLite correction-loop smoke: PASS.
 - Native local WASAPI smoke: six seconds, 48 kHz mono, 288768 captured samples,
   zero drops/discontinuities, exact captured-PCM/file-window replay parity. Gain,
   enhancements and physical geometry remain unverified. This is not PN54 evidence.
-- The finalized implementation will be measured in a separate committed-code
-  1200-second paced Runtime/API probe before final checkpoint reporting.
+- `b95ce4f` sustained Runtime/API probe: 1200.156 seconds, 1197 windows, zero
+  dropped/stale windows or discontinuities. Queue depth maximum 1 of capacity 2;
+  processing p50/p95 63/94 ms; capture-to-publication age p95 125 ms. Frame/hash/event
+  history each capped at 128. The one-second hop processing budget passed on this
+  local Fake/abstaining run.
+- Native timing/teardown corrections at `22c9ea3`: 120.188 seconds, 117/117 planned
+  windows, zero callback/worker drops, stale windows or discontinuities. Maximum ADC
+  residual 3.874 ms; callback queue maximum 1. No PCM saved for this continuity run.
+- Final digital-rail correction at `e619c7d`: 150.156-second Runtime/API probe,
+  147 windows, zero drops/stale/discontinuities, processing p50/p95 47/63 ms,
+  publication-age p95 94 ms; frame/hash/event buffers each capped at 128.
+
+Working-set memory in the 20-minute run went from 50.02 MiB to 58.59 MiB,
+with a measured peak of 59.69 MiB. The complete sampled trend is retained;
+this finite observation is not a proof of indefinite memory stability.
+
+Reports under `tests/runtime/reports/` identify their exact tested source commits.
+The long run tests `b95ce4f`; later corrections are covered by focused regressions
+and the separately recorded native and 150-second runs. These revisions must not
+be represented as one identical tested binary. The final CP1 compatibility fix is
+covered by the unchanged JS/HTTP/WebSocket smoke and a regression: the private
+in-process Fake harness may inject 10 Hz fixtures under a nominal 48 kHz UI device
+profile. Managed capture and non-fake analyzers retain strict profile enforcement.
+This exception is not exposed in public requests or launcher configuration.
 
 The earlier two-second native diagnostic over-detected callback timestamp jitter.
 The corrected adapter anchors time to sample counts with a declared 50 ms ADC
 residual budget; the six-second probe measured a 4.354 ms maximum residual. Overflow
 status and missing sample spans still break continuity. The earlier diagnostic is
-superseded, not positive evidence.
+superseded, not positive evidence. A subsequent 120-second diagnostic exposed
+Windows clock-resolution jitter at the consumer boundary: 94 windows were wrongly
+rejected as slightly future-dated. `22c9ea3` applies the declared 50 ms budget there,
+while conservatively requiring the same extra margin for native post-adjustment
+verification. The repeated native probe passed all 117 windows. Teardown exceptions
+now preserve terminal notification and joining. `e619c7d` includes PCM16 positive
+full scale in the shared clipping gate. No correction changed a public schema.
 
 ## Reproduction
 
 Use Python 3.12.14 with the Lead-pinned runtime dependencies. The local native probe
 used sounddevice 0.5.6, cffi 2.1.1 and pycparser 3.0 from a temporary environment.
 The portable native backend follows the official raw-input/discovery API:
-https://python-sounddevice.readthedocs.io/en/latest/api/raw-streams.html
-https://python-sounddevice.readthedocs.io/en/latest/api/checking-hardware.html
+[raw input streams](https://python-sounddevice.readthedocs.io/en/latest/api/raw-streams.html) and
+[device discovery](https://python-sounddevice.readthedocs.io/en/latest/api/checking-hardware.html).
 
 ```text
 python -m unittest discover -s core/contracts/tests -v
@@ -48,11 +76,14 @@ python -m unittest discover -s tests/integration -v
 python docs/implementation/checkpoint1_smoke.py
 python -m tests.runtime.sustained_probe --seconds 1200 --output <local-output>/sustained.json
 python -m tests.runtime.native_probe --device-id <discovered-id> --seconds 6 --output <local-output>
+python -m tests.runtime.native_continuity_probe --device-id <discovered-id> --seconds 120 --output <local-output>/continuity.json
 ```
 
 Probe manifests record commit/config/source hashes, runtime, generated PCM procedure
 or capture provenance, queue metrics and timing. Native WAV/raw float PCM stays in
-local temporary output and is not committed or uploaded. No probe claims instrument
+local temporary output and is not committed or uploaded. The local final capture
+artifact is `%TEMP%/cp2-native-final-capture/capture.wav`; the exact float source is
+`capture.float32le` in the same directory. Its committed manifest records hashes. No probe claims instrument
 accuracy, calibration, meaningful MI300 adaptation or physical PA verification.
 
 ## Limits and external gates
@@ -65,11 +96,16 @@ accuracy, calibration, meaningful MI300 adaptation or physical PA verification.
   operating envelope, compatible reference/baseline context and PN54 validation.
 - Native clock tolerance and W=4 s/hop=1 s are transport profiles, not calibrated
   perception settings. Device index changes invalidate selection; reconnect is explicit.
-- Worker stop requests cancellation and waits up to five seconds. A non-cooperative
-  hung analyzer cannot be killed safely in a Python thread; timeout is surfaced.
+- Worker stop requests cancellation and bounds thread joins to five seconds. Native
+  driver calls and analyzers must cooperate; Python cannot preempt a hung native call
+  or kill a blocked analyzer thread safely. Join timeout is surfaced.
 - Recent baseline selection is limited to 128 retained frames. Immutable baseline,
   audit and idempotency history intentionally grows on disk with human/workflow actions.
   Standalone sessions without a durable sink retain their audit in memory.
 - EOF suspends with `audio_eof`; explicit Resume replays an uploaded asset from its
   start on a fresh analysis run. Process restart requires a new session/clock.
 - Worker metrics remain an internal Runtime diagnostic; no UI metrics contract was added.
+- Processing and publication-age measurements are separate from confirmed-alert
+  latency. Two independent four-second windows require eight seconds of support in
+  the simulated anomaly policy. Empirical change-to-confirmed-alert latency awaits
+  calibrated ML and the physical PN54 loop; none of these probes establishes it.

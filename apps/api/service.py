@@ -428,6 +428,7 @@ class RuntimeAPI:
             analyzer=analyzer,
             baseline_store=BaselineStore(),
             capture_runtime_verified=runtime_verified,
+            capture_profile_enforced=self.managed_audio or not analyzer.capabilities()["example_only"],
             **kwargs,
         )
         ledger = SQLiteCommandLedger(self._store, session_id)

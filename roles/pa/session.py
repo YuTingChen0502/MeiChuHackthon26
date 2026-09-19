@@ -82,6 +82,7 @@ class PASession:
         event_retention: int = 128,
         capture_runtime_verified: bool = True,
         frame_retention: int = 128,
+        capture_profile_enforced: bool = True,
     ) -> None:
         validate_record(reference_profile, PUBLIC, "ReferenceProfile")
         self.session_id = session_id
@@ -90,6 +91,7 @@ class PASession:
         self.source = copy.deepcopy(source)
         self.capture_fingerprint = copy.deepcopy(capture_fingerprint)
         self.capture_runtime_verified = capture_runtime_verified
+        self.capture_profile_enforced = capture_profile_enforced
         self.analyzer = analyzer
         self.baseline_store = baseline_store or BaselineStore()
         self.monotonic_clock = monotonic_clock
@@ -225,6 +227,7 @@ class PASession:
             "source": copy.deepcopy(self.source),
             "capture_fingerprint": copy.deepcopy(self.capture_fingerprint),
             "capture_runtime_verified": self.capture_runtime_verified,
+            "capture_profile_enforced": self.capture_profile_enforced,
             "baseline_records": self.baseline_store.records(),
             "execution": copy.deepcopy(self.execution),
             "song": copy.deepcopy(self.song),
@@ -343,6 +346,7 @@ class PASession:
         self.persistence_frames = state["persistence_frames"]
         self.event_retention = state["event_retention"]
         self.frame_retention = state.get("frame_retention", 128)
+        self.capture_profile_enforced = state.get("capture_profile_enforced", True)
         self._detector = PersistentAnomalyPolicy(required_frames=self.persistence_frames)
         self._detector.restore_state(state.get("detector_state", {}))
         validate_snapshot(self.snapshot())
@@ -460,7 +464,7 @@ class PASession:
         model = self.analyzer.capabilities()["model"]
         if any(model[key] != self.execution[key] for key in ("model_bundle_id", "frontend_id", "execution_profile_id")):
             raise ValueError("runtime model/profile changed; create a revalidated session")
-        if window.sample_rate_hz != self.capture_fingerprint["native_sample_rate_hz"]:
+        if self.capture_profile_enforced and window.sample_rate_hz != self.capture_fingerprint["native_sample_rate_hz"]:
             raise ValueError("capture sample rate changed; revalidate the input profile")
         if purpose is None:
             purpose = "verification" if self._verification_armed else ("live" if self.session_mode == "live" else "rehearsal")

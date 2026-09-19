@@ -78,7 +78,9 @@ No public schemas or UI routes were added.
 
 `RuntimeAPI(available_audio_devices={...})` retains the in-process CP1 scripted Fake
 harness, with managed capture disabled by default for that explicit test seam. It is
-not used by the production launcher. `managed_audio=True` selects managed capture
+not used by the production launcher; its scripted sample-rate fixtures are exempt
+from nominal device-rate checking. Managed and real-analyzer sessions enforce the
+capture profile. `managed_audio=True` selects managed capture
 for a supplied test backend. Worker diagnostics are available to Runtime through
 `api.workers[session_id].metrics()`; snapshots/events expose suspension and quality
 through existing fields. The UI does not consume a new metrics contract.
