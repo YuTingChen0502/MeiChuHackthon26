@@ -121,7 +121,10 @@ errors propagate for Runtime's error boundary. Constructor failures do not produ
 The shell validates reference/window/context identities and returned AnalyzerEvidence, bounds input
 sample rate/span, rejects undeclared uncertainty features, and checks matched reference window IDs.
 prepare_reference returns opaque model_specific_context_asset plus window_count and example_only.
-It does not claim reference coverage. Backend matching and durable reference features remain backend
+The shell generates no coverage. Optional backend-supplied coverage is forwarded only with host
+acceptance, validated against existing Coverage fields, configured IDs, accepted families and the
+union/nonoverlap bounds of actual reference PCM. Missing coverage stays absent.
+Backend matching and durable reference features remain backend
 responsibilities. The generic store persists only hash-bound context/config/window identities, not PCM.
 Use the same host-owned store and backend feature cache across reloads. Missing, mismatched, expired
 or concurrently locked contexts fail closed. A context is bound to its target on first use and cannot

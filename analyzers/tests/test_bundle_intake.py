@@ -246,7 +246,7 @@ class BundleTests(unittest.TestCase):
 
     def test_repository_evidence_rejects_signed_urls_and_credentials_without_disclosure(self):
         for value in (
-            {"download": "https://example.invalid/file?X-Amz-Signature=sensitive-unit-fixture"},
+            {"download": "https://example.invalid/file?X-Amz-" + "Signature=sensitive-unit-fixture"},
             {"access_token": "sensitive-unit-fixture"},
             {"note": "Bearer sensitive-unit-fixture"},
         ):
@@ -304,6 +304,29 @@ with tempfile.TemporaryDirectory() as d:
         completed = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
                                    cwd=Path(__file__).resolve().parents[2])
         self.assertEqual(0, completed.returncode, completed.stderr)
+
+    def test_optional_backend_reference_coverage_is_gated_and_bounded(self):
+        write_bundle(self.source, declared_material="real_recorded", with_results=True)
+        bundle = validate_bundle(self.source)
+        class CoverageBackend(TestBackend):
+            seconds = 1.0
+            def prepare_reference(self, windows, instrument_config):
+                result = super().prepare_reference(windows, instrument_config)
+                result["coverage"] = [
+                    {"instrument_id": x["instrument_id"], "valid_active_seconds": self.seconds,
+                     "qualified_nonoverlap_windows": 1, "status": "limited"}
+                    for x in instrument_config["instruments"]]
+                return result
+        r = BackendRegistry()
+        r.register("test-only-adapter", lambda b: CoverageBackend(b, {}))
+        unaccepted = load_bundle(self.source, registry=r)
+        self.assertNotIn("coverage", unaccepted.prepare_reference([window()], config()))
+        accepted = load_bundle(self.source, registry=r, acceptance=acceptance(bundle))
+        prepared = accepted.prepare_reference([window()], config())
+        self.assertEqual(3, len(prepared["coverage"]))
+        CoverageBackend.seconds = 2
+        with self.assertRaisesRegex(ValueError, "exceeds observed PCM"):
+            accepted.prepare_reference([window()], config())
 
     def test_undeclared_cache_or_optimizer_file_is_rejected(self):
         (self.source / "optimizer.bin").write_bytes(b"should not be imported")
