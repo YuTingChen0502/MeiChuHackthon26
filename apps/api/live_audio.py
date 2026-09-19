@@ -19,6 +19,7 @@ class LiveAudioController:
         self.scheduled_keys={}
         self.tasks={};self.cancellations={};self.operation_locks={}
         self.diagnostics={}
+        self.analyzer_locks={};self.retired={};self.closers={}
         self.startup_timeout_s=max(5,api.pipeline.window_size_samples/(api.pipeline.frontend.sample_rate_hz or 48000)+3)
         self._shutdown=threading.Event()
         self._monitor=threading.Thread(target=self._watch,name="capture-status",daemon=True)
@@ -65,13 +66,34 @@ class LiveAudioController:
         session._transition()
         self.api._save_session_state(session.session_id,session.export_state())
 
+    def retire(self,sid,worker):
+        # Publication is fenced before closing capture. A running model call
+        # retains its resources until it can return safely.
+        try:worker.stop(timeout_s=.15)
+        except RuntimeError as exc:
+            if str(exc)!="audio_worker_shutdown_timeout":raise
+            retained=self.retired.setdefault(sid,[])
+            retained[:]=[w for w in retained if any(t and t.is_alive() for t in (w._producer,w._consumer))]
+            if worker not in retained:retained.append(worker)
+
+    def close_analyzer_when_idle(self,sid):
+        if sid in self.closers:return
+        lock=self.analyzer_locks.setdefault(sid,threading.Lock())
+        def close():
+            with lock:self.api._close_session_analyzer(sid)
+            self.retired.pop(sid,None)
+        if lock.acquire(blocking=False):
+            try:self.api._close_session_analyzer(sid)
+            finally:lock.release()
+        else:
+            task=threading.Thread(target=close,name=f"analyzer-reap:{sid}",daemon=True)
+            self.closers[sid]=task;task.start()
+
     def cancel(self,session):
         token=self.cancellations.get(session.session_id)
         if token:token.set()
-        worker=self.api.workers.get(session.session_id)
-        if worker:
-            worker.stop()
-            if self.api.workers.get(session.session_id) is worker:self.api.workers.pop(session.session_id,None)
+        worker=self.api.workers.pop(session.session_id,None)
+        if worker:self.retire(session.session_id,worker)
 
     def schedule(self,session,identity,*,file_source=False,previous=None,paused=False):
         sid=session.session_id
@@ -94,7 +116,7 @@ class LiveAudioController:
         failures=[]
         try:
             old=self.api.workers.pop(session.session_id,None)
-            if old:old.stop()
+            if old:self.retire(session.session_id,old)
             if not self.current(session,token):return
             if session.session_id in self.api._failed_analyzers:
                 replacement=self.api._new_analyzer();old_analyzer=session.analyzer;session.analyzer=replacement
@@ -167,25 +189,30 @@ class LiveAudioController:
             audio=NativeMicAudioInput(backend=api._native(),device_id=native_id,clock_id=clock_id,
                 sample_rate_hz=format["sample_rate_hz"],channels=format["channels"],clock=session.monotonic_clock,cancellation=token)
         first_frame=threading.Event()
+        analyzer_lock=self.analyzer_locks.setdefault(sid,threading.Lock())
         def observe(window,quality,max_age):
             # Perception never holds the session publication lock. Switch commands
             # can fence immediately; completed old inference is discarded on reentry.
             with session.command_transaction():
-                if not self.current(session,token,generation):return
+                if not self.current(session,token,generation):return False
                 context=session._context(window,purpose="verification" if session._verification_armed else "live",probe_instrument_id=None)
                 analyzer=session.analyzer
-            begin=session.monotonic_clock()
+            while not analyzer_lock.acquire(timeout=.05):
+                if not self.current(session,token,generation):return False
             try:
-                evidence=analyzer.analyze(window,context)
-            except Exception:
-                if self.current(session,token,generation):api._failed_analyzers.add(sid)
-                raise
+                if not self.current(session,token,generation):return False
+                if session.monotonic_clock()-window.capture_end_monotonic_s>max_age:return False
+                begin=session.monotonic_clock()
+                try:evidence=analyzer.analyze(window,context)
+                except Exception:
+                    if self.current(session,token,generation):api._failed_analyzers.add(sid)
+                    raise
+            finally:analyzer_lock.release()
             with session.command_transaction():
-                if not self.current(session,token,generation):return
+                if not self.current(session,token,generation):return False
                 if not file_source and not session.capture_runtime_verified:
                     quality["capture_compatible"]=False;quality["reason_codes"].append("capture_not_runtime_verified")
-                mode=getattr(audio,"clock_mode","unknown")
-                session.capture["timestamp_mode"]="adc_sample_count" if mode=="adc" else "sample_count" if mode=="monotonic_fallback" or file_source else "unknown"
+                session.capture["timestamp_mode"]="sample_count" if file_source else audio.timestamp_mode
                 session.observe_window(window,quality=quality,max_age_s=max_age,clock_uncertainty_s=.05 if not file_source else 0,
                     _prepared_evidence=evidence,_inference_started=begin)
                 if session.capture["frame_fresh"]:first_frame.set()
@@ -202,15 +229,16 @@ class LiveAudioController:
             deadline=time.monotonic()+self.startup_timeout_s
             while self.current(session,token,generation) and time.monotonic()<deadline:
                 if worker.error:raise RuntimeError(worker.error)
-                if paused and getattr(audio,"_next_sample",0)>0:break
+                if not file_source and getattr(audio,"_next_sample",0)>0:break
                 if first_frame.wait(.025):break
                 if worker._finished.is_set():raise RuntimeError(worker.error or "capture_ended_before_fresh_frame")
             if not self.current(session,token,generation):return False
-            if not first_frame.is_set() and not (paused and getattr(audio,"_next_sample",0)>0):
+            if not first_frame.is_set() and not (not file_source and getattr(audio,"_next_sample",0)>0):
                 raise RuntimeError("capture_startup_timeout")
-            if paused:worker.stop()
+            if paused:self.retire(sid,worker)
             with session.command_transaction():
                 if not self.current(session,token,generation):return False
+                if not paused and not session.capture["frame_fresh"]:session.capture["state"]="listening"
                 if paused:
                     session._clear_source_evidence("paused")
                     session.song["workflow_state"]="SUSPENDED";session.suspension_reasons=["paused"]
@@ -223,7 +251,7 @@ class LiveAudioController:
             return True
         finally:
             if not keep:
-                worker.stop()
+                self.retire(sid,worker)
                 if api.workers.get(sid) is worker:api.workers.pop(sid,None)
 
     def reconcile(self,session,command,response):
@@ -253,8 +281,7 @@ class LiveAudioController:
                 with session.command_transaction():
                     if (session.source["clock_id"]!=getattr(audio,"clock_id",None)
                             or session.capture["state"] in ("switching","paused","stopped","unavailable")):continue
-                    mode=getattr(audio,"clock_mode","unknown")
-                    stamp="adc_sample_count" if mode=="adc" else "sample_count" if mode=="monotonic_fallback" or isinstance(audio,FileAudioInput) else "unknown"
+                    stamp="sample_count" if isinstance(audio,FileAudioInput) else audio.timestamp_mode
                     changed=session.capture["timestamp_mode"]!=stamp
                     session.capture["timestamp_mode"]=stamp
                     if session.capture["state"]=="starting" and getattr(audio,"_next_sample",0)>0:
@@ -268,8 +295,12 @@ class LiveAudioController:
     def close(self):
         self._shutdown.set()
         for token in self.cancellations.values():token.set()
-        for worker in list(self.api.workers.values()):
-            try:worker.stop()
+        for sid,worker in list(self.api.workers.items()):
+            if not self.api.sessions[sid].live_reference:continue
+            self.api.workers.pop(sid,None)
+            try:self.retire(sid,worker)
             except Exception as exc:self.api.close_errors.append(str(exc))
-        for task in self.tasks.values():task.join(10)
+        for task in self.tasks.values():task.join(.2)
         self._monitor.join(2)
+        for sid,session in self.api.sessions.items():
+            if session.live_reference:self.close_analyzer_when_idle(sid)

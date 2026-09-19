@@ -590,8 +590,9 @@ class PASession(LiveReferencePolicy):
         )
         if self.live_reference:
             self._current_masks={row["instrument_id"]:copy.deepcopy(row) for row in evidence["measurements"]}
-            self.capture.update(analysis_run_id=window.analysis_run_id,state="active",
-                frame_fresh=not frame["quality"]["stale"] and not frame["quality"]["dropout"])
+            fresh=not frame["quality"]["stale"] and not frame["quality"]["dropout"]
+            self.capture.update(analysis_run_id=window.analysis_run_id,state="active" if fresh else "listening",
+                frame_fresh=fresh)
         self.latest_frame = copy.deepcopy(frame)
         self._frames.append(copy.deepcopy(frame))
         if purpose == "guided_probe":

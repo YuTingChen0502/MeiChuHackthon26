@@ -127,7 +127,10 @@ class AudioWorker:
                     dropout=gap,
                     comparability='weak' if not any(window.samples) else 'comparable')
                 begin = self.clock()
-                self.on_window(window, quality, self.max_age_s)
+                if self.on_window(window, quality, self.max_age_s) is False:
+                    self.stale_windows += 1
+                    gap = True
+                    continue
                 end = self.clock()
                 self.processing_ms.append(max(0, (end - begin) * 1000))
                 self.publication_age_s.append(max(0, end - window.capture_end_monotonic_s))

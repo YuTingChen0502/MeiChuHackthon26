@@ -637,7 +637,7 @@ class RuntimeAPI:
                     continue
                 self.workers.pop(session_id, None)
             for session_id in self.sessions:
-                if session_id not in self.workers:
+                if session_id not in self.workers and not self.sessions[session_id].live_reference:
                     self._close_session_analyzer(session_id)
 
     def get_session(self, session_id: str) -> tuple[int, dict]:
@@ -657,7 +657,7 @@ class RuntimeAPI:
             if self.sessions[session_id].live_reference:
                 self.live_audio.reconcile(self.sessions[session_id],command,response)
                 if self.sessions[session_id].song["workflow_state"]=="STOPPED":
-                    self._close_session_analyzer(session_id)
+                    self.live_audio.close_analyzer_when_idle(session_id)
                 return response["http_status"],response
             # Reconcile against current authoritative state, never a cached retry's
             # historical snapshot. Retrying resume after stop cannot restart capture.

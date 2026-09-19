@@ -26,22 +26,26 @@ class LiveReferencePolicy:
             identity=configured["instrument_id"]
             raw=self._current_masks.get(identity,{})
             state=states.get(identity,{})
-            reasons=[]
+            confidence=state.get("confidence",{})
+            reasons=list(confidence.get("reasons",[])) if fresh else list(self.capture["reason_codes"])
+            activity=raw.get("activity","unknown") if fresh else "unknown"
+            observability=raw.get("observability","unknown") if fresh else "unknown"
+            validity=raw.get("validity","invalid") if fresh else "invalid"
+            calibration=confidence.get("calibration_status","uncalibrated")
+            abstained=confidence.get("abstained",True) if fresh else True
             if supported is not None and configured["family"] not in supported:
-                value="unsupported";reasons=["unsupported_family"]
+                value="unsupported";activity="unsupported";validity="invalid";reasons=["unsupported_family"]
             elif supported is None:
                 value="uncertain";reasons=["capabilities_unavailable"]
             elif not fresh:
-                value="listening" if self.capture["state"]=="listening" else "uncertain"
-                reasons=list(self.capture["reason_codes"])
-            elif raw.get("activity")=="inactive":value="not_heard"
-            elif (raw.get("activity")=="active" and raw.get("observability")=="observable"
-                  and raw.get("validity")=="valid" and not state.get("confidence",{}).get("abstained",True)):
-                value="detected"
-            else:
-                value="uncertain";reasons=list(state.get("confidence",{}).get("reasons",[]))
+                value="listening" if self.capture["state"]=="listening" and "stale_evidence" not in reasons else "uncertain"
+            elif activity=="inactive":value="not_heard"
+            elif activity=="active" and observability=="observable" and validity=="valid":value="detected"
+            else:value="uncertain"
             rows.append(dict(**configured,state=value,frame_id=frame["frame_id"] if fresh else None,
-                             reason_codes=list(dict.fromkeys(reasons))))
+                activity=activity,observability=observability,validity=validity,calibration_status=calibration,
+                action_abstained=abstained,numerical_advice_allowed=bool(value=="detected" and calibration=="calibrated" and not abstained),
+                reason_codes=list(dict.fromkeys(reasons))))
         return rows
 
     def _clear_source_evidence(self,reason):

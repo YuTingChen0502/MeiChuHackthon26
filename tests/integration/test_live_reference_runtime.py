@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 from apps.api.service import RuntimeAPI
 from core.audio.native import NativeDevice
-from core.runtime.fake_analyzer import ContinuousFakeInstrumentAnalyzer
+from core.runtime.fake_analyzer import ContinuousFakeInstrumentAnalyzer,FakeEvidenceSpec
 from test_api_service import wav_bytes,command
 
 
@@ -83,7 +83,7 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         self.assertEqual(200,status);self.assertEqual("switching",accepted["snapshot"]["capture"]["state"])
         self.assertIsNone(accepted["snapshot"]["latest_frame"])
         self.assertEqual(accepted,self.api.post_action(sid,body)[1])
-        snapshot=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied")
+        snapshot=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied" and s["capture"]["state"]=="active")
         self.assertEqual("mic-b",snapshot["source"]["input_asset_or_device_id"])
         self.assertNotEqual(old["source"]["clock_id"],snapshot["source"]["clock_id"])
         self.assertNotEqual(old["latest_frame"]["analysis_run_id"],snapshot["latest_frame"]["analysis_run_id"])
@@ -110,7 +110,7 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         snapshot=self.wait(sid,lambda s:s["capture"]["state"]=="unavailable")
         self.assertEqual("SUSPENDED",snapshot["song"]["workflow_state"])
         self.backend.fail.clear();self.switch(snapshot,"mic-b")
-        snapshot=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied")
+        snapshot=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied" and s["capture"]["state"]=="active")
         self.assertEqual("LIVE_MONITORING",snapshot["song"]["workflow_state"])
     def test_pause_select_resume_and_stop_during_silent_switch(self):
         snapshot=self.start();sid=snapshot["session_id"]
@@ -131,7 +131,7 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
     def test_restart_preserves_policy_reference_and_idempotent_switch_ack(self):
         old=self.start();sid=old["session_id"]
         body,(_,accepted)=self.switch(old,"mic-b")
-        self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied")
+        self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied" and s["capture"]["state"]=="active")
         self.api.close()
         self.api=RuntimeAPI(storage_dir=self.temp.name,window_size_samples=1024,analysis_sample_rate_hz=48000,
             native_backend=self.backend,managed_audio=True)
@@ -155,7 +155,7 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         self.assertLess(time.monotonic()-started,.5)
         self.assertIsNone(accepted["snapshot"]["latest_frame"])
         release.set()
-        final=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied")
+        final=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied" and s["capture"]["state"]=="active")
         self.assertEqual("mic-b",final["latest_frame"]["input_asset_or_device_id"])
 
     def test_concurrent_switch_rejected_and_silent_failure_rolls_back(self):
@@ -168,3 +168,51 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         final=self.wait(sid,lambda s:s["capture"]["switch_result"]=="rolled_back")
         self.assertEqual("mic-a",final["source"]["input_asset_or_device_id"])
         self.assertIsNone(final["latest_verification"])
+
+    def test_healthy_pcm_slow_model_survives_startup_and_stop_defers_close(self):
+        entered=threading.Event();release=threading.Event()
+        original_factory=self.api._new_analyzer
+        def factory():
+            analyzer=original_factory();original=analyzer.analyze
+            def blocked(window,context):
+                entered.set();release.wait(5);return original(window,context)
+            analyzer.analyze=blocked
+            return analyzer
+        self.api._new_analyzer=factory
+        _,snapshot=self.api.create_session(self.request);sid=snapshot["session_id"]
+        self.assertTrue(entered.wait(2))
+        time.sleep(.7)
+        snapshot=self.api.get_session(sid)[1]
+        self.assertEqual("listening",snapshot["capture"]["state"])
+        self.assertFalse(snapshot["capture"]["frame_fresh"])
+        self.assertFalse(self.api.live_audio.tasks[sid].is_alive())
+        analyzer=self.api.runtime_session(sid).analyzer
+        begin=time.monotonic()
+        self.api.post_action(sid,command(snapshot,"slow-stop","stop"))
+        self.assertLess(time.monotonic()-begin,.5)
+        self.assertTrue(all(s.closed for s in self.backend.streams))
+        self.assertFalse(analyzer.closed)
+        release.set()
+        self.api.live_audio.closers[sid].join(2)
+        self.assertTrue(analyzer.closed)
+        self.assertIsNone(self.api.get_session(sid)[1]["latest_frame"])
+
+    def test_raw_detection_remains_separate_from_advice_and_staleness(self):
+        snapshot=self.start();sid=snapshot["session_id"];session=self.api.runtime_session(sid)
+        original=session.analyzer.analyze
+        def scripted(window,context):
+            session.analyzer.queue(FakeEvidenceSpec(deltas_db={"bass":0},inactive=frozenset({"guitar"}),unsupported=frozenset({"drums"})))
+            return original(window,context)
+        session.analyzer.analyze=scripted
+        snapshot=self.wait(sid,lambda s:s["perception"][0]["state"]=="detected")
+        bass,guitar,drums=snapshot["perception"]
+        self.assertTrue(bass["action_abstained"])
+        self.assertFalse(bass["numerical_advice_allowed"])
+        self.assertEqual("not_heard",guitar["state"])
+        self.assertEqual("uncertain",drums["state"])
+        self.assertIsNone(snapshot["latest_frame"]["instruments"][0]["confidence"]["probability"])
+        # Raw evidence cannot survive publication freshness expiry.
+        worker=self.api.workers[sid];worker.stop();worker.max_age_s=.001
+        snapshot=self.wait(sid,lambda s:s["latest_frame"] is None)
+        self.assertFalse(snapshot["capture"]["frame_fresh"])
+        self.assertTrue(all(x["state"]=="uncertain" for x in snapshot["perception"]))

@@ -22,6 +22,7 @@ class NativeClockTests(unittest.TestCase):
         self.assertEqual(0,mic.discontinuities)
         self.assertEqual(4,mic.fallback_packets);self.assertEqual(2,mic.adc_packets)
         self.assertEqual("monotonic_fallback",mic.clock_mode)
+        self.assertEqual("adc_sample_count",mic.timestamp_mode)
         self.assertEqual(list(range(0,60,10)),[c.sample_start for c in chunks])
         for i,c in enumerate(chunks):self.assertAlmostEqual(10+i*.1,c.capture_end_monotonic_s)
         windows=list(SharedAudioPipeline(window_size_samples=20,hop_size_samples=10).windows_from_chunks(

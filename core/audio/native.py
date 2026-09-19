@@ -114,6 +114,7 @@ class NativeMicAudioInput:
         self.clock_tolerance_s = clock_tolerance_s
         self.max_adc_residual_s = 0.0
         self.clock_mode = "unanchored"
+        self.timestamp_mode = "unknown"
         self.adc_packets = 0
         self.fallback_packets = 0
         self._last_callback_time = None
@@ -145,6 +146,7 @@ class NativeMicAudioInput:
                     return None
             adc, current = timestamp('inputBufferAdcTime'), timestamp('currentTime')
             adc_usable = adc is not None and current is not None and adc <= current
+            self.timestamp_mode = "adc_sample_count" if adc_usable else "sample_count"
             if adc_usable:
                 self.adc_packets += 1
             else:
