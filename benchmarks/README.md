@@ -26,3 +26,21 @@ the official `htdemucs_6s` checkpoint available. The adapter reads in-memory ten
 it never uses independently rescaled saved stems. Replace the synthetic assets with a
 rights-cleared grouped split before treating results as music-domain evidence.
 
+After validating a rights-cleared four-family recording, run the same measurement
+path without exposing stems to the separator:
+
+```text
+python -m benchmarks.run_gain_response \
+  --config training/configs/htdemucs_gain_response.json \
+  --backend htdemucs_6s \
+  --asset-manifest assets/manifests/my_dataset.json \
+  --dataset-root D:/pa-datasets/my_dataset \
+  --recording-id held-out-take-001 \
+  --sample-start 0 \
+  --output-dir benchmarks/results/htdemucs_6s_held_out_take_001
+```
+
+The runner verifies every stem hash, loads one stable excerpt, builds reference and
+observation mixtures, and passes only mixtures to the separator. Exactly one manifested
+stem must map to each of `bass`, `guitar`, `vocals` and `drums`. Results retain dataset,
+parent-group, split, excerpt, manifest and per-stem hash provenance.

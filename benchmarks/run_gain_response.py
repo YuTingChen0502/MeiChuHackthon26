@@ -17,6 +17,7 @@ from analyzers.separation.htdemucs import HTDemucs6sSeparator, SeparationRuntime
 from analyzers.separation.levels import gain_response
 from training.controlled_pairs import NoiseSpec, PairSpec, generate_controlled_pair
 from training.experiment_metadata import build_experiment_metadata
+from training.multitrack_assets import load_manifest, load_recording_excerpt, sha256_file
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -164,18 +165,43 @@ def _separator(backend: str):
     raise ValueError(f"Unknown backend: {backend}")
 
 
-def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[str, object]:
+def run(
+    config: Mapping[str, object],
+    backend: str,
+    command: list[str],
+    *,
+    input_stems: Mapping[str, np.ndarray] | None = None,
+    input_provenance: Mapping[str, object] | None = None,
+    input_split_identity: Mapping[str, object] | None = None,
+) -> dict[str, object]:
     sample_rate = int(config["sample_rate_hz"])
     duration_s = float(config["duration_s"])
     seed = int(config["seed"])
-    stems = _synthetic_stems(sample_rate, duration_s, seed)
-    provenance = {
-        "asset_id": "generated-synthetic-four-band-v1",
-        "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
-        "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
-        "publication_status": "publishable",
-        "scope": "pipeline diagnostic only; not music-domain feasibility evidence",
-    }
+    if input_stems is None:
+        stems = _synthetic_stems(sample_rate, duration_s, seed)
+        provenance = {
+            "asset_id": "generated-synthetic-four-band-v1",
+            "origin": "generated://benchmarks.run_gain_response._synthetic_stems",
+            "license_or_permission": "repository-generated mathematical waveforms; no third-party recording",
+            "publication_status": "publishable",
+            "scope": "pipeline diagnostic only; not music-domain feasibility evidence",
+        }
+        split_identity = {
+            "split_id": config["split_id"],
+            "parent_group": "generated-synthetic-four-band-v1",
+            "all_augmentations_grouped": True,
+        }
+        evidence_asset_class = "synthetic"
+    else:
+        if set(input_stems) != set(INSTRUMENTS):
+            raise ValueError(f"Empirical probe requires exactly these families: {INSTRUMENTS}")
+        stems = {name: np.asarray(input_stems[name], dtype=np.float64) for name in INSTRUMENTS}
+        if input_provenance is None or input_split_identity is None:
+            raise ValueError("Empirical stems require provenance and split identity")
+        provenance = dict(input_provenance)
+        split_identity = dict(input_split_identity)
+        evidence_asset_class = "manifested_multitrack"
+    pair_split_id = str(split_identity.get("split_id", config["split_id"]))
     try:
         separator = _separator(backend)
     except SeparationRuntimeUnavailable as error:
@@ -206,7 +232,7 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
                 stems,
                 PairSpec(
                     pair_id=pair_id,
-                    split_id=str(config["split_id"]),
+                    split_id=pair_split_id,
                     seed=seed + noise_index * 1000 + case_index,
                     source_injected_gain_db=case["source_gain_db"],
                     common_gain_db=float(case["common_gain_db"]),
@@ -264,11 +290,7 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
         config=config,
         seed=seed,
         asset_provenance=[provenance],
-        split_identity={
-            "split_id": config["split_id"],
-            "parent_group": "generated-synthetic-four-band-v1",
-            "all_augmentations_grouped": True,
-        },
+        split_identity=split_identity,
         injected_gain={
             "gain_grid_db": config["gain_grid_db"],
             "controls": ["zero", "common_gain", "one_source", "multi_source_centered"],
@@ -308,9 +330,12 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
         "checkpoint": separator.checkpoint_id,
         "evidence_class": (
             "synthetic_pipeline_diagnostic_only"
-            if backend == "synthetic_band_masks_v1"
+            if evidence_asset_class == "synthetic" and backend == "synthetic_band_masks_v1"
             else "synthetic_htdemucs_smoke_not_music_domain_feasibility"
+            if evidence_asset_class == "synthetic"
+            else "manifested_multitrack_probe"
         ),
+        "asset_mode": evidence_asset_class,
         "metadata": metadata,
         "pair_metadata": pair_metadata,
         "metrics": _metrics(rows, float(config["neutral_tolerance_db"])),
@@ -333,10 +358,64 @@ def main(argv: list[str] | None = None) -> int:
         default="synthetic_band_masks_v1",
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--asset-manifest", type=Path)
+    parser.add_argument("--dataset-root", type=Path)
+    parser.add_argument("--recording-id")
+    parser.add_argument("--sample-start", type=int, default=0)
     args = parser.parse_args(argv)
     config = json.loads(args.config.read_text(encoding="utf-8"))
     command = [sys.executable, "-m", "benchmarks.run_gain_response", *sys.argv[1:]]
-    result = run(config, args.backend, command)
+    empirical_fields = (args.asset_manifest, args.dataset_root, args.recording_id)
+    if any(value is not None for value in empirical_fields) and not all(
+        value is not None for value in empirical_fields
+    ):
+        parser.error("--asset-manifest, --dataset-root and --recording-id are required together")
+    run_kwargs = {}
+    if args.asset_manifest is not None:
+        manifest = load_manifest(args.asset_manifest)
+        sample_count = round(float(config["duration_s"]) * int(config["sample_rate_hz"]))
+        loaded = load_recording_excerpt(
+            manifest,
+            dataset_root=args.dataset_root,
+            recording_id=args.recording_id,
+            sample_start=args.sample_start,
+            sample_count=sample_count,
+        )
+        if loaded.sample_rate_hz != int(config["sample_rate_hz"]):
+            parser.error("Manifest recording sample rate differs from benchmark config")
+        family_to_instrument: dict[str, str] = {}
+        for instrument_id, family in loaded.families.items():
+            if family in INSTRUMENTS:
+                if family in family_to_instrument:
+                    parser.error(f"Multiple configured stems map to family {family}")
+                family_to_instrument[family] = instrument_id
+        missing = set(INSTRUMENTS).difference(family_to_instrument)
+        if missing:
+            parser.error(f"Recording lacks required families: {sorted(missing)}")
+        selected_stems = {
+            family: loaded.stems[instrument_id]
+            for family, instrument_id in family_to_instrument.items()
+        }
+        provenance = dict(loaded.asset_provenance)
+        provenance.update({
+            "manifest_sha256": sha256_file(args.asset_manifest),
+            "excerpt_sample_start": loaded.sample_start,
+            "excerpt_sample_end": loaded.sample_end,
+            "selected_family_to_instrument_id": family_to_instrument,
+        })
+        run_kwargs = {
+            "input_stems": selected_stems,
+            "input_provenance": provenance,
+            "input_split_identity": {
+                "split_id": f"{loaded.dataset_id}:{loaded.split}",
+                "dataset_id": loaded.dataset_id,
+                "recording_id": loaded.recording_id,
+                "parent_group_id": loaded.parent_group_id,
+                "split": loaded.split,
+                "all_augmentations_grouped": True,
+            },
+        }
+    result = run(config, args.backend, command, **run_kwargs)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     stem = args.backend
     (args.output_dir / f"{stem}.json").write_text(
