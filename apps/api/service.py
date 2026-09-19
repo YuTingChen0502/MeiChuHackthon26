@@ -8,6 +8,8 @@ import io
 import wave
 from pathlib import Path
 from threading import RLock
+from contextlib import contextmanager
+from core.runtime.analyzer_lifecycle import HistoricalAnalyzer
 
 from jsonschema import ValidationError
 
@@ -21,6 +23,7 @@ from core.runtime.real_analyzer import RealAnalyzerAdapter
 from roles.pa import PASession
 
 from .commands import CommandHandler
+from .probes import ProbeCommandHandler
 from .persistence import SQLiteCommandLedger, SQLiteRuntimeStore
 
 
@@ -65,6 +68,8 @@ class RuntimeAPI:
         window_size_samples: int,
         hop_size_samples: int | None = None,
         analyzer_factory=ContinuousFakeInstrumentAnalyzer,
+        evidence_policy=None,
+        analysis_sample_rate_hz=None,
         monotonic_clock=None,
         wall_clock=None,
         available_audio_devices: set[str] | None = None,
@@ -76,12 +81,17 @@ class RuntimeAPI:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.pipeline = SharedAudioPipeline(
-            window_size_samples=window_size_samples, hop_size_samples=hop_size_samples
+            window_size_samples=window_size_samples, hop_size_samples=hop_size_samples, sample_rate_hz=analysis_sample_rate_hz
         )
         def guarded_factory():
             analyzer = analyzer_factory()
-            return analyzer if analyzer.capabilities()["example_only"] else RealAnalyzerAdapter(analyzer)
+            try:
+                return analyzer if analyzer.capabilities()["example_only"] else RealAnalyzerAdapter(analyzer, evidence_policy=evidence_policy)
+            except Exception:
+                analyzer.close()
+                raise
         self.analyzer_factory = guarded_factory
+        self.evidence_policy = evidence_policy
         self.monotonic_clock = monotonic_clock
         self.wall_clock = wall_clock
         self.available_audio_devices = set(available_audio_devices or ())
@@ -92,6 +102,11 @@ class RuntimeAPI:
         self.native_error = None
         self.workers = {}
         self._lifecycle_lock = RLock()
+        self._capabilities = None
+        self._closed = False
+        self._closed_sessions = set()
+        self._failed_analyzers = set()
+        self.close_errors = []
         self.max_upload_bytes = max_upload_bytes
         self.max_audio_duration_s = max_audio_duration_s
         self._lock = RLock()
@@ -140,6 +155,13 @@ class RuntimeAPI:
             self.assets = state["assets"]
             self.jobs = state["jobs"]
             self.references = state["references"]
+        interrupted = False
+        for job in self.jobs.values():
+            if job["status"] in ("queued", "running"):
+                job.update(status="failed", progress=1.0, error="runtime_restart_interrupted_reference_job", retryable=True)
+                interrupted = True
+        if interrupted:
+            self._save_state()
         for session_state in self._store.load_sessions():
             session_id = session_state["session_id"]
             baseline_store = BaselineStore()
@@ -150,7 +172,7 @@ class RuntimeAPI:
                 kwargs["wall_clock"] = self.wall_clock
             session = PASession.from_state(
                 session_state,
-                analyzer=self.analyzer_factory(),
+                analyzer=HistoricalAnalyzer(session_state),
                 baseline_store=baseline_store,
                 **kwargs,
             )
@@ -175,9 +197,37 @@ class RuntimeAPI:
             message = exc.message if isinstance(exc, ValidationError) else str(exc)
             raise APIError(422, "invalid_setup_payload", message) from exc
 
+    @contextmanager
+    def _temporary_analyzer(self):
+        analyzer = self._new_analyzer()
+        try:
+            yield analyzer
+        finally:
+            analyzer.close()
+
+    def _new_analyzer(self):
+        if self._closed:
+            raise APIError(503, "runtime_closed", "Runtime has shut down.")
+        try:
+            analyzer = self.analyzer_factory()
+        except Exception as exc:
+            raise APIError(503, "model_unavailable", "Configured analyzer could not be loaded.") from exc
+        if self._capabilities is not None and analyzer.capabilities() != self._capabilities:
+            analyzer.close()
+            raise APIError(409, "model_identity_changed", "Restart with the new model and reanalyze reference profiles.")
+        return analyzer
+
+    def analyzer_capabilities(self):
+        with self._lifecycle_lock:
+            if self._closed:
+                raise APIError(503, "runtime_closed", "Runtime has shut down.")
+            if self._capabilities is None:
+                with self._temporary_analyzer() as analyzer:
+                    self._capabilities = copy.deepcopy(analyzer.capabilities())
+            return copy.deepcopy(self._capabilities)
+
     def health(self) -> tuple[int, dict]:
-        analyzer = self.analyzer_factory()
-        capabilities = analyzer.capabilities()
+        capabilities = self.analyzer_capabilities()
         return 200, {
             "status": "ok",
             "provider": capabilities["provider"],
@@ -241,7 +291,7 @@ class RuntimeAPI:
         if len(families) != len(set(families)):
             raise APIError(422, "duplicate_family", "V1 SongState requires unique configured families.")
         song_id = self._id("song")
-        supported_set = set(self.analyzer_factory().capabilities().get("supported_families", ()))
+        supported_set = set(self.analyzer_capabilities().get("supported_families", ()))
         record = {
             "song_id": song_id,
             "project_id": project_id,
@@ -324,7 +374,6 @@ class RuntimeAPI:
         song, asset = self.songs[job["song_id"]], self.assets[job["asset_id"]]
         job.update(status="running", progress=0.1, error=None, retryable=False)
         self._save_state()
-        analyzer = self.analyzer_factory()
         audio_input = FileAudioInput(
             input_asset_or_device_id=asset["asset_id"],
             clock_id=f"job-clock:{job_id}",
@@ -333,15 +382,16 @@ class RuntimeAPI:
             origin_monotonic_s=0.0,
         )
         try:
-            profile = ReferenceBuilder(pipeline=self.pipeline, analyzer=analyzer).build(
-                audio_input=audio_input,
-                session_id=f"reference-job:{job_id}",
-                analysis_run_id=f"reference-run:{job_id}",
-                reference_id=job["reference_id"],
-                song_id=job["song_id"],
-                instrument_config=song["instrument_config"],
-                source_asset_hash=asset["content_hash"],
-            )
+            with self._temporary_analyzer() as analyzer:
+                profile = ReferenceBuilder(pipeline=self.pipeline, analyzer=analyzer).build(
+                    audio_input=audio_input,
+                    session_id=f"reference-job:{job_id}",
+                    analysis_run_id=f"reference-run:{job_id}",
+                    reference_id=job["reference_id"],
+                    song_id=job["song_id"],
+                    instrument_config=song["instrument_config"],
+                    source_asset_hash=asset["content_hash"],
+                )
         except Exception as exc:
             job.update(status="failed", progress=1.0, error=str(exc), retryable=False)
             self._save_state()
@@ -373,7 +423,7 @@ class RuntimeAPI:
             raise APIError(409, "reference_not_ready", "A completed reference profile is required.")
         if reference["song_id"] != song["song_id"] or song["reference_id"] != reference_id:
             raise APIError(409, "reference_not_selected", "Reference is not the selected completed revision.")
-        model = self.analyzer_factory().capabilities()["model"]
+        model = self.analyzer_capabilities()["model"]
         if any(reference[key] != model[key] for key in ("model_bundle_id", "frontend_id", "taxonomy_id")):
             raise APIError(409, "incompatible_reference", "Reanalyze the reference with the active model/frontend/taxonomy.")
         source = request.get("source")
@@ -393,12 +443,22 @@ class RuntimeAPI:
                     raise APIError(503, "audio_device_unavailable", str(exc)) from exc
                 if not any(item.device_id == source_id for item in devices):
                     raise APIError(503, "audio_device_unavailable", "Microphone is not available to this runtime.")
-                if capture["channels"] != 1:
-                    raise APIError(422, "unsupported_capture_channels", "Native capture currently requires mono.")
+                negotiate = getattr(self._native(), "negotiate", None)
+                if negotiate:
+                    selected = negotiate(device_id=source_id, sample_rate_hz=capture["native_sample_rate_hz"])
+                    capture.update(native_sample_rate_hz=selected["sample_rate_hz"], channels=selected["channels"])
+                elif capture["channels"] != 1:
+                    raise APIError(422, "unsupported_capture_channels", "Backend does not support format negotiation.")
             elif source_id not in self.available_audio_devices:
                 raise APIError(503, "audio_device_unavailable", "Microphone is not available to this runtime.")
             else:
-                runtime_verified = bool(self.analyzer_factory().capabilities()["example_only"])
+                runtime_verified = bool(self.analyzer_capabilities()["example_only"])
+        if source["input_kind"] == "uploaded_file" and self.managed_audio:
+            capture["native_sample_rate_hz"] = self.assets[source_id]["sample_rate_hz"]
+            capture["channels"] = 1
+        approved_capture = None
+        if self.evidence_policy is not None:
+            approved_capture = self.evidence_policy.capture(capture, model=model, source_kind=source["input_kind"])
         if self.managed_audio:
             # Browser declarations cannot prove gain, enhancement, geometry or
             # physical provenance. Platform validation is a separate Lead gate.
@@ -407,39 +467,47 @@ class RuntimeAPI:
             if source["input_kind"] == "uploaded_file":
                 capture["native_sample_rate_hz"] = self.assets[source_id]["sample_rate_hz"]
                 capture["channels"] = 1
+        if approved_capture is not None:
+            capture = approved_capture
+            runtime_verified = True
         session_id = self._id("session")
         source_binding = dict(source)
         source_binding["clock_id"] = self._id("clock")
-        analyzer = self.analyzer_factory()
+        analyzer = self._new_analyzer()
         kwargs = {}
         if self.monotonic_clock is not None:
             kwargs["monotonic_clock"] = self.monotonic_clock
         if self.wall_clock is not None:
             kwargs["wall_clock"] = self.wall_clock
-        session = PASession(
-            session_id=session_id,
-            project_id=song["project_id"],
-            song_id=song["song_id"],
-            song_name=song["name"],
-            instrument_config=song["instrument_config"],
-            reference_profile=reference,
-            source=source_binding,
-            capture_fingerprint=capture,
-            analyzer=analyzer,
-            baseline_store=BaselineStore(),
-            capture_runtime_verified=runtime_verified,
-            capture_profile_enforced=self.managed_audio or not analyzer.capabilities()["example_only"],
-            **kwargs,
-        )
-        ledger = SQLiteCommandLedger(self._store, session_id)
-        session.set_persistence_callback(
-            lambda value, identifier=session_id: self._save_session_state(identifier, value)
-        )
-        response = session.snapshot()
-        self._validate("CreateSessionResponse", response)
-        self._store.save_runtime_and_session(
-            self._runtime_state_payload(), session.export_state()
-        )
+        try:
+            session = PASession(
+                session_id=session_id,
+                project_id=song["project_id"],
+                song_id=song["song_id"],
+                song_name=song["name"],
+                instrument_config=song["instrument_config"],
+                reference_profile=reference,
+                source=source_binding,
+                capture_fingerprint=capture,
+                analyzer=analyzer,
+                baseline_store=BaselineStore(),
+                capture_runtime_verified=runtime_verified,
+                capture_profile_enforced=self.managed_audio or not analyzer.capabilities()["example_only"],
+                analysis_sample_rate_hz=self.pipeline.frontend.sample_rate_hz,
+                **kwargs,
+            )
+            ledger = SQLiteCommandLedger(self._store, session_id)
+            session.set_persistence_callback(
+                lambda value, identifier=session_id: self._save_session_state(identifier, value)
+            )
+            response = session.snapshot()
+            self._validate("CreateSessionResponse", response)
+            self._store.save_runtime_and_session(
+                self._runtime_state_payload(), session.export_state()
+            )
+        except Exception:
+            analyzer.close()
+            raise
         self.sessions[session_id] = session
         self.handlers[session_id] = CommandHandler(session=session, ledger=ledger)
         if self.managed_audio:
@@ -451,6 +519,18 @@ class RuntimeAPI:
         source = session.source
         clock = session.monotonic_clock
         try:
+            if self._closed:
+                raise RuntimeError("runtime_closed")
+            if session.session_id in self._failed_analyzers:
+                replacement = self._new_analyzer()
+                previous = session.analyzer
+                session.analyzer = replacement
+                session._frame_builder.calibration_policy = getattr(replacement, "calibration_policy", None)
+                self._failed_analyzers.discard(session.session_id)
+                try:
+                    previous.close()
+                except Exception as exc:
+                    self.close_errors.append(str(exc))
             if source["input_kind"] == "uploaded_file":
                 asset = self.assets[source["input_asset_or_device_id"]]
                 audio = FileAudioInput(input_asset_or_device_id=asset["asset_id"],
@@ -460,7 +540,8 @@ class RuntimeAPI:
             else:
                 audio = NativeMicAudioInput(backend=self._native(),
                     device_id=source["input_asset_or_device_id"], clock_id=source["clock_id"],
-                    sample_rate_hz=session.capture_fingerprint["native_sample_rate_hz"], clock=clock)
+                    sample_rate_hz=session.capture_fingerprint["native_sample_rate_hz"],
+                    channels=session.capture_fingerprint["channels"], clock=clock)
             def observe(window, quality, max_age):
                 with session.command_transaction():
                     if session.song["workflow_state"] in ("SUSPENDED", "STOPPED"):
@@ -469,8 +550,12 @@ class RuntimeAPI:
                     if native and not session.capture_runtime_verified:
                         quality["capture_compatible"] = False
                         quality["reason_codes"].append("capture_not_runtime_verified")
-                    session.observe_window(window, quality=quality, max_age_s=max_age,
-                                           clock_uncertainty_s=0.05 if native else 0.0)
+                    try:
+                        session.observe_window(window, quality=quality, max_age_s=max_age,
+                                               clock_uncertainty_s=0.05 if native else 0.0)
+                    except Exception as exc:
+                        self._failed_analyzers.add(session.session_id)
+                        raise RuntimeError("analyzer_or_processing_failure") from exc
             def ended(reason):
                 with session.command_transaction():
                     if session.song["workflow_state"] not in ("SUSPENDED", "STOPPED"):
@@ -486,10 +571,30 @@ class RuntimeAPI:
                 failed.stop()
             session.suspend_for_input(f"audio_start_failed:{exc}")
 
+    def _close_session_analyzer(self, session_id):
+        if session_id not in self._closed_sessions:
+            self._closed_sessions.add(session_id)
+            self.sessions[session_id]._baseline_windows.clear()
+            self.sessions[session_id]._baseline_pcm_samples = 0
+            try:
+                self.sessions[session_id].analyzer.close()
+            except Exception as exc:
+                self.close_errors.append(f"{session_id}: {exc}")
+
     def close(self):
         with self._lifecycle_lock:
-            for worker in self.workers.values():
-                worker.stop()
+            self._closed = True
+            for session_id, worker in list(self.workers.items()):
+                try:
+                    worker.stop()
+                except Exception as exc:
+                    # Never close an analyzer still in use by an unjoined worker.
+                    self.close_errors.append(f"{session_id}: {exc}")
+                    continue
+                self.workers.pop(session_id, None)
+            for session_id in self.sessions:
+                if session_id not in self.workers:
+                    self._close_session_analyzer(session_id)
 
     def get_session(self, session_id: str) -> tuple[int, dict]:
         if session_id not in self.sessions:
@@ -497,6 +602,8 @@ class RuntimeAPI:
         return 200, self.sessions[session_id].snapshot()
 
     def post_action(self, session_id: str, command: dict) -> tuple[int, dict]:
+        if command.get("record_type") != "SessionCommand":
+            raise APIError(422, "wrong_endpoint", "Actions require SessionCommand.")
         if session_id not in self.handlers or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
         if command.get("action") == "accept_baseline":
@@ -513,19 +620,38 @@ class RuntimeAPI:
                     if worker is not None:
                         worker.stop()
                         self.workers.pop(session_id, None)
-                elif worker is None or worker._finished.is_set():
+                elif worker is None or worker._finished.is_set() or worker.error or worker._stop.is_set():
                     if worker is not None:
                         worker.stop()
                     self._start_worker(session)
+            if self.sessions[session_id].song["workflow_state"] == "STOPPED":
+                self._close_session_analyzer(session_id)
             return response["http_status"], response
 
     def accept_baseline(self, session_id: str, command: dict) -> tuple[int, dict]:
+        if command.get("record_type") != "SessionCommand":
+            raise APIError(422, "wrong_endpoint", "Baseline requires SessionCommand.")
         if command.get("action") != "accept_baseline":
             raise APIError(422, "wrong_endpoint", "Baseline endpoint requires accept_baseline.")
         if session_id not in self.handlers or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
         response = self.handlers[session_id].handle(command)
         return response["http_status"], response
+
+    def get_probe(self, session_id):
+        if session_id not in self.sessions:
+            raise APIError(404, "unknown_session", "Session does not exist.")
+        return 200, self.sessions[session_id].probe_state()
+
+    def post_probe(self, session_id, command):
+        if session_id not in self.sessions or command.get("session_id") != session_id:
+            raise APIError(422, "session_mismatch", "URL and probe session IDs must match.")
+        if command.get("record_type") != "RehearsalProbeCommand" or not command.get("idempotency_key"):
+            raise APIError(422, "invalid_probe", "A guided rehearsal command envelope is required.")
+        with self._lifecycle_lock:
+            handler = ProbeCommandHandler(session=self.sessions[session_id], ledger=self.handlers[session_id].ledger)
+            response = handler.handle(command)
+            return response["command"]["http_status"], response
 
     def connect_events(self, session_id: str, *, after_sequence: int | None = None) -> tuple[int, dict]:
         if session_id not in self.sessions:

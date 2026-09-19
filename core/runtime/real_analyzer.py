@@ -8,8 +8,10 @@ from core.contracts.validation import validate_analyzer_pair
 
 
 class RealAnalyzerAdapter:
-    def __init__(self, analyzer):
+    def __init__(self, analyzer, *, evidence_policy=None):
         self.analyzer = analyzer
+        self._closed = False
+        self.calibration_policy = evidence_policy.bind(analyzer) if evidence_policy else None
         self._capabilities = copy.deepcopy(analyzer.capabilities())
         if self._capabilities.get('example_only') is not False:
             raise ValueError('production analyzer must explicitly declare example_only=False')
@@ -22,10 +24,15 @@ class RealAnalyzerAdapter:
         return copy.deepcopy(self._capabilities)
 
     def prepare_reference(self, windows, instrument_config):
+        if self._closed:
+            raise RuntimeError("analyzer is closed")
         return self.analyzer.prepare_reference(windows, instrument_config)
 
     def analyze(self, window, context):
-        if self.analyzer.capabilities() != self._capabilities:
+        if self._closed:
+            raise RuntimeError("analyzer is closed")
+        current = self.analyzer.capabilities()
+        if {k:v for k,v in current.items() if k != "state"} != {k:v for k,v in self._capabilities.items() if k != "state"}:
             raise ValueError('analyzer capabilities changed; revalidate profiles in a new session')
         if context['model'] != self._capabilities['model'] or context['observation'] != window.identity():
             raise ValueError('analyzer request does not match runtime identity')
@@ -36,4 +43,6 @@ class RealAnalyzerAdapter:
         return evidence
 
     def close(self):
-        self.analyzer.close()
+        if not self._closed:
+            self._closed = True
+            self.analyzer.close()
