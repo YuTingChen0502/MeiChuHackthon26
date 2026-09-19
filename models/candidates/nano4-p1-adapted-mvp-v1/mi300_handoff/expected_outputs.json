@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "checkpoint": {
+    "format": "PyTorch .pt dictionary",
+    "required_fields": ["record_type", "schema_version", "base_checkpoint_sha256", "families", "model_sources", "trainable_parameters", "state", "config"],
+    "required_state_modules": ["decoder.3.conv_tr", "tdecoder.3.conv_tr"],
+    "required_identity_evidence": ["exact Git SHA", "MI300 job ID", "ROCm/PyTorch environment", "base checkpoint hash", "adapted checkpoint hash", "nonzero gradient evidence", "changed module hashes", "training curve"]
+  },
+  "evaluation": {
+    "required_per_family_metrics": ["attribution_precision", "attribution_recall_including_abstentions", "sign_accuracy", "balance_mae_db", "coverage", "penalized_balance_mae_db", "zero_change_false_positives", "common_gain_behavior"],
+    "confidence": "UNCALIBRATED unless separately calibrated without final-test leakage",
+    "unsupported_family_output": "null numeric evidence plus explicit abstention reason"
+  },
+  "prohibited_claims": ["MI300 success before execution", "untouched evaluation using any exposed CP2/CP2B parent or artist", "PN54 readiness", "real-room validity", "production RealAnalyzer readiness"]
+}

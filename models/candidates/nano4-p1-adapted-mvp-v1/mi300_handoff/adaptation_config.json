@@ -1,0 +1,693 @@
+{
+  "record_type": "CP2BSelectedMI300AdaptationDirection",
+  "schema_version": "1.0",
+  "config_id": "selected-mi300-adaptation-config-v1",
+  "decision": "NARROW_ENVELOPE",
+  "selected_method": "P1_ADAPTED",
+  "selection_semantics": "Exact Nano4-verified adaptation path selected as the direction for a future MI300 run; this file is not a record of MI300 execution.",
+  "mi300_execution": {
+    "performed": false,
+    "job_id": null,
+    "artifact_produced_on_mi300": false,
+    "claim": "No MI300 training, inference, evaluation, benchmark, export, or runtime validation was run in CP2B."
+  },
+  "source_execution_environment": {
+    "platform": "Nano4 Slurm",
+    "gpu": "NVIDIA H200",
+    "repository_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0",
+    "torch_version": "2.8.0+cu126",
+    "cuda_version": "12.6",
+    "demucs_version": "4.0.1"
+  },
+  "architecture": "HTDemucs_6s with task-adapted final frequency and waveform output projections",
+  "base_checkpoint": {
+    "path": "/work/austinhpc25/nano4_cp2_readiness_3d161dd/torch-cache/hub/checkpoints/5c90dfd2-34c22ccb.th",
+    "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+  },
+  "audio_frontend": {
+    "frontend": "HTDemucs_6s native hybrid waveform/frequency frontend over paired reference and observation mixtures",
+    "sample_rate_hz": 44100,
+    "segment_seconds": 4.0,
+    "segment_samples": 176400,
+    "accepted_asset_channels": [
+      1,
+      2
+    ],
+    "asset_channel_handling": "Decode PCM to float; retain mono or mean-downmix stereo to mono before stem grouping.",
+    "mixture_construction": "Sum verified mono stems independently for reference and gain-intervened observation.",
+    "model_input_channels": 2,
+    "model_channel_handling": "Duplicate each mono mixture to dual-mono two-channel input with repeat(2, 1).",
+    "resampling": "none; input sample rate must match 44100 Hz",
+    "normalization": "pair-plan shared scale retained; no per-example normalization or peak scaling"
+  },
+  "taxonomy": {
+    "canonical_families": [
+      "guitar",
+      "bass",
+      "drums",
+      "vocals",
+      "keys"
+    ],
+    "canonical_to_htdemucs_source": {
+      "guitar": "guitar",
+      "bass": "bass",
+      "drums": "drums",
+      "vocals": "vocals",
+      "keys": "piano"
+    },
+    "htdemucs_model_source_order": [
+      "drums",
+      "bass",
+      "other",
+      "vocals",
+      "guitar",
+      "piano"
+    ],
+    "adaptation_supervised_families": [
+      "guitar",
+      "bass",
+      "drums",
+      "vocals"
+    ],
+    "keys_training_status": "not supervised by the selected Nano4 projection-adaptation run",
+    "generic_other_policy": "excluded from canonical family training and support claims"
+  },
+  "controlled_pair_generation": {
+    "root_seed": 260919,
+    "excerpt_duration_seconds": 4.0,
+    "hop_duration_seconds": 4.0,
+    "shared_scale": 0.1,
+    "one_source_gain_grid_db": [
+      -6,
+      -4,
+      -2,
+      2,
+      4,
+      6
+    ],
+    "common_gain_control_grid_db": [
+      -4,
+      4
+    ],
+    "multi_source_gain_cycles_db": [
+      [
+        -2,
+        4,
+        0,
+        2
+      ]
+    ],
+    "zero_change_control": "all common and source-injected gains are 0 dB",
+    "noise_profiles": [
+      {
+        "kind": "none",
+        "reference_snr_db": null,
+        "observation_snr_db": null
+      }
+    ],
+    "label_procedure": "raw=common+source_injection; center=median(active raw); balance=raw-center; silent/inactive regression labels are null",
+    "training_filter": {
+      "scenario_kind": "one_source_gain",
+      "families": [
+        "guitar",
+        "bass",
+        "drums",
+        "vocals"
+      ],
+      "controls_used_for_optimizer_steps": false
+    },
+    "control_use": "zero-change, common-gain, and multi-source cases are retained for benchmark controls; multi-source cases are not used to select action operating points"
+  },
+  "data_scope": {
+    "authoritative_parent_id_artifact": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-split-v1.json",
+      "sha256": "b6d0699727372431759b991a8fd7922c6d8fea6e6f3a86755fec7a5701e9059a"
+    },
+    "split_ids": {
+      "nano4_train_source": "moisesdb-v0.1-early-tier1-excerpts-v1:train",
+      "validation": "moisesdb-v0.1-early-tier1-excerpts-v1:validation",
+      "calibration": "moisesdb-v0.1-early-tier1-excerpts-v1:calibration",
+      "prior_exposed_source": "moisesdb-v0.1-early-tier1-excerpts-v1:test",
+      "fresh_final": "cp2b-moisesdb-v0.1-fresh-final-excerpts-v1:test"
+    },
+    "source_pair_plan_counts": {
+      "train": {"parent_count": 40, "recording_count": 80, "full_control_pair_count": 2720},
+      "validation": {"parent_count": 12, "recording_count": 24, "full_control_pair_count": 816},
+      "calibration": {"parent_count": 8, "recording_count": 16, "full_control_pair_count": 544},
+      "prior_exposed_source_test": {"parent_count": 8, "recording_count": 16, "full_control_pair_count": 544},
+      "status": "Exact counts in the hash-pinned original controlled pair plan; its prior test split is exposed and reassigned to declared CP2B training by the authoritative parent split."
+    },
+    "actual_nano4_run": {
+      "status": "COMPLETED_AND_TESTED",
+      "train_parent_count": 40,
+      "train_recording_count": 80,
+      "train_four_family_one_source_pair_count": 1920,
+      "validation_parent_count": 12,
+      "validation_recording_count": 24,
+      "validation_four_family_one_source_pair_count": 576,
+      "train_parent_ids": [
+        "0e0d57cd-8662-4091-86d4-ed3e35d04ef6",
+        "f4d79498-4ba0-4813-9b9e-986374242573",
+        "491c1ff5-1e7b-4046-8029-a82d4a8aefb4",
+        "aaf0fc7b-d7f5-412c-b3b9-313a7c483666",
+        "04798708-6915-4dbc-842e-d394d545d4eb",
+        "06114cc2-e34d-4f8f-82d3-cf6981572f2f",
+        "215391aa-1168-42dd-9cab-f8b0c6ff566b",
+        "11845abc-8ca3-4fb2-bd84-521aeeff56f4",
+        "1921a83e-0373-4bf7-8dc9-6cc9401c9309",
+        "22ea41a3-1766-4a76-8071-380b27f1869a",
+        "260c431b-72d4-4ac6-bae5-ee49ce5c0fe4",
+        "2973adc9-6bf8-4422-9f7a-6fd0038eb565",
+        "334ed0e5-1761-4ee9-9d39-a555eb9b64a0",
+        "6031b120-f6e2-4999-96ba-a1e31be68ea8",
+        "793b98a0-c776-4943-87eb-b7e07e50f531",
+        "8a6c9c1f-4865-404f-a805-1949de36a33c",
+        "bb45cf1a-4c58-4fe3-88ea-97ef27527507",
+        "cda46831-26d1-4dd8-ac50-6004d27d45dd",
+        "e9336d31-c0df-4c91-be2b-7c4420c9cd34",
+        "152d4f5d-4093-4fa4-a4a4-8a9b3502d89d",
+        "378742ba-5ba8-44c2-9cfd-8a609decca57",
+        "cc3e4991-6cce-40fe-a917-81a4fbb92ea6",
+        "1ade22ad-99bc-4954-b2b9-fb9e8fa06d41",
+        "48c78ca6-18e9-42f2-9f05-fdbee90a7786",
+        "825f697d-5fcd-4429-ba33-23163c726ca7",
+        "bc964128-da16-4e4c-af95-4d1211e78c70",
+        "e37cdb09-e648-4e9b-bc06-d178a964161c",
+        "53808b95-cfe9-461d-a113-ffadf32817a1",
+        "553048ce-7afd-4e0e-b4cb-4896620287a1",
+        "747d5c98-665b-4470-a696-7a6cf6968ef1",
+        "a199697c-3cdc-47c7-a9c7-c1b07dd6c9dd",
+        "f9a1d21b-bfc7-45e1-b744-c57d0a0880c3",
+        "028c6f6a-f4f6-4795-84f2-a81222b38e7e",
+        "35983cdd-3903-46cb-b184-f96274ced57b",
+        "4cbd6c36-87a2-4d50-86e3-52d39b98fad3",
+        "9653a690-c28c-4e8f-962e-ff7ed18b8ee9",
+        "a0b9a4e4-51f5-4c98-a090-0317fb891056",
+        "312bec8d-1c61-43e0-924a-1fb87ddc3e41",
+        "3a6023c3-4cd8-46c0-a376-d353743648a9",
+        "8a307c5d-9d65-4f1c-a024-5eaeff1faa34"
+      ]
+    },
+    "declared_cp2b_splits": {
+      "train": {
+        "parent_count": 48,
+        "normalized_artist_count": 17,
+        "expected_recording_count": 96,
+        "expected_full_control_pair_count": 3264,
+        "materialization_status": "NOT_TESTED_FOR_ALL_48_PARENTS",
+        "parent_ids": [
+          "0e0d57cd-8662-4091-86d4-ed3e35d04ef6",
+          "f4d79498-4ba0-4813-9b9e-986374242573",
+          "491c1ff5-1e7b-4046-8029-a82d4a8aefb4",
+          "aaf0fc7b-d7f5-412c-b3b9-313a7c483666",
+          "04798708-6915-4dbc-842e-d394d545d4eb",
+          "06114cc2-e34d-4f8f-82d3-cf6981572f2f",
+          "215391aa-1168-42dd-9cab-f8b0c6ff566b",
+          "11845abc-8ca3-4fb2-bd84-521aeeff56f4",
+          "1921a83e-0373-4bf7-8dc9-6cc9401c9309",
+          "22ea41a3-1766-4a76-8071-380b27f1869a",
+          "260c431b-72d4-4ac6-bae5-ee49ce5c0fe4",
+          "2973adc9-6bf8-4422-9f7a-6fd0038eb565",
+          "334ed0e5-1761-4ee9-9d39-a555eb9b64a0",
+          "6031b120-f6e2-4999-96ba-a1e31be68ea8",
+          "793b98a0-c776-4943-87eb-b7e07e50f531",
+          "8a6c9c1f-4865-404f-a805-1949de36a33c",
+          "bb45cf1a-4c58-4fe3-88ea-97ef27527507",
+          "cda46831-26d1-4dd8-ac50-6004d27d45dd",
+          "e9336d31-c0df-4c91-be2b-7c4420c9cd34",
+          "152d4f5d-4093-4fa4-a4a4-8a9b3502d89d",
+          "378742ba-5ba8-44c2-9cfd-8a609decca57",
+          "cc3e4991-6cce-40fe-a917-81a4fbb92ea6",
+          "1ade22ad-99bc-4954-b2b9-fb9e8fa06d41",
+          "48c78ca6-18e9-42f2-9f05-fdbee90a7786",
+          "825f697d-5fcd-4429-ba33-23163c726ca7",
+          "bc964128-da16-4e4c-af95-4d1211e78c70",
+          "e37cdb09-e648-4e9b-bc06-d178a964161c",
+          "53808b95-cfe9-461d-a113-ffadf32817a1",
+          "553048ce-7afd-4e0e-b4cb-4896620287a1",
+          "747d5c98-665b-4470-a696-7a6cf6968ef1",
+          "a199697c-3cdc-47c7-a9c7-c1b07dd6c9dd",
+          "f9a1d21b-bfc7-45e1-b744-c57d0a0880c3",
+          "028c6f6a-f4f6-4795-84f2-a81222b38e7e",
+          "35983cdd-3903-46cb-b184-f96274ced57b",
+          "4cbd6c36-87a2-4d50-86e3-52d39b98fad3",
+          "9653a690-c28c-4e8f-962e-ff7ed18b8ee9",
+          "a0b9a4e4-51f5-4c98-a090-0317fb891056",
+          "312bec8d-1c61-43e0-924a-1fb87ddc3e41",
+          "3a6023c3-4cd8-46c0-a376-d353743648a9",
+          "8a307c5d-9d65-4f1c-a024-5eaeff1faa34",
+          "faad432d-6ad0-492d-96f1-321eeb9685b5",
+          "bc1f2967-f834-43bd-aadc-95afc897cfe7",
+          "d890ff35-300d-49f2-8054-49ab47262987",
+          "e62afdcd-0c96-4bee-80c7-1c17b897a6d7",
+          "8f36f17f-c033-4c1b-a793-80dce43d507b",
+          "e4de8632-6f69-4c63-8081-f4c2b77b40df",
+          "0a589d65-50a3-4999-8f16-b5b6199bceee",
+          "2dc237cd-1637-46f0-8f58-ca68dc6f6031"
+        ]
+      },
+      "validation": {
+        "parent_count": 12,
+        "normalized_artist_count": 4,
+        "full_control_pair_count": 816,
+        "four_family_one_source_pair_count": 576,
+        "parent_ids": [
+          "ad9bbefc-8762-46c9-b847-da14b10802b6",
+          "25789239-1075-43b9-bfc9-51dff4a29590",
+          "2d39a32d-5993-4f66-89ff-bf9dabb8e45b",
+          "e1108928-9776-434c-bc57-c32dfdb7839c",
+          "524ab371-f6c6-4ff7-b896-e83750c8bef7",
+          "7a9f3169-7bdf-483c-9634-8e5b097d50df",
+          "7e74ce11-1603-440b-8794-b6e665b917e1",
+          "d2401d3d-967c-46be-b9a0-3da571105158",
+          "6cd44645-ed19-4ecc-a57c-58d400005b29",
+          "bb6d72a2-63ba-405e-a2c1-c7442b4190bb",
+          "92ba4404-76ff-4523-a787-652057e06c13",
+          "fc3c9e48-e2ac-4088-af65-68404baa7f12"
+        ]
+      },
+      "calibration": {
+        "parent_count": 8,
+        "normalized_artist_count": 3,
+        "full_control_pair_count": 544,
+        "parent_ids": [
+          "25516a0f-3197-47e4-8fbf-de9500fc68d2",
+          "33b1d4e9-96d7-4b18-9ffc-199c579aad78",
+          "1ee489e8-55ad-4d4a-8277-24051b85c02d",
+          "dbb07bdc-2706-4e67-8b59-43f98cf1608a",
+          "9efa702f-c6b1-40bb-93ef-095b34a5b775",
+          "21ce1331-6066-4ff4-9a54-f6f62bb5fb0d",
+          "f0101ed8-7c32-4744-8b2a-1b621cb4833b",
+          "89f2c781-5c67-4508-a2d6-236744b8c197"
+        ]
+      },
+      "fresh_final": {
+        "parent_count": 16,
+        "normalized_artist_count": 10,
+        "full_control_pair_count": 944,
+        "parent_ids": [
+          "01c8ba69-8eee-485b-bab0-41a76f9e8892",
+          "0358fd1e-244a-4422-9a42-29b5d68f6e4b",
+          "2b4e8304-c92d-4347-b09e-cfb9b3e29bf2",
+          "35a19148-49bf-451d-9a0e-5ab8e914c367",
+          "4999a0bf-a753-4e0e-85b1-690259dabf96",
+          "765d5131-afd9-4ad7-8786-8bef5705c1c2",
+          "810d7318-4c9e-4160-b147-bbdb65d41861",
+          "8ba20549-c038-47c0-a808-e38741135911",
+          "9c8a5c66-f6d8-4425-8671-6b7aa6a2663b",
+          "9eb8bc50-cffb-4c19-be0e-d27423e3e102",
+          "b207da3d-4baf-485a-98e1-657602479b3a",
+          "b92cb1ca-baa9-4c74-b6dc-36389671ed76",
+          "c2ba72ec-cf74-4155-a7c1-ddd921ac41d3",
+          "d7d28204-a8ac-4c2b-bb3c-c941f4a00b85",
+          "ee082817-dbda-4fbf-b5aa-8dce2320ae35",
+          "fac94d9a-59da-4f83-9027-3eafe082ad16"
+        ]
+      }
+    },
+    "prior_exposed_rule": {
+      "parent_count": 8,
+      "parent_ids": [
+        "faad432d-6ad0-492d-96f1-321eeb9685b5",
+        "bc1f2967-f834-43bd-aadc-95afc897cfe7",
+        "d890ff35-300d-49f2-8054-49ab47262987",
+        "e62afdcd-0c96-4bee-80c7-1c17b897a6d7",
+        "8f36f17f-c033-4c1b-a793-80dce43d507b",
+        "e4de8632-6f69-4c63-8081-f4c2b77b40df",
+        "0a589d65-50a3-4999-8f16-b5b6199bceee",
+        "2dc237cd-1637-46f0-8f58-ca68dc6f6031"
+      ],
+      "policy": "These former prior-final parents are exposed and reassigned to training only; they must never be calibration or fresh post-MI300 holdout evidence."
+    },
+    "recommended_mi300_training_extension": {
+      "status": "NOT_TESTED",
+      "parent_count": 48,
+      "recording_count": 96,
+      "expected_four_family_one_source_pair_count": 2304,
+      "expected_full_control_pair_count": 3264,
+      "parent_ids_source": "data_scope.declared_cp2b_splits.train.parent_ids",
+      "requirement": "Regenerate/materialize training labels from all 48 authoritative train parents; do not represent this extension as part of the completed 40-parent Nano4 run."
+    }
+  },
+  "selected_nano4_artifact": {
+    "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/htdemucs6s-output-projections-adapted.pt",
+    "sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "role": "source evidence and initialization/reference for the selected adaptation direction; not MI300-produced"
+  },
+  "exact_reproducible_training_path": {
+    "config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/config.json",
+      "sha256": "75b8a60ba232830346d088827f11f63bf8dd10ddd93a37c40eb3fca832814ea5"
+    },
+    "script": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/train_adapted.py",
+      "sha256": "66e91879873a640f99448e6e68af47105a31f87146118813ebfc8781f64195d5"
+    },
+    "wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/run_slurm.sh",
+      "sha256": "4968951ccd36e7de982b198de7033a375b80d6316f84597698c9bc243146b767"
+    },
+    "manifest": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/moisesdb-manifest.json",
+      "sha256": "f5d3ff8b0dd94b1d779a3493d0f7a87a3a85d310174736f679206fefb66e6021"
+    },
+    "pair_plan": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/moisesdb-clean-pair-plan.json",
+      "sha256": "c75c9756983ff1e9405996a7d697d866f97285ad34011cdcf3ce4d6eb96ee995"
+    },
+    "dataset_root": "/work/austinhpc25/nano4_cp2_fastest_first_pass/datasets/moisesdb_prepared"
+  },
+  "adaptation": {
+    "scope_claim": "These counts and outcomes describe the completed 40-parent Nano4 run, not the recommended untested 48-parent MI300 extension.",
+    "seed": 260920,
+    "splits": [
+      "train",
+      "validation"
+    ],
+    "families": [
+      "guitar",
+      "bass",
+      "drums",
+      "vocals"
+    ],
+    "expected_train_parents": 40,
+    "expected_validation_parents": 12,
+    "expected_train_pairs": 1920,
+    "expected_validation_pairs": 576,
+    "scenario_kind": "one_source_gain",
+    "family_balancing_policy": {
+      "require_equal_support": true,
+      "group_key": "single changed canonical family",
+      "trained_family_order": [
+        "guitar",
+        "bass",
+        "drums",
+        "vocals"
+      ],
+      "train_shuffle": "independently shuffle each family list with deterministic seed + epoch, then round-robin interleave with zip",
+      "validation_order": "fixed sorted pair order, then round-robin interleave without shuffle",
+      "full_batch_composition": "batch size 8 gives two examples from each of four trained families"
+    },
+    "trainable_modules": [
+      "decoder.3.conv_tr",
+      "tdecoder.3.conv_tr"
+    ],
+    "trainable_parameter_names": [
+      "decoder.3.conv_tr.weight",
+      "decoder.3.conv_tr.bias",
+      "tdecoder.3.conv_tr.weight",
+      "tdecoder.3.conv_tr.bias"
+    ],
+    "parameter_count_accounting": {
+      "optimizer_visible": 13860,
+      "effective_core_output_coefficients": 9240,
+      "optimizer_visible_definition": "All six source-output rows, weights plus biases, in both selected projection modules.",
+      "effective_core_definition": "The four supervised guitar/bass/drums/vocals output rows across both projection modules.",
+      "backbone_trainable": 0
+    },
+    "epochs": 10,
+    "batch_size": 8,
+    "validation_batch_size": 8,
+    "optimizer": {
+      "type": "torch.optim.AdamW",
+      "parameter_groups": [
+        {
+          "name": "output_projections",
+          "modules": [
+            "decoder.3.conv_tr",
+            "tdecoder.3.conv_tr"
+          ],
+          "parameter_count": 13860,
+          "learning_rate": 0.0001,
+          "weight_decay": 0.0
+        }
+      ],
+      "learning_rate_schedule": "none; constant learning rate for all 10 epochs",
+      "global_gradient_clip_l2_norm": 1.0,
+      "zero_grad_set_to_none": true
+    },
+    "loss_weights": {
+      "paired_gain_db": 1.0,
+      "source_amplitude_db": 0.1,
+      "waveform_reconstruction": 10.0
+    },
+    "loss_terms": {
+      "paired_gain_db": {
+        "definition": "SmoothL1(predicted observation source dB - predicted reference source dB, injected family gain dB)",
+        "weight": 1.0
+      },
+      "source_amplitude_db": {
+        "definition": "0.5 * [SmoothL1(reference predicted source dB, reference target source dB) + SmoothL1(observation predicted source dB, observation target source dB)]",
+        "weight": 0.1
+      },
+      "waveform_reconstruction": {
+        "definition": "0.5 * [L1(reference predicted waveform, reference target waveform) + L1(observation predicted waveform, observation target waveform)]",
+        "weight": 10.0
+      }
+    },
+    "augmentation": {
+      "controlled_source_gain_intervention": true,
+      "pair_plan_shared_scale": 0.1,
+      "stochastic_noise": false,
+      "rir_or_room_simulation": false,
+      "eq_or_filtering": false,
+      "pitch_shift": false,
+      "time_stretch": false,
+      "peak_or_per_example_normalization": false
+    },
+    "selection_metric": "validation_family_balanced_paired_gain_mae_db",
+    "precision": "bfloat16_autocast_with_float32_losses",
+    "scale_policy": "pair-plan shared scale retained; no per-example normalization or peak scaling",
+    "early_stop_rule": "fixed 10-epoch short escalation; evaluate every epoch and retain minimum family-balanced validation gain MAE",
+    "early_termination": false
+  },
+  "recommended_mi300_execution": {
+    "status": "NOT_RUN_AND_NOT_TESTED",
+    "training_parent_count": 48,
+    "training_parent_ids_source": "data_scope.declared_cp2b_splits.train.parent_ids",
+    "expected_training_recording_count": 96,
+    "expected_four_family_one_source_training_pairs": 2304,
+    "validation_parent_count": 12,
+    "expected_four_family_one_source_validation_pairs": 576,
+    "recipe": "Use the same frontend, taxonomy, pair grid, family balancing, optimizer, batch sizes, 10-epoch selection rule, no-extra-augmentation policy, loss, and trainable subset as the exact Nano4 path, but regenerate the train pair plan for all 48 authoritative CP2B train parents.",
+    "claim_boundary": "The 48-parent extension has not been trained or evaluated on Nano4 or MI300."
+  },
+  "expected_checkpoint": {
+    "file_format": "PyTorch .pt produced by torch.save",
+    "top_level_type": "dictionary",
+    "record_type": "CP2BHTDemucs6sOutputProjectionAdapter",
+    "schema_version": "1.0",
+    "required_content": {
+      "base_checkpoint_sha256": "string",
+      "families": "ordered list of supervised canonical families",
+      "model_sources": "full ordered HTDemucs source list",
+      "trainable_parameters": "exact ordered parameter-name list",
+      "state": "nested dictionary keyed by decoder.3.conv_tr and tdecoder.3.conv_tr, each containing CPU weight and bias tensors from the selected best epoch",
+      "config": "complete adaptation configuration"
+    },
+    "must_not_contain_claim": "MI300 provenance unless a separately recorded MI300 job actually produces and hashes the checkpoint"
+  },
+  "frozen_evaluation": {
+    "activity_floor_dbfs": -70.0,
+    "missing_prediction_penalty_db": 12.0,
+    "selection_targets": {
+      "precision_min": 0.9,
+      "recall_including_abstentions_min": 0.75,
+      "sign_accuracy_min": 0.95,
+      "balance_mae_db_max": 2.0,
+      "balance_coverage_min": 0.6
+    },
+    "common_diagnostic_alert_threshold_db": 3.0,
+    "common_diagnostic_actionable": false,
+    "nano4_frozen_operating_points_and_final_status": {
+      "bass": {
+        "minimum_true_anomaly_db": 2.0,
+        "alert_threshold_db": 1.5,
+        "status": "SUPPORTED_NARROW_DIGITAL"
+      },
+      "drums": {
+        "minimum_true_anomaly_db": 2.0,
+        "alert_threshold_db": 1.0,
+        "status": "UNSUPPORTED_FRESH_FINAL_PRECISION_0.8767123287671232"
+      },
+      "guitar": {
+        "operating_point": null,
+        "status": "UNSUPPORTED_CALIBRATION"
+      },
+      "keys": {
+        "operating_point": null,
+        "status": "UNSUPPORTED_CALIBRATION"
+      },
+      "vocals": {
+        "minimum_true_anomaly_db": 2.0,
+        "alert_threshold_db": 1.0,
+        "status": "UNSUPPORTED_FRESH_FINAL_PRECISION_0.8617511520737328"
+      }
+    }
+  },
+  "nano4_evidence": {
+    "base_checkpoint": {
+      "path": "/work/austinhpc25/nano4_cp2_readiness_3d161dd/torch-cache/hub/checkpoints/5c90dfd2-34c22ccb.th",
+      "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+    },
+    "dataset_manifest": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/moisesdb-manifest.json",
+      "sha256": "f5d3ff8b0dd94b1d779a3493d0f7a87a3a85d310174736f679206fefb66e6021"
+    },
+    "controlled_pair_plan": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/moisesdb-clean-pair-plan.json",
+      "sha256": "c75c9756983ff1e9405996a7d697d866f97285ad34011cdcf3ce4d6eb96ee995"
+    },
+    "authoritative_parent_split": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-split-v1.json",
+      "sha256": "b6d0699727372431759b991a8fd7922c6d8fea6e6f3a86755fec7a5701e9059a"
+    },
+    "family_diversity_audit": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-family-diversity-audit-v1.json",
+      "sha256": "72310d52f1af08aaf771484c4deeff6a045003e16a609c1f66e5de5c1345933f"
+    },
+    "training_config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/config.json",
+      "sha256": "75b8a60ba232830346d088827f11f63bf8dd10ddd93a37c40eb3fca832814ea5"
+    },
+    "training_script": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/train_adapted.py",
+      "sha256": "66e91879873a640f99448e6e68af47105a31f87146118813ebfc8781f64195d5"
+    },
+    "training_wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/run_slurm.sh",
+      "sha256": "4968951ccd36e7de982b198de7033a375b80d6316f84597698c9bc243146b767"
+    },
+    "adaptation_report_recorded_base_wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/run_slurm.sh",
+      "sha256": "c1f49b4dcbac13d2e486cc8d1cc23dcf3ea12198ee1e350eb260c14a325087ab",
+      "note": "The training script hashes its parent-directory wrapper in the report; the actual escalated submitting wrapper is separately pinned above."
+    },
+    "adaptation_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/adaptation-report.json",
+      "sha256": "535a69e18ffd1414cf8654911948229d33765f2ade84964736f52c57d647ca66"
+    },
+    "adapted_checkpoint": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/htdemucs6s-output-projections-adapted.pt",
+      "sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+    },
+    "validation_config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/validation_config.json",
+      "sha256": "f1611f30abd372955afcffbf814f00fc667fbaf7a87dafd927d8da2f48fb2a2f"
+    },
+    "validation_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/validation/canonical-validation-report.json",
+      "sha256": "02197a3c3ecfc9f9033d0365b73807ea001a04d41f59c1983dd296cda06ac6a3"
+    },
+    "validation_evaluator": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/evaluate_validation.py",
+      "sha256": "1377cd656913f12c1707b2ca4c7a20c3abd5f3a88ff9a51bc7a723c8bb4e12de"
+    },
+    "validation_wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/run_validation_slurm.sh",
+      "sha256": "0ee60e966ea8d5a9a5363e58b0cfa5b51afe85e8abee680b9e5d44b3efe27724"
+    },
+    "calibration_config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/calibration_config.json",
+      "sha256": "2576c77327e94a6d6208ee60783cc256db54332a29e6b33aec44b07967817b67"
+    },
+    "calibration_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/calibration/canonical-calibration-operating-points.json",
+      "sha256": "858296d696a77f55b324382a4d7e2ef91f182c1c2cfa103e629df6bb1ea0aa7c"
+    },
+    "calibration_evaluator": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/evaluate_calibration.py",
+      "sha256": "a68b10b60c09704b04fd65ac37a445ea48ef3c9722ad7915f917ddca9bed66f1"
+    },
+    "calibration_wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/run_calibration_slurm.sh",
+      "sha256": "71eb561ccea12533b575208c76c1effb4c5e95f560001ceb01d2ab52bc3fce26"
+    },
+    "method_freeze": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/cp2b-method-freeze-v1.json",
+      "sha256": "54a0c55b0b44ba74881c3df3e3fae441e978600f8b429bc4aa7ee5f71fe7180a"
+    },
+    "fresh_final_config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/fresh_final/config.json",
+      "sha256": "39baca92339d58e17947dd345fda23f7e36cf44a2824241286fd148cca39a194"
+    },
+    "fresh_final_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/fresh_final/results/canonical-frozen-method-comparison-v1.json",
+      "sha256": "6ff9aac0c28543fd4eb9a5b8ebd0fa4747e4400d310f02342cb99f05616cd6ec"
+    },
+    "fresh_final_evaluator": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/fresh_final/evaluate_fresh_final.py",
+      "sha256": "8b78a32d4d723508fdaf564094788e8a251adc884ecafae0bcf3df5ca263e20b"
+    },
+    "fresh_final_wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/fresh_final/run_slurm.sh",
+      "sha256": "40c0c14e8ffd12e126120e182384bf4aff1c0feb673a05ff8d63079abd3a6a9e"
+    },
+    "sensitivity_config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/sensitivity/config.json",
+      "sha256": "51f2876e6c782a26ff6a370c2662f254bdcc80701e748f813a925a8b85b76331"
+    },
+    "sensitivity_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/sensitivity/results/post-selection-sensitivity-v1.json",
+      "sha256": "23aafdc4992f4132c79087304ed10da7f851ba1b85cef8e2e3e514e6e8e2f535"
+    },
+    "sensitivity_script": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/sensitivity/run_sensitivity.py",
+      "sha256": "d4e64001caa84fa9d10ef1134c5ba14803c2a12a1b202153dca749950398b27e"
+    },
+    "sensitivity_wrapper": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/sensitivity/run_slurm.sh",
+      "sha256": "1575c7cf3a266a684b783fbf48982ac25924e4ed2c760d464f29cef5db164f71"
+    },
+    "historical_p1_baseline_clean_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/results/p1-clean-aggregate.json",
+      "sha256": "2862326680b1ee8f31d7614641c2222445f790a48627cae90cd68f3ed0b02ed9"
+    },
+    "p2_adaptation_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p2_adapted/results/adaptation-report.json",
+      "sha256": "3dbf88c135a346989d77b7bd70590fb37a9a0d3b553f9aec94f34a1901ce4ea6"
+    },
+    "p2_canonical_validation_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p2_adapted/results/canonical-validation/canonical-validation-report.json",
+      "sha256": "7e28ee9952e3c6ac20f677a75d4391b7a1a06651beaad89287bfa74963ba4095"
+    },
+    "p2_calibration_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p2_adapted/results/calibration-operating-points/calibration-operating-points-report.json",
+      "sha256": "f7f63545d3a8c356dad91f395fd55e3158676d23e8f4ef1e3801c18243648cea"
+    }
+  },
+  "fresh_final_discipline": {
+    "method_freeze": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/cp2b-method-freeze-v1.json",
+      "sha256": "54a0c55b0b44ba74881c3df3e3fae441e978600f8b429bc4aa7ee5f71fe7180a"
+    },
+    "fresh_split": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-split-v1.json",
+      "sha256": "b6d0699727372431759b991a8fd7922c6d8fea6e6f3a86755fec7a5701e9059a"
+    },
+    "rule_for_future_mi300_run": "Create a new never-opened parent- and normalized-artist-isolated holdout; freeze the MI300-produced artifact, evaluator, thresholds, and family support before any audio access or inference; permit no model, threshold, evaluator, or support changes afterward. The already opened CP2B fresh-final set may be used only as historical evidence and must not be represented as untouched post-MI300 final evidence."
+  },
+  "current_supported_envelope": {
+    "evidence_type": "Nano4/H200 matched-excerpt digital fresh-final",
+    "supported_families": [
+      "bass"
+    ],
+    "bass_operating_point": {
+      "minimum_true_anomaly_db": 2.0,
+      "alert_threshold_db": 1.5
+    },
+    "unsupported_families": [
+      "drums",
+      "guitar",
+      "keys",
+      "vocals"
+    ]
+  },
+  "prohibited_claims": [
+    "MI300 execution or performance",
+    "PN54 execution, latency, power, deployment, or compatibility",
+    "real-room or physical acoustic validation",
+    "production readiness",
+    "support beyond the stated bass-only digital envelope"
+  ]
+}

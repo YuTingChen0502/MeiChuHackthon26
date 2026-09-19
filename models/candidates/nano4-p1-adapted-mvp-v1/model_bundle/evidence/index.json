@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "evidence_index_id": "nano4-cp2-mvp-candidate-v1",
+  "copied_evidence": [
+    {
+      "file": "CP2B_METHOD_COMPARISON_REPORT.md",
+      "sha256": "4716cdd048aa3d1c3180ec005af3dcf6b3ababd6a291d3f5a745c8980881f4ed"
+    },
+    {
+      "file": "cp2b-final-evidence-v1.json",
+      "sha256": "dfb6581635e08aa930efeaad915f3c1f4bde80c068cf4803a87505da669c832e"
+    },
+    {
+      "file": "cp2b-method-freeze-v1.json",
+      "sha256": "54a0c55b0b44ba74881c3df3e3fae441e978600f8b429bc4aa7ee5f71fe7180a"
+    }
+  ],
+  "referenced_evidence": {
+    "selected_training_config": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/config.json",
+      "sha256": "75b8a60ba232830346d088827f11f63bf8dd10ddd93a37c40eb3fca832814ea5"
+    },
+    "adaptation_report": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/escalated/results/adaptation-report.json",
+      "sha256": "535a69e18ffd1414cf8654911948229d33765f2ade84964736f52c57d647ca66"
+    },
+    "fresh_final_comparison": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/fresh_final/results/canonical-frozen-method-comparison-v1.json",
+      "sha256": "6ff9aac0c28543fd4eb9a5b8ebd0fa4747e4400d310f02342cb99f05616cd6ec"
+    },
+    "noise_and_simulated_acoustic_sensitivity": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/p1_adapted/sensitivity/results/post-selection-sensitivity-v1.json",
+      "sha256": "23aafdc4992f4132c79087304ed10da7f851ba1b85cef8e2e3e514e6e8e2f535"
+    },
+    "family_diversity_audit": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/split_audit/cp2b-family-diversity-audit-v1.json",
+      "sha256": "72310d52f1af08aaf771484c4deeff6a045003e16a609c1f66e5de5c1345933f"
+    },
+    "cp2b_external_hash_manifest": {
+      "path": "/work/austinhpc25/nano4_cp2_fastest_first_pass/cp2b_broad_family/final/cp2b-external-sha256-manifest.txt",
+      "sha256": "4c6dc82cd63b53fe5f61cd2c718832bcd2cfcb8a3c4aca5d91eeb517af804b14"
+    }
+  },
+  "raw_datasets_included": false
+}

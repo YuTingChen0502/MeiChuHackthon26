@@ -1,0 +1,17 @@
+{
+  "expected_changed_family": "bass",
+  "expected_injected_gain_db": 4.0,
+  "fresh_final_used": false,
+  "label_usage": "Expected gain is retained only for post-inference smoke assertions and is not passed to inference_harness.py.",
+  "observation_sha256": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+  "pair_id": "25789239-1075-43b9-bfc9-51dff4a29590-excerpt0:0:one_source_bass_+4db:clean:4601c8e90f1ac534",
+  "parent_group_id": "25789239-1075-43b9-bfc9-51dff4a29590",
+  "record_type": "Nano4MVPSmokeFixtureProvenance",
+  "recording_id": "25789239-1075-43b9-bfc9-51dff4a29590-excerpt0",
+  "reference_sha256": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+  "scenario_kind": "one_source_gain",
+  "schema_version": "1.0",
+  "source_manifest_sha256": "f5d3ff8b0dd94b1d779a3493d0f7a87a3a85d310174736f679206fefb66e6021",
+  "source_pair_plan_sha256": "c75c9756983ff1e9405996a7d697d866f97285ad34011cdcf3ce4d6eb96ee995",
+  "source_split": "validation"
+}
