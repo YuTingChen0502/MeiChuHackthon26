@@ -34,7 +34,7 @@ class APIError(Exception):
         self.code = code
 
 
-def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int]:
+def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int, list[float]]:
     try:
         with wave.open(io.BytesIO(content), "rb") as reader:
             channels = reader.getnchannels()
@@ -55,7 +55,15 @@ def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int]:
     )
     if not mono:
         raise APIError(422, "empty_audio", "Uploaded WAV contains no samples.")
-    return sample_rate, mono, channels
+    # Retain conservative per-1024-frame raw-channel clipping before downmix,
+    # matching native acquisition. Storage grows by blocks, not per PCM sample.
+    block_values = 1024 * channels
+    clipping_blocks = [
+        sum(abs(value) >= 32767/32768 for value in values[start:start+block_values])
+        / len(values[start:start+block_values])
+        for start in range(0, len(values), block_values)
+    ]
+    return sample_rate, mono, channels, clipping_blocks
 
 
 class RuntimeAPI:
@@ -316,7 +324,7 @@ class RuntimeAPI:
             raise APIError(422, "empty_upload", "Audio upload is empty.")
         if len(content) > self.max_upload_bytes:
             raise APIError(413, "audio_too_large", "Audio upload exceeds the configured byte limit.")
-        sample_rate, samples, channels = _decode_pcm16_wav(content)
+        sample_rate, samples, channels, clipping_blocks = _decode_pcm16_wav(content)
         duration_s = len(samples) / sample_rate
         if duration_s > self.max_audio_duration_s:
             raise APIError(413, "audio_too_long", "Audio upload exceeds the configured duration limit.")
@@ -329,6 +337,7 @@ class RuntimeAPI:
             "sample_rate_hz": sample_rate,
             "channels": channels,
             "samples": samples,
+            "clipping_blocks": clipping_blocks,
         }
         self._save_state()
         response = {
@@ -382,6 +391,7 @@ class RuntimeAPI:
             clock_id=f"job-clock:{job_id}",
             sample_rate_hz=asset["sample_rate_hz"],
             samples=asset["samples"],
+            clipping_blocks=asset.get("clipping_blocks"),
             origin_monotonic_s=0.0,
         )
         try:
@@ -540,7 +550,8 @@ class RuntimeAPI:
                 asset = self.assets[source["input_asset_or_device_id"]]
                 audio = FileAudioInput(input_asset_or_device_id=asset["asset_id"],
                     clock_id=source["clock_id"], sample_rate_hz=asset["sample_rate_hz"],
-                    samples=asset["samples"], origin_monotonic_s=clock(),
+                    samples=asset["samples"],
+            clipping_blocks=asset.get("clipping_blocks"), origin_monotonic_s=clock(),
                     chunk_size_samples=min(1024, self.pipeline.hop_size_samples))
             else:
                 audio = NativeMicAudioInput(backend=self._native(),

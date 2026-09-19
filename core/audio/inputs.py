@@ -18,6 +18,7 @@ class _MemoryAudioInput:
         samples: Iterable[float],
         origin_monotonic_s: float,
         chunk_size_samples: int | None = None,
+        clipping_blocks: Iterable[float] | None = None,
     ) -> None:
         if sample_rate_hz <= 0:
             raise ValueError("sample_rate_hz must be positive")
@@ -29,6 +30,11 @@ class _MemoryAudioInput:
         self.clock_id = clock_id
         self.sample_rate_hz = sample_rate_hz
         self.samples = values
+        self.clipping_blocks = tuple(clipping_blocks or ())
+        if self.clipping_blocks and len(self.clipping_blocks) != (len(values)+1023)//1024:
+            raise ValueError("clipping block coverage mismatch")
+        if any(not 0 <= value <= 1 for value in self.clipping_blocks):
+            raise ValueError("invalid clipping fraction")
         self.origin_monotonic_s = float(origin_monotonic_s)
         self.chunk_size_samples = chunk_size_samples or min(1024, len(values))
         if self.chunk_size_samples <= 0:
@@ -46,6 +52,7 @@ class _MemoryAudioInput:
                 sample_start=start,
                 capture_end_monotonic_s=self.origin_monotonic_s + end / self.sample_rate_hz,
                 samples=values,
+                input_clipped_fraction=max(self.clipping_blocks[start//1024:(end+1023)//1024], default=0.0),
             )
 
 
