@@ -1,0 +1,300 @@
+{
+  "record_type": "P1CandidateIntegrationSmoke",
+  "schema_version": "1.0",
+  "material_class": "real_recorded",
+  "claim": "INTEGRATION_ONLY",
+  "input_sha256": {
+    "reference.wav": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+    "observation.wav": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+    "inference-run-1.json": "63e15811778798dcf4d1a4c3a8d047f014497081c4615ed6e4053613b176002e"
+  },
+  "fixture_provenance": {
+    "expected_changed_family": "bass",
+    "expected_injected_gain_db": 4.0,
+    "fresh_final_used": false,
+    "label_usage": "Expected gain is retained only for post-inference smoke assertions and is not passed to inference_harness.py.",
+    "observation_sha256": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+    "pair_id": "25789239-1075-43b9-bfc9-51dff4a29590-excerpt0:0:one_source_bass_+4db:clean:4601c8e90f1ac534",
+    "parent_group_id": "25789239-1075-43b9-bfc9-51dff4a29590",
+    "record_type": "Nano4MVPSmokeFixtureProvenance",
+    "recording_id": "25789239-1075-43b9-bfc9-51dff4a29590-excerpt0",
+    "reference_sha256": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+    "scenario_kind": "one_source_gain",
+    "schema_version": "1.0",
+    "source_manifest_sha256": "f5d3ff8b0dd94b1d779a3493d0f7a87a3a85d310174736f679206fefb66e6021",
+    "source_pair_plan_sha256": "c75c9756983ff1e9405996a7d697d866f97285ad34011cdcf3ce4d6eb96ee995",
+    "source_split": "validation"
+  },
+  "usage": "Private integration verification; no public/demo redistribution approval.",
+  "noise_type": "none",
+  "snr_db": null,
+  "seed": 260920,
+  "capabilities": {
+    "provider": "htdemucs6s-p1-output-projections-v1",
+    "example_only": false,
+    "supported_families": [
+      "bass"
+    ],
+    "candidate_families": [
+      "bass"
+    ],
+    "candidate_mode": true,
+    "production_authorized": false,
+    "confidence_status": "UNCALIBRATED",
+    "comparison_regimes": [
+      "matched_excerpt"
+    ],
+    "evidence_modes": [
+      "source_levels"
+    ],
+    "model": {
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "taxonomy_id": "cp2b-mvp-family-support-v1",
+      "execution_profile_id": "p1-dc557d5adaeb59a625e1d7367cf216fcba3d9b85c8703cb7f9c3da68afec1321",
+      "level_scale_id": "htdemucs6s-source-rms-dbfs-before-centering-v1"
+    },
+    "execution_profile": {
+      "adapter": "p1-output-projections-v1",
+      "device": "cpu",
+      "dtype": "float32",
+      "python_framework": "torch",
+      "torch": "2.11.0+cpu",
+      "demucs": "4.0.1",
+      "numpy": "2.4.3",
+      "cuda": null,
+      "rocm": null,
+      "sample_rate_hz": 44100,
+      "window_samples": 176400,
+      "split": true,
+      "overlap": 0.25,
+      "shifts": 0,
+      "seed": 260920,
+      "deterministic_algorithms": true,
+      "intraop_threads": 1,
+      "interop_threads": 14,
+      "network_segment": "39/5"
+    },
+    "input": {
+      "sample_rate_hz": 44100,
+      "channels": 1,
+      "min_window_samples": 176400,
+      "max_window_samples": 176400
+    },
+    "state": "loaded"
+  },
+  "manifest_sha256": "c2270b54f59a99f01b7016200db6a35802b058721b3f17f7a19653acf50b3e32",
+  "upstream_sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd",
+  "adapted_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+  "base_module_sha256": {
+    "decoder.3.conv_tr": "6c584dabeb632fd7fcc33c5c8d9e5baff3e9cbb5f324a4f856503477cc14593d",
+    "tdecoder.3.conv_tr": "e7505e0036e11a8765a8485c776f73d4e56837c06aefbabb585c14dad69d0918"
+  },
+  "adapted_module_sha256": {
+    "decoder.3.conv_tr": "8a2641c7a21182b894cf9921bef4616ad865725de3478f66720c5b4c73f10cd2",
+    "tdecoder.3.conv_tr": "405cfda359fed3d8c87fa68a4829c094d209093c6a6f73cd1dd9c8fe462bcb63"
+  },
+  "deterministic_repeat_exact": true,
+  "parity_absolute_tolerance_db": 0.01,
+  "parity_errors_db": {
+    "reference_source_level_db": 0.0001217661738266429,
+    "observation_source_level_db": 0.00017354858165674614,
+    "raw_source_delta_db": 5.178240783010324e-05
+  },
+  "parity_passed": true,
+  "timing_seconds": {
+    "model_load": 3.963959700005944,
+    "reference": 7.64145580001059,
+    "observation": 7.928743600001326
+  },
+  "context": {
+    "record_type": "AnalyzerContext",
+    "schema_version": "1.0",
+    "model": {
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "taxonomy_id": "cp2b-mvp-family-support-v1",
+      "execution_profile_id": "p1-dc557d5adaeb59a625e1d7367cf216fcba3d9b85c8703cb7f9c3da68afec1321",
+      "level_scale_id": "htdemucs6s-source-rms-dbfs-before-centering-v1"
+    },
+    "observation": {
+      "window_id": "observation",
+      "session_id": "p1-cpu-smoke",
+      "analysis_run_id": "smoke",
+      "input_kind": "uploaded_file",
+      "input_asset_or_device_id": "observation",
+      "clock_id": "digital-clock",
+      "sample_rate_hz": 44100,
+      "sample_start": 0,
+      "sample_end": 176400,
+      "capture_end_monotonic_s": 4.0
+    },
+    "instrument_config": {
+      "instrument_config_version": 1,
+      "instruments": [
+        {
+          "instrument_id": "bass",
+          "family": "bass"
+        },
+        {
+          "instrument_id": "drums",
+          "family": "drums"
+        },
+        {
+          "instrument_id": "guitar",
+          "family": "guitar"
+        },
+        {
+          "instrument_id": "keys",
+          "family": "keys"
+        },
+        {
+          "instrument_id": "vocals",
+          "family": "vocals"
+        },
+        {
+          "instrument_id": "flute",
+          "family": "flute"
+        }
+      ]
+    },
+    "target": {
+      "target_kind": "reference",
+      "reference": {
+        "reference_id": "frozen-validation-smoke",
+        "source_asset_hash": "sha256:6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e"
+      },
+      "baseline": null
+    },
+    "comparison_regime": "matched_excerpt",
+    "model_specific_context_asset": "p1-reference:186d587e7688c2cc2ff818ee6a37f88b7d9c23e0db805901848dd9b937ddac0e",
+    "observation_purpose": "rehearsal",
+    "probe_instrument_id": null
+  },
+  "evidence": {
+    "record_type": "AnalyzerEvidence",
+    "schema_version": "1.0",
+    "example_only": false,
+    "model": {
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "taxonomy_id": "cp2b-mvp-family-support-v1",
+      "execution_profile_id": "p1-dc557d5adaeb59a625e1d7367cf216fcba3d9b85c8703cb7f9c3da68afec1321",
+      "level_scale_id": "htdemucs6s-source-rms-dbfs-before-centering-v1"
+    },
+    "observation": {
+      "window_id": "observation",
+      "session_id": "p1-cpu-smoke",
+      "analysis_run_id": "smoke",
+      "input_kind": "uploaded_file",
+      "input_asset_or_device_id": "observation",
+      "clock_id": "digital-clock",
+      "sample_rate_hz": 44100,
+      "sample_start": 0,
+      "sample_end": 176400,
+      "capture_end_monotonic_s": 4.0
+    },
+    "target": {
+      "target_kind": "reference",
+      "reference": {
+        "reference_id": "frozen-validation-smoke",
+        "source_asset_hash": "sha256:6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e"
+      },
+      "baseline": null
+    },
+    "comparison_regime": "matched_excerpt",
+    "model_specific_context_asset": "p1-reference:186d587e7688c2cc2ff818ee6a37f88b7d9c23e0db805901848dd9b937ddac0e",
+    "instrument_config_version": 1,
+    "matched_context_window_id": "reference",
+    "evidence_mode": "source_levels",
+    "units": "dBFS_rms",
+    "measurements": [
+      {
+        "instrument_id": "bass",
+        "family": "bass",
+        "activity": "active",
+        "observability": "observable",
+        "validity": "valid",
+        "reason_codes": [
+          "uncalibrated_candidate"
+        ],
+        "uncertainty_features": [],
+        "source_level_db": -46.34685368396707,
+        "target_source_level_db": -50.303173471119806
+      },
+      {
+        "instrument_id": "drums",
+        "family": "drums",
+        "activity": "unsupported",
+        "observability": "not_observable",
+        "validity": "invalid",
+        "reason_codes": [
+          "unsupported_family"
+        ],
+        "uncertainty_features": [],
+        "source_level_db": null,
+        "target_source_level_db": null
+      },
+      {
+        "instrument_id": "guitar",
+        "family": "guitar",
+        "activity": "unsupported",
+        "observability": "not_observable",
+        "validity": "invalid",
+        "reason_codes": [
+          "unsupported_family"
+        ],
+        "uncertainty_features": [],
+        "source_level_db": null,
+        "target_source_level_db": null
+      },
+      {
+        "instrument_id": "keys",
+        "family": "keys",
+        "activity": "unsupported",
+        "observability": "not_observable",
+        "validity": "invalid",
+        "reason_codes": [
+          "unsupported_family"
+        ],
+        "uncertainty_features": [],
+        "source_level_db": null,
+        "target_source_level_db": null
+      },
+      {
+        "instrument_id": "vocals",
+        "family": "vocals",
+        "activity": "unsupported",
+        "observability": "not_observable",
+        "validity": "invalid",
+        "reason_codes": [
+          "unsupported_family"
+        ],
+        "uncertainty_features": [],
+        "source_level_db": null,
+        "target_source_level_db": null
+      },
+      {
+        "instrument_id": "flute",
+        "family": "flute",
+        "activity": "unknown",
+        "observability": "unknown",
+        "validity": "invalid",
+        "reason_codes": [
+          "INSUFFICIENT_EVIDENCE"
+        ],
+        "uncertainty_features": [],
+        "source_level_db": null,
+        "target_source_level_db": null
+      }
+    ]
+  },
+  "python": "3.14.3",
+  "limitations": [
+    "Restricted validation-excerpt smoke only; no real-room/PN54/MI300/production acceptance.",
+    "Raw source levels only; unsupported anchors never enter evidence.",
+    "Cross-profile tolerance is an integration check, not an accuracy or calibration claim."
+  ],
+  "integration_git_sha": "185d864e4d291227c23bbf57ad002f330cd73c67",
+  "origin_git_sha": "3d161dd86c941e4a72ac4053ac795b0c3f7e5cb0"
+}

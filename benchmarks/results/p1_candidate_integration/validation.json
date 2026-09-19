@@ -1,0 +1,64 @@
+{
+  "record_type": "P1CandidateIntegrationValidation",
+  "schema_version": "1.0",
+  "git_sha": "185d864e4d291227c23bbf57ad002f330cd73c67",
+  "clean_source_before_and_after_execution": true,
+  "timestamp_utc": "2026-09-19T21:00:48.438606+00:00",
+  "claim": "IMPLEMENTED_AND_TESTED_CANDIDATE_ONLY",
+  "environment": {
+    "python": "3.14.3",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "numpy": "2.4.3",
+      "torch": "2.11.0",
+      "torchaudio": "2.11.0",
+      "demucs": "4.0.1",
+      "jsonschema": "4.23.0"
+    }
+  },
+  "commands": [
+    {
+      "command": [
+        "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "-B",
+        "-m",
+        "benchmarks.p1_candidate_smoke",
+        "--candidate",
+        "models/candidates/nano4-p1-adapted-mvp-v1",
+        "--cache-dir",
+        "C:\\Users\\USER\\AppData\\Local\\Temp\\cp2-p1-verification-vxbew_io\\cache",
+        "--device",
+        "cpu",
+        "--output",
+        "C:\\Users\\USER\\AppData\\Local\\Temp\\cp2-p1-verification-vxbew_io\\cpu_smoke.json"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "-B",
+        "scripts/validate.py"
+      ],
+      "returncode": 0,
+      "stdout": "\u2714 shows numeric balance only for valid active non-abstained states (0.8077ms)\n\u2714 renders explicit inactive and abstained states (0.126ms)\n\u2714 marks stale and static fixture data without pretending it is fresh (0.1266ms)\n\u2714 fixture mode never permits mutations and expired local receipt freshness is gated (0.1243ms)\n\u2714 real command guards reject disconnected or stale actionable state but retain safe stop (0.1304ms)\n\u2714 renders tolerance as probability semantics and only renders an actual interval (0.2696ms)\n\u2714 command binds exactly to currently displayed snapshot identities (0.8388ms)\n\u2714 setup follows the frozen L2 API order (0.1211ms)\n\u2714 quantity setup creates duplicate performer identities but one honest Runtime family group (0.3217ms)\n\u2714 guided rehearsal is dynamic and ends with quiet, loud, then explicit review (0.3189ms)\n\u2714 reconnect restores only the probe detail Runtime actually persisted (0.3174ms)\n\u2714 authoritative anomaly outranks unrelated abstention in the Live presentation (0.2651ms)\n\u2714 Live never reports normal or recovered without fresh observable and relevant evidence (0.2323ms)\n\u2714 verification presentation exposes waiting, partial and inconclusive Runtime outcomes (0.2105ms)\n\u2714 renders Runtime, model, and native discovery truth without promoting simulation (0.1546ms)\n\u2714 renders suspended, degraded, waiting, simulated, and authoritative session conditions from Runtime fields (0.1353ms)\n\u2714 derived fixture frames only contain declared families and correct profile bindings (8.8649ms)\n\u2714 runtime adapter posts commands to the frozen route and refreshes a conflict snapshot (0.9822ms)\n\u2714 runtime adapter ignores delayed snapshots and refreshes after a frame-only event (0.3024ms)\n\u2714 runtime adapter reconnects from a fresh snapshot cursor (15.8731ms)\n\u2714 runtime adapter isolates cursor and late responses across deliberate session switches (0.2456ms)\n\u2714 successful session commands reconcile server-canceled probe intent (0.7488ms)\n\u2714 runtime adapter refreshes probe intent once on state transitions and not on frame-only refreshes (0.2058ms)\n\u2714 delayed probe GET cannot overwrite newer same-session probe state (0.2085ms)\n\u2714 runtime adapter binds guided probe requests exactly and restores probe state on GET (1.357ms)\n\u2714 fixture Live renders normal, anomaly, abstain, and recovered only as example evidence (3.2985ms)\n\u2714 calibration drafts survive fresh-frame rerenders for the same session (0.3304ms)\n\u2714 catalog recovery tolerates corruption and preserves validated rehearsal counts (0.3852ms)\n\u2714 runtime adapter loads a selected authoritative session and gates controls until its socket connects (0.3367ms)\n\u2714 setup requests native capture without claiming browser-verified physical properties (161.2506ms)\n\u2714 replacement session reuses retained song/reference/source but never copies physical provenance claims (0.5957ms)\n\u2714 isolated demo player has no Runtime transport or filename rendering path (1.5323ms)\n\u2714 UI source contains no client-side audio inference or automatic mixer execution (0.979ms)\n\u2714 responsive card grid supports variable counts without fixed four-card selectors (0.9272ms)\n\u2139 tests 34\n\u2139 suites 0\n\u2139 pass 34\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 314.0001\n{\"result\": \"PASS\", \"scope\": \"real UI adapter + HTTP/WS + SQLite + worker-hook Fake audio; no physical or ML accuracy claim\", \"flow\": \"upload/reference job/rehearsal anomaly/adjustment/recheck/accept baseline/live anomaly/adjustment/fresh verification\", \"final_state\": \"LIVE_MONITORING\"}\r\nrelease audit self-tests: PASS\r\n{\"status\": \"PASS\", \"source_git_sha\": \"185d864e4d291227c23bbf57ad002f330cd73c67\", \"source_clean\": false, \"findings\": []}\r\nALL SELECTED VALIDATION PASSED; no empirical or hardware claim.\r\n",
+      "stderr": "----------------------------------------------------------------------\r\nRan 28 tests in 0.250s\r\n\r\nOK\r\n----------------------------------------------------------------------\r\nRan 30 tests in 0.468s\r\n\r\nOK\r\n----------------------------------------------------------------------\r\nRan 54 tests in 12.930s\r\n\r\nOK\r\n----------------------------------------------------------------------\r\nRan 29 tests in 3.614s\r\n\r\nOK\r\n----------------------------------------------------------------------\r\nRan 47 tests in 31.659s\r\n\r\nOK\r\nC:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\torch\\jit\\_trace.py:1000: DeprecationWarning: `torch.jit.trace` is not supported in Python 3.14+ and may break. Please switch to `torch.compile` or `torch.export`.\r\n  warnings.warn(\r\nC:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\torch\\jit\\_trace.py:1139: DeprecationWarning: `torch.jit.trace_method` is not supported in Python 3.14+ and may break. Please switch to `torch.compile` or `torch.export`.\r\n  warnings.warn(\r\nC:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\site-packages\\torch\\jit\\_serialization.py:170: DeprecationWarning: `torch.jit.load` is not supported in Python 3.14+ and may break. Please switch to `torch.export`.\r\n  warnings.warn(\r\n----------------------------------------------------------------------\r\nRan 38 tests in 6.186s\r\n\r\nOK\r\n",
+      "capture_encoding": "utf-8",
+      "PYTHONUTF8": "1"
+    },
+    {
+      "command": [
+        "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+        "-B",
+        "scripts/release_audit.py",
+        "--self-test"
+      ],
+      "returncode": 0,
+      "stdout": "release audit self-tests: PASS\n{\"status\": \"PASS\", \"source_git_sha\": \"185d864e4d291227c23bbf57ad002f330cd73c67\", \"source_clean\": true, \"findings\": []}\n",
+      "stderr": ""
+    }
+  ],
+  "log_capture_note": "Full validation repeated with explicit UTF-8 because initial Windows cp950 stdout capture failed; original command exit status was zero. Tracked source unchanged; only generated lane evidence present. Stored UTF-8 output was verified complete; a later CP950 console preview could not print a Unicode checkmark, without affecting the saved record or child exit status."
+}
