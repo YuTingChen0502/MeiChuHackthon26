@@ -44,3 +44,17 @@ The runner verifies every stem hash, loads one stable excerpt, builds reference 
 observation mixtures, and passes only mixtures to the separator. Exactly one manifested
 stem must map to each of `bass`, `guitar`, `vocals` and `drums`. Results retain dataset,
 parent-group, split, excerpt, manifest and per-stem hash provenance.
+
+Before a remote training or systematic benchmark run, freeze deterministic pair work:
+
+```text
+python -m training.pair_plan \
+  --manifest assets/manifests/my_dataset.json \
+  --config training/configs/manifested_pair_plan_v1.json \
+  --output assets/manifests/my_dataset_pair_plan.json
+```
+
+The plan fixes grouped splits, exact excerpts, scenario/noise grids, seeds, gains,
+manifest/config hashes and asset identities. Audio is still hash-verified when a plan
+entry is materialized. Requested gains do not imply observability: silent stems receive
+null regression labels from the oracle and remain useful abstention examples.
