@@ -1,0 +1,1286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pa-controller:contracts:1.0",
+  "title": "PA Controller Public Contracts V1",
+  "description": "Design schema, not an implementation. Example records are illustrative, not measured model outputs.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/SongState"
+    },
+    {
+      "$ref": "#/$defs/ReferenceProfile"
+    },
+    {
+      "$ref": "#/$defs/BaselineProfile"
+    },
+    {
+      "$ref": "#/$defs/AnalysisFrame"
+    },
+    {
+      "$ref": "#/$defs/InstrumentState"
+    },
+    {
+      "$ref": "#/$defs/AnomalyEvent"
+    },
+    {
+      "$ref": "#/$defs/Recommendation"
+    },
+    {
+      "$ref": "#/$defs/ConfidenceState"
+    },
+    {
+      "$ref": "#/$defs/VerificationResult"
+    }
+  ],
+  "$defs": {
+    "ConfidenceState": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "ConfidenceState"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "calibration_status": {
+          "type": "string",
+          "enum": [
+            "calibrated",
+            "uncalibrated",
+            "out_of_envelope"
+          ]
+        },
+        "calibration_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "probability_event": {
+          "type": "string",
+          "enum": [
+            "joint_anomaly_numeric_correct",
+            "normal_within_envelope",
+            "not_available"
+          ]
+        },
+        "magnitude_tolerance_db": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "probability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "prediction_interval_db": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ]
+        },
+        "abstained": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "calibration_status",
+        "calibration_id",
+        "probability_event",
+        "magnitude_tolerance_db",
+        "probability",
+        "prediction_interval_db",
+        "abstained",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "calibration_status": {
+                "enum": [
+                  "uncalibrated",
+                  "out_of_envelope"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "probability": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "probability_event": {
+                "const": "not_available"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "probability": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "abstained": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "prediction_interval_db": {
+                "type": "null"
+              },
+              "reasons": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "InstrumentState": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "InstrumentState"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "activity": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive",
+            "unknown",
+            "unsupported"
+          ]
+        },
+        "presence_probability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "source_level_delta_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "balance_deviation_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "too_loud",
+            "too_quiet",
+            "unknown",
+            "inactive",
+            "unsupported"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceState"
+        },
+        "tone": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Reserved extension; null in volume MVP."
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "instrument_id",
+        "family",
+        "activity",
+        "presence_probability",
+        "source_level_delta_db",
+        "balance_deviation_db",
+        "status",
+        "confidence",
+        "tone"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "confidence": {
+                "properties": {
+                  "abstained": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source_level_delta_db": {
+                "type": "null"
+              },
+              "balance_deviation_db": {
+                "type": "null"
+              },
+              "status": {
+                "enum": [
+                  "unknown",
+                  "inactive",
+                  "unsupported"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "normal",
+                  "too_loud",
+                  "too_quiet"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "activity": {
+                "const": "active"
+              },
+              "balance_deviation_db": {
+                "type": "number"
+              },
+              "confidence": {
+                "properties": {
+                  "abstained": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CaptureFingerprint": {
+      "type": "object",
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "native_sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "gain_setting": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "enhancements_verified_disabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "geometry_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provenance": {
+          "type": "string",
+          "enum": [
+            "physical_verified",
+            "uploaded_documented",
+            "unverified"
+          ]
+        }
+      },
+      "required": [
+        "device_id",
+        "profile_id",
+        "native_sample_rate_hz",
+        "channels",
+        "gain_setting",
+        "enhancements_verified_disabled",
+        "geometry_id",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "QualityState": {
+      "type": "object",
+      "properties": {
+        "clipped_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dropout": {
+          "type": "boolean"
+        },
+        "stale": {
+          "type": "boolean"
+        },
+        "comparability": {
+          "type": "string",
+          "enum": [
+            "comparable",
+            "weak",
+            "unsupported"
+          ]
+        },
+        "capture_compatible": {
+          "type": "boolean"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "snr_estimate_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "snr_is_ground_truth": {
+          "const": false
+        }
+      },
+      "required": [
+        "clipped_fraction",
+        "dropout",
+        "stale",
+        "comparability",
+        "capture_compatible",
+        "reason_codes",
+        "snr_estimate_db",
+        "snr_is_ground_truth"
+      ],
+      "additionalProperties": false
+    },
+    "AnalysisFrame": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "AnalysisFrame"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "example_only": {
+          "type": "boolean"
+        },
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "analysis_run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "input_kind": {
+          "type": "string",
+          "enum": [
+            "uploaded_file",
+            "live_microphone"
+          ]
+        },
+        "input_asset_or_device_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clock_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sample_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sample_end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "capture_end_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "published_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "model_bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frontend_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "baseline_version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quality": {
+          "$ref": "#/$defs/QualityState"
+        },
+        "observed_mix_level_delta_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "common_mode_gain_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "identifiability_assumption": {
+          "type": "string",
+          "enum": [
+            "majority_active_sources_unchanged",
+            "explicit_stable_anchor",
+            "unresolved"
+          ]
+        },
+        "inference_wall_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "instruments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InstrumentState"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "example_only",
+        "frame_id",
+        "session_id",
+        "analysis_run_id",
+        "sequence",
+        "input_kind",
+        "input_asset_or_device_id",
+        "clock_id",
+        "sample_rate_hz",
+        "sample_start",
+        "sample_end",
+        "capture_end_monotonic_s",
+        "published_monotonic_s",
+        "model_bundle_id",
+        "frontend_id",
+        "execution_profile_id",
+        "baseline_id",
+        "baseline_version",
+        "reference_id",
+        "quality",
+        "observed_mix_level_delta_db",
+        "common_mode_gain_db",
+        "identifiability_assumption",
+        "inference_wall_ms",
+        "instruments"
+      ],
+      "additionalProperties": false
+    },
+    "SongState": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "SongState"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "song_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instrument_config_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "configured_families": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "unsupported_families": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "reference_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "baseline_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workflow_state": {
+          "type": "string",
+          "enum": [
+            "PROJECT_SETUP",
+            "REFERENCE_UPLOADED",
+            "REFERENCE_ANALYZING",
+            "REFERENCE_ANALYZED",
+            "REHEARSAL",
+            "ANOMALY_DETECTED",
+            "PA_ADJUSTING",
+            "RECHECK",
+            "ACCEPT_BASELINE",
+            "LIVE_MONITORING",
+            "LIVE_ANOMALY",
+            "VERIFY_RECOVERY",
+            "SUSPENDED",
+            "ERROR",
+            "STOPPED"
+          ]
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "song_id",
+        "project_id",
+        "name",
+        "instrument_config_version",
+        "configured_families",
+        "unsupported_families",
+        "reference_id",
+        "baseline_id",
+        "workflow_state"
+      ],
+      "additionalProperties": false
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "valid_active_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "qualified_nonoverlap_windows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "adequate",
+            "limited",
+            "insufficient"
+          ]
+        }
+      },
+      "required": [
+        "instrument_id",
+        "valid_active_seconds",
+        "qualified_nonoverlap_windows",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "ReferenceProfile": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "ReferenceProfile"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "song_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_asset_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frontend_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taxonomy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instrument_config_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration_s": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Coverage"
+          },
+          "minItems": 1
+        },
+        "context_policy": {
+          "const": "fixed_target_with_comparability_gate"
+        },
+        "model_specific_context_asset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "comparison_regime": {
+          "type": "string",
+          "enum": [
+            "matched_excerpt",
+            "stable_texture",
+            "unvalidated"
+          ]
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "reference_id",
+        "song_id",
+        "source_asset_hash",
+        "model_bundle_id",
+        "frontend_id",
+        "taxonomy_id",
+        "instrument_config_version",
+        "duration_s",
+        "coverage",
+        "context_policy",
+        "model_specific_context_asset",
+        "limitations",
+        "comparison_regime"
+      ],
+      "additionalProperties": false
+    },
+    "BaselineProfile": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "BaselineProfile"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "baseline_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "song_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accepted_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accepted_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frontend_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "execution_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taxonomy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instrument_config_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "capture": {
+          "$ref": "#/$defs/CaptureFingerprint"
+        },
+        "source_audio_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Coverage"
+          },
+          "minItems": 1
+        },
+        "normal_envelopes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instrument_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "center_db": {
+                "type": "number"
+              },
+              "lower_db": {
+                "type": "number"
+              },
+              "upper_db": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "instrument_id",
+              "center_db",
+              "lower_db",
+              "upper_db"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "reference_difference_accepted": {
+          "type": "boolean"
+        },
+        "acceptance_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "validity": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "limited",
+            "needs_revalidation",
+            "invalid"
+          ]
+        },
+        "immutable": {
+          "const": true
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "comparison_regime": {
+          "type": "string",
+          "enum": [
+            "matched_excerpt",
+            "stable_texture",
+            "unvalidated"
+          ]
+        },
+        "model_specific_context_asset": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "baseline_id",
+        "version",
+        "song_id",
+        "reference_id",
+        "accepted_by",
+        "accepted_at",
+        "model_bundle_id",
+        "frontend_id",
+        "execution_profile_id",
+        "taxonomy_id",
+        "instrument_config_version",
+        "capture",
+        "source_audio_hashes",
+        "coverage",
+        "normal_envelopes",
+        "reference_difference_accepted",
+        "acceptance_note",
+        "validity",
+        "immutable",
+        "limitations",
+        "comparison_regime",
+        "model_specific_context_asset"
+      ],
+      "additionalProperties": false
+    },
+    "AnomalyEvent": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "AnomalyEvent"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instrument_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "too_loud",
+            "too_quiet",
+            "mixed",
+            "unattributed"
+          ]
+        },
+        "onset_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "confirmed_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "baseline_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_frame_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "acknowledged",
+            "dismissed",
+            "resolved",
+            "inconclusive"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceState"
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "event_id",
+        "session_id",
+        "instrument_ids",
+        "direction",
+        "onset_monotonic_s",
+        "confirmed_monotonic_s",
+        "baseline_id",
+        "reference_id",
+        "evidence_frame_ids",
+        "state",
+        "confidence"
+      ],
+      "additionalProperties": false
+    },
+    "Recommendation": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "Recommendation"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "recommendation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "reduce_level",
+            "increase_level",
+            "check_source",
+            "wait_for_observable_audio"
+          ]
+        },
+        "suggested_step_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "human_control_hint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message_template_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_frame_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "expires_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "automatic_execution": {
+          "const": false
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "recommendation_id",
+        "event_id",
+        "instrument_id",
+        "action",
+        "suggested_step_db",
+        "human_control_hint",
+        "message_template_id",
+        "evidence_frame_ids",
+        "expires_monotonic_s",
+        "automatic_execution"
+      ],
+      "additionalProperties": false
+    },
+    "VerificationResult": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "const": "VerificationResult"
+        },
+        "schema_version": {
+          "const": "1.0"
+        },
+        "verification_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adjustment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "baseline_version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "adjustment_completed_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "first_evidence_sample_start_monotonic_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "evidence_frame_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "instrument_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "before_balance_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "after_balance_db": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "source_observable": {
+          "type": "boolean"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "recovered",
+            "partial",
+            "not_recovered",
+            "inconclusive"
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "record_type",
+        "schema_version",
+        "verification_id",
+        "event_id",
+        "adjustment_id",
+        "baseline_id",
+        "baseline_version",
+        "adjustment_completed_monotonic_s",
+        "first_evidence_sample_start_monotonic_s",
+        "evidence_frame_ids",
+        "instrument_id",
+        "before_balance_db",
+        "after_balance_db",
+        "source_observable",
+        "outcome",
+        "reason_codes"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_observable": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "outcome": {
+                "const": "inconclusive"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "recovered"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence_frame_ids": {
+                "minItems": 1
+              },
+              "after_balance_db": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
