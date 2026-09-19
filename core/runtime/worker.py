@@ -12,12 +12,13 @@ from core.runtime.quality import quality_state
 
 class AudioWorker:
     def __init__(self, *, audio_input, pipeline, session_id, on_window, on_end,
-                 clock=time.monotonic, queue_capacity=2, max_age_s=2.0, pace_file=False):
-        if queue_capacity < 1 or max_age_s <= 0:
+                 clock=time.monotonic, queue_capacity=2, max_age_s=2.0, pace_file=False, clock_tolerance_s=0.05):
+        if queue_capacity < 1 or min(max_age_s, clock_tolerance_s) <= 0:
             raise ValueError('positive worker limits required')
         self.audio_input, self.pipeline = audio_input, pipeline
         self.session_id, self.on_window, self.on_end = session_id, on_window, on_end
         self.clock, self.max_age_s, self.pace_file = clock, max_age_s, pace_file
+        self.clock_tolerance_s = clock_tolerance_s
         self._queue = queue.Queue(maxsize=queue_capacity)
         self._stop, self._finished = Event(), Event()
         self._producer = self._consumer = None
@@ -88,9 +89,7 @@ class AudioWorker:
             self.error = str(exc)
         finally:
             self._finished.set()
-            close = getattr(self.audio_input, 'close', None)
-            if close:
-                close()
+            self._close_input()
 
     def _analyze(self):
         previous = None
@@ -107,7 +106,7 @@ class AudioWorker:
                 if self.error:
                     break
                 age = self.clock() - window.capture_end_monotonic_s
-                if age > self.max_age_s or age < -1 / window.sample_rate_hz:
+                if age > self.max_age_s or age < -self.clock_tolerance_s:
                     self.stale_windows += 1
                     gap = True
                     continue
@@ -131,17 +130,23 @@ class AudioWorker:
             self.error = str(exc)
             self._stop.set()
         finally:
-            close = getattr(self.audio_input, 'close', None)
-            if close:
-                close()
+            self._close_input()
             if not self._stop.is_set() or self.error:
                 self.on_end(self.error or 'audio_eof')
 
-    def stop(self, timeout_s=5.0):
-        self._stop.set()
+    def _close_input(self):
         close = getattr(self.audio_input, 'close', None)
         if close:
-            close()
+            try:
+                close()
+            except Exception as exc:
+                # A driver teardown error must not skip joins or the terminal
+                # session notification. Preserve the original capture failure.
+                self.error = self.error or f'capture_close_failed:{exc}'
+
+    def stop(self, timeout_s=5.0):
+        self._stop.set()
+        self._close_input()
         deadline = time.monotonic() + timeout_s
         for thread in (self._producer, self._consumer):
             if thread is not None:

@@ -191,4 +191,17 @@ class SustainedSessionTests(unittest.TestCase):
             f.session.observe_window(w)
         self.assertIsNone(f.session.latest_frame)
 
+    def test_verification_cutoff_includes_native_clock_uncertainty(self):
+        f=self.fixture;f.open_persistent_incident('clock-guard',2)
+        f.apply('adjust','start_adjustment');f.clock.value=10
+        response=f.apply('complete','complete_adjustment',{'adjustment_id':f.session.adjustment['adjustment_id']})
+        adjustment=response['snapshot']['adjustment'];cutoff=adjustment['verification_not_before_monotonic_s']
+        f.apply('recheck','recheck',{'adjustment_id':adjustment['adjustment_id']})
+        normal=FakeEvidenceSpec(deltas_db=dict(guitar=0,bass=0,drums=0))
+        f.analyzer.queue(normal,normal)
+        f.session.observe_window(f.window('too-close',cutoff+.01),clock_uncertainty_s=.05)
+        self.assertIsNone(f.session.latest_verification)
+        f.session.observe_window(f.window('fully-fresh',cutoff+.1),clock_uncertainty_s=.05)
+        self.assertEqual('recovered',f.session.latest_verification['outcome'])
+
 if __name__=='__main__':unittest.main()

@@ -464,7 +464,12 @@ class RuntimeAPI:
                 with session.command_transaction():
                     if session.song["workflow_state"] in ("SUSPENDED", "STOPPED"):
                         return
-                    session.observe_window(window, quality=quality, max_age_s=max_age)
+                    native = source["input_kind"] == "live_microphone"
+                    if native and not session.capture_runtime_verified:
+                        quality["capture_compatible"] = False
+                        quality["reason_codes"].append("capture_not_runtime_verified")
+                    session.observe_window(window, quality=quality, max_age_s=max_age,
+                                           clock_uncertainty_s=0.05 if native else 0.0)
             def ended(reason):
                 with session.command_transaction():
                     if session.song["workflow_state"] not in ("SUSPENDED", "STOPPED"):

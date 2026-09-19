@@ -192,6 +192,34 @@ class StreamingTests(unittest.TestCase):
         live_window=replace(file_window,input_kind='live_microphone',input_asset_or_device_id='native',analysis_run_id='live')
         self.assertEqual(frame(file_window)['instruments'],frame(live_window)['instruments'])
 
+    def test_close_failure_still_notifies_and_joins_worker(self):
+        done=threading.Event();reasons=[]
+        class Source:
+            def chunks(self):
+                return iter(())
+            def close(self):
+                raise RuntimeError('driver_close_failure')
+        def ended(reason):
+            reasons.append(reason);done.set()
+        worker=AudioWorker(audio_input=Source(),pipeline=SharedAudioPipeline(window_size_samples=4),
+            session_id='s',on_window=lambda *args:None,on_end=ended)
+        worker.start();self.assertTrue(done.wait(2));worker.stop()
+        self.assertIn('driver_close_failure',reasons[0])
+        self.assertFalse(worker._producer.is_alive())
+        self.assertFalse(worker._consumer.is_alive())
+
+    def test_native_clock_resolution_does_not_drop_slightly_future_boundary(self):
+        for offset, expected_count in ((.01,1),(.2,0)):
+            with self.subTest(offset=offset):
+                done=threading.Event();seen=[]
+                class Source:
+                    def chunks(self):
+                        yield AudioChunk('live_microphone','m','c',48000,0,10+offset,(.1,)*4)
+                worker=AudioWorker(audio_input=Source(),pipeline=SharedAudioPipeline(window_size_samples=4),
+                    session_id='s',on_window=lambda *args:seen.append(args),on_end=lambda r:done.set(),clock=lambda:10)
+                worker.start();self.assertTrue(done.wait(2));worker.stop()
+                self.assertEqual(expected_count,len(seen))
+
 
 if __name__=='__main__':
     unittest.main()

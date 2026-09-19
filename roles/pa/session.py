@@ -441,6 +441,7 @@ class PASession:
         probe_instrument_id: str | None = None,
         quality: dict | None = None,
         max_age_s: float | None = None,
+        clock_uncertainty_s: float = 0.0,
     ) -> dict:
         if self.song["workflow_state"] == "STOPPED":
             raise SessionCommandError("session_stopped", "Stopped sessions cannot accept audio.")
@@ -505,9 +506,9 @@ class PASession:
             return copy.deepcopy(frame)
         if self._verification_armed and self.adjustment is not None:
             if self.incident is None:
-                self._consider_proactive_recheck(frame, window.start_monotonic_s)
+                self._consider_proactive_recheck(frame, window.start_monotonic_s, clock_uncertainty_s=clock_uncertainty_s)
             else:
-                self._consider_verification(frame, window.start_monotonic_s)
+                self._consider_verification(frame, window.start_monotonic_s, clock_uncertainty_s=clock_uncertainty_s)
             return copy.deepcopy(frame)
         if (
             self.incident is not None
@@ -562,9 +563,9 @@ class PASession:
         self._append_event(event)
         self._append_event(recommendation)
 
-    def _consider_verification(self, frame: dict, window_start_monotonic_s: float) -> None:
+    def _consider_verification(self, frame: dict, window_start_monotonic_s: float, *, clock_uncertainty_s: float = 0.0) -> None:
         cutoff = self.adjustment["verification_not_before_monotonic_s"]
-        if cutoff is None or window_start_monotonic_s < cutoff:
+        if cutoff is None or window_start_monotonic_s - clock_uncertainty_s < cutoff:
             return
         instrument_id = self.incident["event"]["instrument_ids"][0]
         state = next(item for item in frame["instruments"] if item["instrument_id"] == instrument_id)
@@ -629,9 +630,9 @@ class PASession:
         self._transition()
         self._append_event(verification)
 
-    def _consider_proactive_recheck(self, frame: dict, window_start_monotonic_s: float) -> None:
+    def _consider_proactive_recheck(self, frame: dict, window_start_monotonic_s: float, *, clock_uncertainty_s: float = 0.0) -> None:
         cutoff = self.adjustment["verification_not_before_monotonic_s"]
-        if cutoff is None or window_start_monotonic_s < cutoff:
+        if cutoff is None or window_start_monotonic_s - clock_uncertainty_s < cutoff:
             return
         # A proactive rehearsal adjustment has no anomaly event and therefore must
         # not invent a VerificationResult. It still waits for a fully post-cutoff,
