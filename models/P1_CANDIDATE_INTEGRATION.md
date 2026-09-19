@@ -84,21 +84,35 @@ Cache content is hash-bound and persists across analyzer instances with the same
 A target binds on first analysis and cannot be silently rebound. Missing/corrupt/incompatible context
 fails closed. Cache preparation is bounded to1024 windows.
 
-The supported comparison is deliberately narrow: matched digital excerpts with equal absolute sample
-spans in the supplied reference. A missing/ambiguous span does not trigger guessed alignment.
+The synchronized-demo comparison is deliberately narrow: complete file or physical-microphone
+observations with equal relative sample spans in the supplied uploaded reference. New capture/source
+generations start at canonical zero; the host must restart reference playback/performance accordingly. A missing/ambiguous span does not trigger guessed alignment.
 No learned room/context matcher exists. An uploaded-file flag alone cannot establish acoustic provenance:
-the host must supply genuinely comparable matched-digital content. This adapter does not certify that claim. Microphone observations, stable_texture, clipping, wrong
-sample rate/window, changed five-ID profile or missing context cannot produce candidate numeric evidence.
-Accepted digital baselines can reuse the same preparation/context lifecycle; actual live-room or
-re-timed baseline matching remains outside this candidate's evidence envelope.
+the host must supply comparably timed content. This adapter does not certify that claim.
+Stable_texture, clipping, wrong sample rate/window, changed five-ID profile or missing context fail
+explicitly. A gap preserves relative song position or must be marked unaligned by Runtime; it must
+not silently reset the song clock. No DTW, tempo tracking or section-jump alignment is implemented.
+
+For compatible PCM and an exact span, real HTDemucs executes for both file and microphone inputs.
+Configured families, missing target bass activity and missing physical calibration do not skip
+execution. All six model sources are generated before supported-family publication masks.
+real_room_not_validated and uncalibrated_candidate are raw-evidence/action limitation reasons;
+they do not invalidate otherwise available bass perception. Numerical PA advice still requires
+the unchanged downstream calibration/identifiability gates.
 
 Evidence mode is source_levels with units dBFS_rms: observation source_level_db and matched
 target_source_level_db. Bass is the only candidate-supported family. Each configured instrument gets
 exactly one row. Guitar/drums/vocals/keys are invalid/null with unsupported_family and activity=unsupported.
 Unknown families are invalid/null with INSUFFICIENT_EVIDENCE and activity=unknown. Multiple configured
 bass instances are ambiguous and invalid. Below-floor source estimates are invalid, never Normal.
+Those publication rules are applied after actual inference, including configurations without bass.
 
 Bass above the frozen-70dBFS floor gets raw source levels in explicit candidate mode only.
+execution_diagnostics() returns bounded real-runner started/completed call counters and the latest
+inference duration, six-source order/shape/RMS and waveform SHA-256 values. It stores no stem audio
+and is separate from AnalyzerEvidence, calibrated confidence and frontend/model identity. Reference
+preparation counts as real inference too. Runtime owns queue age, freshness and latency aggregation.
+
 No calibrated probability or invented uncertainty feature is emitted. calibration_metadata() and
 acceptance_metadata() return None; valid raw bass rows retain uncalibrated_candidate.
 No InstrumentState, recommendations, common-mode centering, threshold decisions or workflow state
@@ -119,14 +133,19 @@ python -m benchmarks.p1_candidate_smoke --candidate models/candidates/nano4-p1-a
 ```
 
 The smoke command requires committed source, records exact integration/origin SHA and byte identities,
-uses only the published MoisesDB-derived restricted validation PCM, repeats identical inference, and compares raw bass source
-levels/delta to the published smoke using0.01dB cross-platform integration tolerance. This is not
+uses only the published MoisesDB-derived restricted validation PCM, repeats identical inference,
+compares raw bass source levels/delta to the published smoke using0.01dB cross-platform integration
+tolerance, and replays identical PCM as a microphone acquisition identity. File/mic regression
+requires actual model calls and exact waveform hashes for all six sources. Identity replay is
+not physical microphone validation. This is not
 an action threshold, retuning or a real-audio accuracy claim.
 
 A later MI300 P1 candidate can supply a separately reviewed host trust spec and compatible new
 manifest/base/subset identities through the same loader/interface. No remote manifest can register
 itself. Actual MI300 lineage/calibration/freeze acceptance remains separate from engineering diagnostics.
 
-Remaining limitations: uncalibrated, bass-only matched-digital, no MI300-final artifact, no PN54
-performance qualification, no real-room envelope, no production authorization. CPU smoke latency
+Remaining limitations: uncalibrated, bass-only empirically supported matched-digital envelope,
+no MI300-final artifact, no PN54 performance qualification, no validated real-room envelope,
+no production numerical/action authorization. Microphone inference nevertheless executes now under
+the Lead-approved synchronized-demo policy; this does not establish new acoustic model quality. CPU smoke latency
 is measured in its report; it must not be represented as live real-time readiness.

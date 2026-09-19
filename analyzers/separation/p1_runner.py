@@ -1,9 +1,11 @@
 """Exact upstream HTDemucs plus frozen output projections; no downloads/training."""
+import copy
 import hashlib
 import io
 import json
 import os
 import threading
+import time
 from contextlib import contextmanager
 from fractions import Fraction
 from importlib.metadata import version
@@ -49,6 +51,10 @@ class P1Runner:
             if torch.version.hip is None:
                 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
         self.closed = False
+        self._diagnostics_lock = threading.Lock()
+        self._model_calls_started = 0
+        self._model_calls_completed = 0
+        self._last_inference = None
         m = bundle.manifest
         with self.execution():
             with torch.serialization.safe_globals([HTDemucs, Fraction]):
@@ -132,12 +138,32 @@ class P1Runner:
         signal = dual_mono(samples)
         with self.execution(), self.torch.inference_mode():
             tensor = self.torch.from_numpy(signal).unsqueeze(0).to(self.device)
+            with self._diagnostics_lock:
+                self._model_calls_started += 1
+            started = time.perf_counter()
             estimates = apply_model(self.model, tensor, device=self.device, split=True,
                                     overlap=0.25, shifts=0, progress=False)[0]
             arrays = estimates.detach().cpu().numpy().astype(np.float64, copy=False)
-        require(arrays.shape == (6, 2, 176400) and np.isfinite(arrays).all(), "Invalid separator output")
-        return {name: rms_dbfs(arrays[i], activity_floor_dbfs=-70.0)
-                for i, name in enumerate(self.model.sources)}
+            require(arrays.shape == (6, 2, 176400) and np.isfinite(arrays).all(), "Invalid separator output")
+            levels = {name: rms_dbfs(arrays[i], activity_floor_dbfs=-70.0)
+                      for i, name in enumerate(self.model.sources)}
+            source_hashes = {name: hashlib.sha256(arrays[i].astype("<f4", copy=False).tobytes()).hexdigest()
+                             for i, name in enumerate(self.model.sources)}
+            with self._diagnostics_lock:
+                self._model_calls_completed += 1
+                self._last_inference = {
+                    "call_index": self._model_calls_completed, "inference_wall_seconds": time.perf_counter() - started,
+                    "source_order": list(self.model.sources), "source_shape": [2, 176400],
+                    "source_waveform_sha256": source_hashes, "source_levels_dbfs": dict(levels),
+                }
+            return levels
+
+    def execution_diagnostics(self):
+        # A status read must never wait for the multi-second model execution lock.
+        with self._diagnostics_lock:
+            return copy.deepcopy({"model_calls_started": self._model_calls_started,
+                                  "model_calls_completed": self._model_calls_completed,
+                                  "last_inference": self._last_inference})
 
     def close(self):
         if not self.closed:

@@ -1,4 +1,4 @@
-"""Uncalibrated bass-only InstrumentAnalyzer for the frozen matched-digital P1."""
+"""Uncalibrated bass-only evidence after actual file/microphone P1 execution."""
 import copy
 import hashlib
 import json
@@ -141,12 +141,8 @@ class P1CandidateAnalyzer:
         reference, reason = self._reference(context["model_specific_context_asset"], config, context["target"])
         matched = None
         if reason is None:
-            if not self._candidate_mode:
-                reason = "candidate_mode_not_enabled"
-            elif context["comparison_regime"] != "matched_excerpt":
+            if context["comparison_regime"] != "matched_excerpt":
                 reason = "comparison_regime_unsupported"
-            elif window.input_kind != "uploaded_file":
-                reason = "real_room_not_validated"
             elif window.input_clipped_fraction or max(abs(x) for x in window.samples) >= 1:
                 reason = "clipping_outside_candidate_envelope"
             else:
@@ -157,9 +153,12 @@ class P1CandidateAnalyzer:
                 else:
                     matched = matches[0]
         bass_count = sum(x["family"] == "bass" for x in configured)
-        obs_level = None
-        if reason is None and bass_count == 1 and matched["bass_dbfs"] is not None:
-            obs_level = self.runner.levels(window.samples)["bass"]
+        # Acquisition kind, configured support and target activity never suppress
+        # compatible inference. All six sources are produced before publication masks.
+        observation_levels = self.runner.levels(window.samples) if reason is None else None
+        obs_level = observation_levels["bass"] if observation_levels is not None else None
+        if reason is None and not self._candidate_mode:
+            reason = "candidate_mode_not_enabled"
         rows = []
         for item in configured:
             row = dict(item, activity="unknown", observability="unknown", validity="invalid",
@@ -179,7 +178,8 @@ class P1CandidateAnalyzer:
             else:
                 row.update(activity="active", observability="observable", validity="valid",
                            source_level_db=obs_level, target_source_level_db=matched["bass_dbfs"],
-                           reason_codes=["uncalibrated_candidate"])
+                           reason_codes=["uncalibrated_candidate"] + (
+                               ["real_room_not_validated"] if window.input_kind == "live_microphone" else []))
             rows.append(row)
         evidence = {
             "record_type": "AnalyzerEvidence", "schema_version": "1.0", "example_only": False,
@@ -191,6 +191,10 @@ class P1CandidateAnalyzer:
         }
         validate_analyzer_pair(context, evidence)
         return evidence
+
+    def execution_diagnostics(self):
+        """Bounded model-call diagnostics, separate from public evidence/confidence."""
+        return self.runner.execution_diagnostics()
 
     def close(self):
         if not self._closed:
