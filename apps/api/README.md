@@ -1,6 +1,6 @@
-# Runtime API checkpoint
+# Runtime API
 
-`RuntimeAPI` is the application boundary for the fake-driven checkpoint. The
+`RuntimeAPI` is the application boundary for the PA MVP. The
 Starlette adapter in `apps.api.transport` exposes the frozen loopback HTTP/WebSocket
 surface and delegates workflow changes to this service. The UI must not import a
 `PASession` or mutate snapshots.
@@ -26,6 +26,8 @@ must continue in a newly created session/clock.
 | `GET /v1/sessions/{id}` | `get_session(id)` |
 | `POST /v1/sessions/{id}/actions` | `post_action(id, SessionCommand)` |
 | `POST /v1/sessions/{id}/baseline` | `accept_baseline(id, SessionCommand)` |
+| `GET /v1/sessions/{id}/probes` | `get_probe(id)` |
+| `POST /v1/sessions/{id}/probes` | `post_probe(id, RehearsalProbeCommand)` |
 | `WS /v1/sessions/{id}/events?after_sequence=N` | `connect_events(id, after_sequence=N)` |
 
 The supported loopback launch is:
@@ -34,6 +36,11 @@ The supported loopback launch is:
 python -m pip install -r requirements-runtime.txt
 python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 1 --loop asyncio --http h11 --ws websockets-sansio
 ```
+
+Default launch requires a configured bundle and reports `model_unavailable` otherwise.
+For explicit demonstration mode use `python -m apps.api.launch --mode fake --storage <directory>`.
+See [RUNTIME_PRE_MODEL_READY.md](RUNTIME_PRE_MODEL_READY.md) for production bundle,
+registry, host-review and cache configuration.
 
 Set `PA_RUNTIME_STORAGE_DIR` for durable state. Native discovery uses the optional
 sounddevice/PortAudio backend; the launcher no longer trusts `PA_AUDIO_DEVICE_IDS`.
@@ -49,8 +56,9 @@ device loss and worker errors suspend with an explicit reason. After process res
 create a new session/clock. State transitions and command retries retain CP1 semantics.
 
 The common planner defaults to W=192000/hop=48000 samples (4/1 seconds at 48 kHz).
-Native input is mono float32 without amplitude normalization. The callback copies
-at most 1024 samples into an eight-packet queue; two planned windows may wait for
+Native input negotiates mono/stereo float32 and requested/default device rate.
+Downmix and deterministic shared rate conversion run outside the callback, without
+amplitude normalization. The callback copies at most 1024 frames into an eight-packet queue; two planned windows may wait for
 analysis. Oldest queued windows and results older than two seconds are dropped or
 abstained, with discontinuity gates. Timing uses ADC-anchored sample counts and a
 50 ms clock-jitter budget; gross drift, status errors and lost samples start a new
@@ -67,14 +75,16 @@ and hash transactionally in SQLite. Baseline versions, command retry ledgers and
 audit disk storage grow with human/workflow history and are not silently pruned.
 Uploaded assets remain bounded by the upload limits; the asset catalogue is durable.
 
-The production launcher uses ContinuousFakeInstrumentAnalyzer: unscripted windows
-produce explicit example-only abstention. A non-fake injected analyzer is wrapped by
-RealAnalyzerAdapter and its evidence remains uncalibrated, with null probabilities,
-intervals and instrument advice. Production confidence requires a Lead-approved
-empirical bundle; there is no bypass flag. Client-supplied physical provenance,
-gain, enhancements and geometry remain unverified. Native opening alone cannot
-qualify Live. Unverified native capture also marks frame quality incompatible.
-No public schemas or UI routes were added.
+The production launcher uses the actual ML bundle loader and a host allowlisted
+backend registry. There is no fallback to Fake. Explicit Fake mode uses
+ContinuousFakeInstrumentAnalyzer and emits example-only abstention without scripted
+fixture evidence. RealAnalyzerAdapter pins model/provider identities and permits
+only diagnostic availability-state changes. Unaccepted or uncalibrated evidence
+remains abstained with null probabilities, intervals and advice. Reviewed held-out
+calibration, capture and operating-envelope settings are consumed downstream.
+Client declarations cannot authorize physical capture provenance. Native opening
+alone cannot qualify Live. The Lead-approved guided-rehearsal companion adds the
+probe routes above; existing setup/session/analyzer schemas are unchanged.
 
 `RuntimeAPI(available_audio_devices={...})` retains the in-process CP1 scripted Fake
 harness, with managed capture disabled by default for that explicit test seam. It is
@@ -86,7 +96,8 @@ for a supplied test backend. Worker diagnostics are available to Runtime through
 through existing fields. The UI does not consume a new metrics contract.
 
 The same server serves only `apps/ui/` at `/apps/ui/`, never the repository root.
-See `CP2_RUNTIME_CHECKPOINT.md` for measured validation and external gates.
+See `RUNTIME_PRE_MODEL_CHECKPOINT.md` for current validation and
+`CP2_RUNTIME_CHECKPOINT.md` for historical source-specific evidence.
 
 ## Setup request/response example
 

@@ -2,7 +2,7 @@
 import json
 import tempfile
 import unittest
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from analyzers.bundle_validation import validate_bundle
 from analyzers.reference_contexts import ReferenceContextStore
@@ -47,6 +47,12 @@ class ActualBundleTests(unittest.TestCase):
                     self.assertIsNone(instrument["balance_deviation_db"])
                     self.assertTrue(instrument["confidence"]["abstained"])
                     self.assertIn("artifact_not_accepted",instrument["confidence"]["reasons"])
+                session._baseline_pcm_limit=16
+                for start in (8,16,24,32):
+                    session.observe_window(replace(window,window_id=f"test:{start}",sample_start=start,
+                        sample_end=start+8,capture_end_monotonic_s=10+(start+8)/8))
+                self.assertLessEqual(session._baseline_pcm_samples,16)
+                self.assertLessEqual(len(session._baseline_windows),2)
                 self.assertTrue(any((root/"runtime"/"context-cache").iterdir()))
             finally:api.close()
             self.assertTrue(all(backend.closed for backend in created))

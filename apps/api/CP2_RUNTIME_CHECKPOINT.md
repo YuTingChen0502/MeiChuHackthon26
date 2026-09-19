@@ -1,4 +1,8 @@
-# CP2 Runtime / Native Audio checkpoint
+# Historical CP2 Runtime / Native Audio checkpoint
+
+This records the earlier RT-2A milestone. Current completion and deployment details
+are in [RUNTIME_PRE_MODEL_CHECKPOINT.md](RUNTIME_PRE_MODEL_CHECKPOINT.md) and
+[RUNTIME_PRE_MODEL_READY.md](RUNTIME_PRE_MODEL_READY.md).
 
 Lane: CP2-RUNTIME. Authorized base: `8c8226d18c0b2def5098368cebe6699be6498c15`.
 All implementation changes stay within Runtime-owned directories. Public schemas,
