@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { balanceText, buildProbePlan, calibrationDraftFor, canMutate, commandFor, commandGuard, confidenceText, currentRecoveredVerification, deviceDiscoveryText, displayStatus, expandInstrumentConfiguration, fixtureLiveSnapshot, fixtureRehearsal, fixtureScenario, freshness, liveEvidenceState, liveViewState, modelSupportSummary, normalizeCatalogRows, receiptIsFresh, referenceProgressText, restoreConfiguredInstances, restoreProbeView, runtimeErrorText, runtimeInstrumentGroups, runtimeReadiness, sessionCondition, sourcePresentation, SETUP_ENDPOINT_PLAN, verificationPresentation } from '../../apps/ui/app.js';
-import { RuntimeAdapter } from '../../apps/ui/runtime-adapter.js';
+import { balanceText, buildProbePlan, calibrationDraftFor, canMutate, commandFor, commandGuard, confidenceText, currentRecoveredVerification, deviceDiscoveryText, displayStatus, expandInstrumentConfiguration, fixtureLiveSnapshot, fixtureRehearsal, fixtureScenario, freshness, liveEvidenceState, liveViewState, microphoneOptions, modelSupportSummary, normalizeCatalogRows, receiptIsFresh, referenceProgressText, restoreConfiguredInstances, restoreProbeView, runtimeErrorText, runtimeInstrumentGroups, runtimeReadiness, sessionCondition, sourceIdentityText, sourcePresentation, SETUP_ENDPOINT_PLAN, verificationPresentation } from '../../apps/ui/app.js';
+import { pollReferenceJob, RuntimeAdapter } from '../../apps/ui/runtime-adapter.js';
 
 const confidence = (abstained = false) => ({ abstained, reasons: abstained ? ['noise_overlap'] : [], calibration_status: abstained ? 'out_of_envelope' : 'calibrated', probability: abstained ? null : .9, magnitude_tolerance_db: 1.5 });
 const active = (status, balance, c = confidence()) => ({ activity:'active', status, balance_deviation_db:balance, confidence:c });
@@ -132,6 +132,25 @@ test('renders Runtime, model, and native discovery truth without promoting simul
   assert.equal(deviceDiscoveryText({ discovery_status:'native_backend_unavailable', devices:[] }), 'Native microphone backend unavailable');
   assert.match(deviceDiscoveryText({ discovery_status:'injected_example_only', devices:[{device_id:'mic-fixture'}] }), /not physical capture evidence/);
   assert.match(runtimeErrorText({ payload:{ error:{ code:'model_unavailable' } } }), /HTTP 503/);
+});
+test('uses friendly microphone labels without exposing stable native IDs', () => {
+  const devices=[
+    {device_id:'portaudio:opaque-default',name:'USB Audio',host_api:'WASAPI',is_default:true},
+    {device_id:'portaudio:opaque-second',name:'USB Audio',host_api:'MME',is_default:false},
+    {device_id:'legacy-injected-id'},
+    {device_id:'portaudio:unique',name:'Stage Interface',host_api:'WASAPI'},
+  ];
+  assert.deepEqual(microphoneOptions(devices),[
+    {device_id:'portaudio:opaque-default',label:'USB Audio (Default) · WASAPI'},
+    {device_id:'portaudio:opaque-second',label:'USB Audio · MME'},
+    {device_id:'legacy-injected-id',label:'Microphone input 3'},
+    {device_id:'portaudio:unique',label:'Stage Interface'},
+  ]);
+  const discovery={devices};
+  assert.equal(sourceIdentityText({input_kind:'live_microphone',input_asset_or_device_id:'portaudio:opaque-default'},discovery),'live microphone · USB Audio (Default) · WASAPI');
+  assert.equal(sourceIdentityText({input_kind:'live_microphone',input_asset_or_device_id:'missing-opaque-id'},discovery),'live microphone · Microphone input');
+  assert.doesNotMatch(sourceIdentityText({input_kind:'live_microphone',input_asset_or_device_id:'portaudio:opaque-second'},discovery),/opaque|portaudio/);
+  assert.equal(sourceIdentityText({input_kind:'uploaded_file',input_asset_or_device_id:'asset-7'},discovery),'uploaded file · asset-7');
 });
 test('renders authoritative model support without inventing coverage', () => {
   const snapshot={song:{configured_families:['bass','guitar','drums','vocals','keys'],unsupported_families:['guitar','drums','vocals','keys']}};
@@ -498,6 +517,71 @@ test('reference job failure is surfaced and prevents session creation', async ()
     assert.equal(progress.at(-1).status,'failed');
     assert.equal(progress.at(-1).error,'reference_decode_failed');
   }finally{globalThis.fetch=originalFetch;}
+});
+test('reference polling permits more than 400 authoritative progress updates before completion', async () => {
+  const originalFetch=globalThis.fetch;
+  const originalWebSocket=globalThis.WebSocket;
+  const originalLocation=globalThis.location;
+  const requests=[];
+  const running=Array.from({length:450},(_,index)=>({job_id:'job-long',status:'running',progress:(index+1)/500,error:null}));
+  const responses=[
+    {project_id:'project-1'},
+    {song_id:'song-1'},
+    {asset_id:'asset-1'},
+    {job_id:'job-long',status:'queued',progress:0,error:null},
+    ...running,
+    {job_id:'job-long',status:'completed',progress:1,error:null,reference_id:'reference-1'},
+    {session_id:'session-long',state_version:0,event_sequence:0},
+  ];
+  globalThis.fetch=async(url,options={})=>{requests.push([url,options]);return{ok:true,status:200,json:async()=>responses.shift()};};
+  globalThis.location={protocol:'http:',host:'127.0.0.1:8000'};
+  globalThis.WebSocket=class{constructor(url){this.url=url;}close(){}};
+  try{
+    const progress=[];
+    const adapter=new RuntimeAdapter({onSnapshot(){},onStatus(){}});
+    const snapshot=await adapter.setup({project:'Demo',song:'Long reference',families:['bass'],reference:{name:'reference.wav'},source:'uploaded_file',sourceId:'reference-asset',jobPollIntervalMs:0,referenceJobRequestTimeoutMs:0,onProgress:update=>progress.push(update)});
+    assert.equal(snapshot.session_id,'session-long');
+    assert.equal(requests.filter(([url])=>url==='/v1/jobs/job-long').length,451);
+    assert.equal(progress.filter(update=>update.stage==='reference').at(-1).status,'completed');
+    adapter.stopEvents();
+  }finally{
+    globalThis.fetch=originalFetch;
+    globalThis.WebSocket=originalWebSocket;
+    globalThis.location=originalLocation;
+  }
+});
+test('reference polling reports an explicit stall only after no authoritative movement', async () => {
+  let clock=0;
+  const updates=[];
+  const responses=[
+    {job_id:'job-stalled',status:'running',progress:.1,error:null},
+    {job_id:'job-stalled',status:'running',progress:.1,error:null},
+  ];
+  await assert.rejects(
+    ()=>pollReferenceJob(
+      {job_id:'job-stalled',status:'queued',progress:0,error:null},
+      {
+        fetchJob:async()=>responses.shift(),
+        onUpdate:update=>updates.push(update),
+        pollIntervalMs:0,
+        stallTimeoutMs:1000,
+        requestTimeoutMs:0,
+        sleep:async()=>{clock+=1000;},
+        now:()=>clock,
+      },
+    ),
+    /Reference analysis stalled \(job-stalled\): no Runtime progress update for 1 seconds\./,
+  );
+  assert.deepEqual(updates.map(update=>[update.status,update.progress]),[['running',.1],['running',.1]]);
+});
+test('reference polling reports a hung Runtime status request explicitly', async () => {
+  await assert.rejects(
+    ()=>pollReferenceJob(
+      {job_id:'job-dead',status:'running',progress:.1,error:null},
+      {fetchJob:async()=>new Promise(()=>{}),pollIntervalMs:0,stallTimeoutMs:60_000,requestTimeoutMs:1},
+    ),
+    /Reference analysis status request timed out \(job-dead\)\./,
+  );
 });
 test('replacement session reuses retained song/reference/source but never copies physical provenance claims', async () => {
   const originalFetch = globalThis.fetch;

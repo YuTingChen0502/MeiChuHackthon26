@@ -1,3 +1,57 @@
+export const REFERENCE_JOB_STALL_TIMEOUT_MS = 60_000;
+export const REFERENCE_JOB_REQUEST_TIMEOUT_MS = 30_000;
+
+const referenceJobActive = job => job.status === 'queued' || job.status === 'running';
+const delay = milliseconds => milliseconds > 0 ? new Promise(resolve => setTimeout(resolve, milliseconds)) : Promise.resolve();
+
+async function referenceJobRequest(load, timeoutMs, jobId) {
+  if (timeoutMs === 0) return load(undefined);
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Reference analysis status request timed out (${jobId}).`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([load(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function pollReferenceJob(initialJob, {
+  fetchJob,
+  onUpdate = () => {},
+  pollIntervalMs = 150,
+  stallTimeoutMs = REFERENCE_JOB_STALL_TIMEOUT_MS,
+  requestTimeoutMs = REFERENCE_JOB_REQUEST_TIMEOUT_MS,
+  sleep = delay,
+  now = Date.now,
+} = {}) {
+  let job = initialJob;
+  let lastStatus = job.status;
+  let lastProgress = job.progress;
+  let lastMovementAt = now();
+  while (referenceJobActive(job)) {
+    await sleep(pollIntervalMs);
+    const next = await referenceJobRequest(
+      signal => fetchJob(job.job_id, signal), requestTimeoutMs, job.job_id,
+    );
+    onUpdate(next);
+    const moved = next.status !== lastStatus || next.progress > lastProgress;
+    if (moved) lastMovementAt = now();
+    else if (now() - lastMovementAt >= stallTimeoutMs) {
+      throw new Error(`Reference analysis stalled (${job.job_id}): no Runtime progress update for ${Math.round(stallTimeoutMs / 1000)} seconds.`);
+    }
+    job = next;
+    lastStatus = next.status;
+    lastProgress = next.progress;
+  }
+  return job;
+}
+
 export class RuntimeAdapter {
   constructor({ onSnapshot, onStatus, onConnection, onProbe }) {
     this.onSnapshot = onSnapshot;
@@ -93,14 +147,14 @@ export class RuntimeAdapter {
     progress({ stage:'upload', status:'completed', message:'Reference uploaded.', asset_id:asset.asset_id });
     progress({ stage:'reference', status:'queued', progress:0, message:'Reference analysis queued.' });
     let job = await this.request(`/songs/${encodeURIComponent(song.song_id)}/reference`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ asset_id:asset.asset_id }) });
-    let polls = 0;
     progress({ stage:'reference', status:job.status, progress:job.progress, message:'Reference analysis queued.', job_id:job.job_id });
-    while (job.status === 'queued' || job.status === 'running') {
-      if (polls++ >= (values.maxJobPolls ?? 400)) throw new Error(`Reference analysis timed out (${job.job_id}).`);
-      await new Promise(resolve => setTimeout(resolve, values.jobPollIntervalMs ?? 150));
-      job = await this.request(`/jobs/${encodeURIComponent(job.job_id)}`);
-      progress({ stage:'reference', status:job.status, progress:job.progress, error:job.error, message:job.status === 'completed' ? 'Reference analysis completed.' : job.status === 'failed' ? 'Reference analysis failed.' : 'Analyzing reference…', job_id:job.job_id });
-    }
+    job = await pollReferenceJob(job, {
+      fetchJob:(jobId,signal)=>this.request(`/jobs/${encodeURIComponent(jobId)}`, signal ? { signal } : {}),
+      onUpdate:update=>progress({ stage:'reference', status:update.status, progress:update.progress, error:update.error, message:update.status === 'completed' ? 'Reference analysis completed.' : update.status === 'failed' ? 'Reference analysis failed.' : 'Analyzing reference…', job_id:update.job_id }),
+      pollIntervalMs:values.jobPollIntervalMs ?? 150,
+      stallTimeoutMs:values.referenceJobStallTimeoutMs ?? REFERENCE_JOB_STALL_TIMEOUT_MS,
+      requestTimeoutMs:values.referenceJobRequestTimeoutMs ?? REFERENCE_JOB_REQUEST_TIMEOUT_MS,
+    });
     if (job.status !== 'completed') throw new Error(job.error ?? 'Reference preparation failed.');
     const sourceId = values.source === 'uploaded_file' && values.sourceId === 'reference-asset' ? asset.asset_id : values.sourceId;
     progress({ stage:'session', status:'running', message:`Connecting ${values.source === 'live_microphone' ? 'live microphone' : 'uploaded file'} source…` });
