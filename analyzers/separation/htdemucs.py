@@ -29,7 +29,9 @@ class HTDemucs6sSeparator:
         )
         return {"available": not missing, "missing_modules": missing, "versions": versions}
 
-    def __init__(self, *, device: str = "cpu", segment_s: float | None = None) -> None:
+    def __init__(
+        self, *, device: str = "cpu", segment_s: float | None = None, seed: int = 0
+    ) -> None:
         status = self.runtime_status()
         if not status["available"]:
             raise SeparationRuntimeUnavailable(
@@ -40,6 +42,9 @@ class HTDemucs6sSeparator:
 
         self._torch = torch
         self._device = device
+        self._seed = int(seed)
+        torch.manual_seed(self._seed)
+        torch.use_deterministic_algorithms(True)
         self._model = get_model(self.backend_id)
         self._model.to(device)
         self._model.eval()
@@ -70,6 +75,7 @@ class HTDemucs6sSeparator:
                 device=self._device,
                 split=True,
                 overlap=0.25,
+                shifts=0,
                 progress=False,
             )[0]
         arrays = estimates.detach().cpu().numpy().astype(np.float64, copy=False)
@@ -80,3 +86,14 @@ class HTDemucs6sSeparator:
             backend_id=self.backend_id,
             checkpoint_id=self.checkpoint_id,
         )
+
+    @property
+    def execution_settings(self) -> dict[str, object]:
+        return {
+            "device": self._device,
+            "split": True,
+            "overlap": 0.25,
+            "shifts": 0,
+            "seed": self._seed,
+            "deterministic_algorithms": True,
+        }

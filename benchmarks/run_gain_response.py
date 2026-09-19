@@ -258,6 +258,7 @@ def run(config: Mapping[str, object], backend: str, command: list[str]) -> dict[
                 if backend == "htdemucs_6s"
                 else {"implementation": "NumPy deterministic FFT masks"}
             ),
+            "execution_settings": getattr(separator, "execution_settings", {}),
             "adapted": False,
         },
         command=command,
