@@ -45,6 +45,13 @@ class HTDemucs6sSeparator:
         self._seed = int(seed)
         torch.manual_seed(self._seed)
         torch.use_deterministic_algorithms(True)
+        torch.set_num_threads(1)
+        try:
+            torch.set_num_interop_threads(1)
+        except RuntimeError:
+            # PyTorch only permits setting this before inter-op work starts. A
+            # long-lived host must pin it during process initialization instead.
+            pass
         self._model = get_model(self.backend_id)
         self._model.to(device)
         self._model.eval()
@@ -96,4 +103,6 @@ class HTDemucs6sSeparator:
             "shifts": 0,
             "seed": self._seed,
             "deterministic_algorithms": True,
+            "torch_num_threads": self._torch.get_num_threads(),
+            "torch_num_interop_threads": self._torch.get_num_interop_threads(),
         }
