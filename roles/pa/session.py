@@ -36,6 +36,17 @@ def _synchronized(method):
     return wrapper
 
 
+def _persisted(method):
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            result = method(self, *args, **kwargs)
+            if self._persistence_callback is not None:
+                self._persistence_callback(self.export_state())
+            return result
+    return wrapper
+
+
 class SessionCommandError(Exception):
     def __init__(self, code: str, message: str, *, http_status: int = 409, retryable: bool = False):
         super().__init__(message)
@@ -75,8 +86,10 @@ class PASession:
         self.monotonic_clock = monotonic_clock
         self.wall_clock = wall_clock or (lambda: datetime.now(timezone.utc).isoformat())
         self.settling_policy_s = settling_policy_s
+        self.persistence_frames = persistence_frames
         self.event_retention = event_retention
         self._lock = RLock()
+        self._persistence_callback = None
         model = analyzer.capabilities()["model"]
         self.execution = {
             "model_bundle_id": model["model_bundle_id"],
@@ -109,6 +122,7 @@ class PASession:
         self.latest_verification = None
         self.suspension_reasons: list[str] = []
         self._events: list[dict] = []
+        self._audit_records: list[dict] = []
         self._frames: list[dict] = []
         self._frame_audio_hashes: dict[str, str] = {}
         self._frame_sequence = 0
@@ -178,6 +192,134 @@ class PASession:
         validate_snapshot(result)
         return result
 
+    def set_persistence_callback(self, callback) -> None:
+        with self._lock:
+            self._persistence_callback = callback
+
+    @_synchronized
+    def export_state(self) -> dict:
+        return {
+            "state_format": "pa-session-state-v1",
+            "session_id": self.session_id,
+            "instrument_config": copy.deepcopy(self.instrument_config),
+            "reference": copy.deepcopy(self.reference),
+            "source": copy.deepcopy(self.source),
+            "capture_fingerprint": copy.deepcopy(self.capture_fingerprint),
+            "execution": copy.deepcopy(self.execution),
+            "song": copy.deepcopy(self.song),
+            "state_version": self.state_version,
+            "event_sequence": self.event_sequence,
+            "session_mode": self.session_mode,
+            "incident_state": self.incident_state,
+            "baseline": copy.deepcopy(self.baseline),
+            "incident": copy.deepcopy(self.incident),
+            "adjustment": copy.deepcopy(self.adjustment),
+            "latest_frame": copy.deepcopy(self.latest_frame),
+            "recommendations": copy.deepcopy(self.recommendations),
+            "latest_verification": copy.deepcopy(self.latest_verification),
+            "suspension_reasons": list(self.suspension_reasons),
+            "events": copy.deepcopy(self._events),
+            "audit_records": copy.deepcopy(self._audit_records),
+            "frames": copy.deepcopy(self._frames),
+            "frame_audio_hashes": dict(self._frame_audio_hashes),
+            "frame_sequence": self._frame_sequence,
+            "incident_counter": self._incident_counter,
+            "adjustment_counter": self._adjustment_counter,
+            "verification_counter": self._verification_counter,
+            "incident_before_balance": self._incident_before_balance,
+            "verification_armed": self._verification_armed,
+            "require_fresh_after_resume": self._require_fresh_after_resume,
+            "settling_policy_s": self.settling_policy_s,
+            "persistence_frames": self.persistence_frames,
+            "event_retention": self.event_retention,
+        }
+
+    @classmethod
+    def from_state(
+        cls,
+        state: dict,
+        *,
+        analyzer,
+        baseline_store: BaselineStore,
+        monotonic_clock=time.monotonic,
+        wall_clock=None,
+    ):
+        if state.get("state_format") != "pa-session-state-v1":
+            raise ValueError("unsupported persisted session state")
+        song = state["song"]
+        session = cls(
+            session_id=state["session_id"],
+            project_id=song["project_id"],
+            song_id=song["song_id"],
+            song_name=song["name"],
+            instrument_config=state["instrument_config"],
+            reference_profile=state["reference"],
+            source=state["source"],
+            capture_fingerprint=state["capture_fingerprint"],
+            analyzer=analyzer,
+            baseline_store=baseline_store,
+            monotonic_clock=monotonic_clock,
+            wall_clock=wall_clock,
+            settling_policy_s=state["settling_policy_s"],
+            persistence_frames=state["persistence_frames"],
+            event_retention=state["event_retention"],
+        )
+        with session._lock:
+            session.execution = copy.deepcopy(state["execution"])
+            session.song = copy.deepcopy(song)
+            session.state_version = state["state_version"]
+            session.event_sequence = state["event_sequence"]
+            session.session_mode = state["session_mode"]
+            session.incident_state = state["incident_state"]
+            session.baseline = copy.deepcopy(state["baseline"])
+            if session.baseline is not None:
+                session.baseline_store.save(session.baseline)
+            session.incident = copy.deepcopy(state["incident"])
+            session.adjustment = copy.deepcopy(state["adjustment"])
+            session.latest_frame = copy.deepcopy(state["latest_frame"])
+            session.recommendations = copy.deepcopy(state["recommendations"])
+            session.latest_verification = copy.deepcopy(state["latest_verification"])
+            session.suspension_reasons = list(state["suspension_reasons"])
+            session._events = copy.deepcopy(state["events"])
+            session._audit_records = copy.deepcopy(state.get("audit_records", []))
+            session._frames = copy.deepcopy(state["frames"])
+            session._frame_audio_hashes = dict(state["frame_audio_hashes"])
+            session._frame_sequence = state["frame_sequence"]
+            session._incident_counter = state["incident_counter"]
+            session._adjustment_counter = state["adjustment_counter"]
+            session._verification_counter = state["verification_counter"]
+            session._incident_before_balance = state["incident_before_balance"]
+            session._verification_armed = state["verification_armed"]
+            session._require_fresh_after_resume = state["require_fresh_after_resume"]
+            session._detector.reset()
+            validate_snapshot(session.snapshot())
+        return session
+
+    @_synchronized
+    def audit_records(self) -> list[dict]:
+        return copy.deepcopy(self._audit_records)
+
+    def _audit(self, kind: str, payload: dict) -> None:
+        self._audit_records.append(
+            {
+                "kind": kind,
+                "state_version": self.state_version,
+                "event_sequence": self.event_sequence,
+                "payload": copy.deepcopy(payload),
+            }
+        )
+
+    @_persisted
+    def suspend_for_runtime_restart(self) -> None:
+        if self.song["workflow_state"] == "STOPPED":
+            return
+        self.song["workflow_state"] = "SUSPENDED"
+        self.suspension_reasons = ["runtime_restart_requires_new_session"]
+        self.recommendations = []
+        self._verification_armed = False
+        self._detector.reset()
+        self._transition()
+
     def _append_event(self, payload: dict) -> dict:
         self.event_sequence += 1
         event = {
@@ -220,7 +362,7 @@ class PASession:
             digest.update(struct.pack("<f", value))
         return f"sha256:{digest.hexdigest()}"
 
-    @_synchronized
+    @_persisted
     def observe_window(
         self,
         window,
@@ -231,6 +373,11 @@ class PASession:
     ) -> dict:
         if self.song["workflow_state"] == "STOPPED":
             raise SessionCommandError("session_stopped", "Stopped sessions cannot accept audio.")
+        if "runtime_restart_requires_new_session" in self.suspension_reasons:
+            raise SessionCommandError(
+                "new_session_required",
+                "Application restart changed the clock; start a new session before supplying audio.",
+            )
         if window.session_id != self.session_id:
             raise ValueError("window belongs to another session")
         if window.clock_id != self.source["clock_id"]:
@@ -259,9 +406,27 @@ class PASession:
             else:
                 self._consider_verification(frame, window.start_monotonic_s)
             return copy.deepcopy(frame)
+        if self.song["workflow_state"] == "SUSPENDED":
+            # Paused sessions may continue publishing diagnostics, but cannot advance
+            # persistence, open incidents, or emit corrective recommendations.
+            return copy.deepcopy(frame)
         if self._require_fresh_after_resume:
             self._require_fresh_after_resume = False
             return copy.deepcopy(frame)
+        if (
+            self.incident is not None
+            and self.incident["event"]["state"] in ("resolved", "dismissed")
+            and quality_is_usable(frame["quality"])
+        ):
+            # Current pointers are retired only on fresh usable monitoring audio.
+            # Their immutable event/snapshot history remains in the audit stream.
+            self.incident = None
+            self.adjustment = None
+            self.incident_state = "none"
+            self.recommendations = []
+            self._incident_before_balance = None
+            self._detector.reset()
+            self._transition()
         if self.incident is None:
             candidate = self._detector.observe(frame)
             if candidate is not None:
@@ -296,6 +461,7 @@ class PASession:
         )
         validate_record(recommendation, PUBLIC, "Recommendation")
         self.recommendations = [recommendation]
+        self._audit("incident_opened", self.incident)
         self._transition()
         self._append_event(event)
         self._append_event(recommendation)
@@ -358,6 +524,8 @@ class PASession:
             self.incident["event"]["state"] = "active"
             self.incident_state = "active"
             self.song["workflow_state"] = "LIVE_ANOMALY" if self.session_mode == "live" else "ANOMALY_DETECTED"
+        self._audit("verification", verification)
+        self._audit("incident_revised", self.incident)
         self._transition()
         self._append_event(verification)
 
@@ -383,6 +551,8 @@ class PASession:
         except ValueError as exc:
             raise SessionCommandError("stale_or_invalid_binding", str(exc), retryable=True) from exc
         action = command["action"]
+        if self.song["workflow_state"] == "STOPPED":
+            raise SessionCommandError("session_stopped", "STOPPED is terminal for this session.")
         if action == "accept_baseline":
             self._accept_baseline(command["payload"])
         elif action == "start_adjustment":
@@ -421,8 +591,10 @@ class PASession:
         if self.incident is not None:
             self.incident["event"]["state"] = "acknowledged"
             self.incident["event_version"] += 1
+            self._audit("incident_revised", self.incident)
         self.incident_state = "adjusting"
         self.song["workflow_state"] = "PA_ADJUSTING"
+        self._audit("adjustment_started", self.adjustment)
         self._transition()
 
     def _complete_adjustment(self, adjustment_id: str) -> None:
@@ -435,6 +607,7 @@ class PASession:
         self.adjustment["verification_not_before_monotonic_s"] = completed + self.settling_policy_s
         self.incident_state = "verifying"
         self.song["workflow_state"] = "VERIFY_RECOVERY" if self.session_mode == "live" else "RECHECK"
+        self._audit("adjustment_completed", self.adjustment)
         self._transition()
 
     def _recheck(self, adjustment_id: str | None) -> None:
@@ -498,6 +671,7 @@ class PASession:
         except ValueError as exc:
             raise SessionCommandError("baseline_quality_rejected", str(exc), http_status=422) from exc
         self.baseline = self.baseline_store.get(baseline_id, next_version)
+        self._audit("baseline_accepted", self.baseline)
         self.song["baseline_id"] = baseline_id
         self.song["workflow_state"] = "REHEARSAL"
         self.incident = None
@@ -536,6 +710,7 @@ class PASession:
         self.incident["event_version"] += 1
         self.incident_state = "dismissed"
         self.recommendations = []
+        self._audit("incident_revised", self.incident)
         self._transition()
 
     def _pause(self) -> None:
@@ -550,6 +725,11 @@ class PASession:
     def _resume(self) -> None:
         if self.song["workflow_state"] != "SUSPENDED":
             raise SessionCommandError("invalid_state", "Session is not suspended.")
+        if "runtime_restart_requires_new_session" in self.suspension_reasons:
+            raise SessionCommandError(
+                "new_session_required",
+                "Application restart changed the clock; start a new session instead.",
+            )
         self.song["workflow_state"] = "LIVE_MONITORING" if self.session_mode == "live" else "REHEARSAL"
         self.suspension_reasons = []
         self._require_fresh_after_resume = True
@@ -562,7 +742,7 @@ class PASession:
         self._detector.reset()
         self._transition()
 
-    @_synchronized
+    @_persisted
     def events_after(self, after_sequence: int) -> list[dict]:
         if after_sequence < 0:
             raise ValueError("event cursor cannot be negative")

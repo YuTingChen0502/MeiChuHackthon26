@@ -29,10 +29,13 @@ class JsonCommandLedger:
         self.lock = self._lock
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not self.path.exists():
-            self._write({})
+            self._write({"entries": {}, "session_state": None})
 
     def _read(self) -> dict:
-        return json.loads(self.path.read_text(encoding="utf-8"))
+        document = json.loads(self.path.read_text(encoding="utf-8"))
+        if "entries" not in document:
+            document = {"entries": document, "session_state": None}
+        return document
 
     def _write(self, value: dict) -> None:
         encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -53,19 +56,33 @@ class JsonCommandLedger:
 
     def get(self, session_id: str, idempotency_key: str) -> dict | None:
         with self._lock:
-            result = self._read().get(self._key(session_id, idempotency_key))
+            result = self._read()["entries"].get(self._key(session_id, idempotency_key))
         return copy.deepcopy(result)
 
-    def put(self, session_id: str, idempotency_key: str, command_text: str, response: dict) -> None:
+    def put(
+        self,
+        session_id: str,
+        idempotency_key: str,
+        command_text: str,
+        response: dict,
+        *,
+        session_state: dict,
+    ) -> None:
         key = self._key(session_id, idempotency_key)
         with self._lock:
-            records = self._read()
+            document = self._read()
+            records = document["entries"]
             if key in records:
                 if records[key]["command"] != command_text or records[key]["response"] != response:
                     raise RuntimeError("idempotency ledger entry changed during serialization")
                 return
             records[key] = {"command": command_text, "response": copy.deepcopy(response)}
-            self._write(records)
+            document["session_state"] = copy.deepcopy(session_state)
+            self._write(document)
+
+    def latest_session_state(self) -> dict | None:
+        with self._lock:
+            return copy.deepcopy(self._read()["session_state"])
 
 
 class CommandHandler:
@@ -150,6 +167,10 @@ class CommandHandler:
                 )
             validate_response(response)
             self.ledger.put(
-                command["session_id"], command["idempotency_key"], command_text, response
+                command["session_id"],
+                command["idempotency_key"],
+                command_text,
+                response,
+                session_state=self.session.export_state(),
             )
             return copy.deepcopy(response)

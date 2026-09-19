@@ -111,6 +111,7 @@ class RuntimeAPIServiceTests(unittest.TestCase):
             status, response = api.accept_baseline(session_id, accept)
             self.assertEqual(200, status)
             self.assertTrue(response["snapshot"]["active_baseline"]["immutable"])
+            accept_response = response
 
             status, connected = api.connect_events(session_id)
             self.assertEqual(200, status)
@@ -122,6 +123,42 @@ class RuntimeAPIServiceTests(unittest.TestCase):
             self.assertGreaterEqual(len(resumed["events"]), 1)
             for event in resumed["events"]:
                 validate_event(event)
+
+            restarted = RuntimeAPI(
+                storage_dir=directory,
+                window_size_samples=10,
+                monotonic_clock=clock,
+                wall_clock=lambda: "2026-09-19T12:00:00+08:00",
+            )
+            status, restored = restarted.get_session(session_id)
+            self.assertEqual(200, status)
+            self.assertEqual("SUSPENDED", restored["song"]["workflow_state"])
+            self.assertIn("runtime_restart_requires_new_session", restored["suspension_reasons"])
+            self.assertTrue(restored["active_baseline"]["immutable"])
+
+            # A completed command retry survives a new RuntimeAPI instance and is
+            # returned before the restored session's newer restart-suspension state.
+            status, retried = restarted.accept_baseline(session_id, accept)
+            self.assertEqual(200, status)
+            self.assertEqual(accept_response, retried)
+
+            status, resume = restarted.post_action(
+                session_id, command(restored, "resume-after-restart", "resume")
+            )
+            self.assertEqual(409, status)
+            self.assertEqual("new_session_required", resume["error"]["code"])
+
+            status, new_session = restarted.create_session({
+                "song_id": song["song_id"],
+                "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-2", "clock_id": "clock-2"},
+                "capture_fingerprint": {
+                    "device_id": "mic-2", "profile_id": "fixed-v1", "native_sample_rate_hz": 10,
+                    "channels": 1, "gain_setting": "fixed", "enhancements_verified_disabled": True,
+                    "geometry_id": "demo", "provenance": "physical_verified",
+                },
+            })
+            self.assertEqual(201, status)
+            self.assertEqual("session-2", new_session["session_id"])
 
 
 if __name__ == "__main__":

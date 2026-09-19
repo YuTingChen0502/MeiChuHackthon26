@@ -5,6 +5,12 @@ checkpoint. It does not start a network listener and does not add a root depende
 A later loopback HTTP/WebSocket adapter should delegate directly to these methods;
 the UI must not import a `PASession` or mutate snapshots.
 
+Projects, songs, uploaded PCM, reference jobs/profiles, immutable baselines, command
+responses, event history and session counters are persisted under `storage_dir`.
+After an application restart, prior sessions are restored as `SUSPENDED` because the
+monotonic clock changed; completed idempotent retries remain available, while sensing
+must continue in a newly created session/clock.
+
 ## Route mapping
 
 | Planned loopback route | Runtime handler |

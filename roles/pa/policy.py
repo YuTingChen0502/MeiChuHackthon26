@@ -22,6 +22,11 @@ class PersistentAnomalyPolicy:
     def observe(self, frame: dict) -> tuple[dict, list[str]] | None:
         # Unusable evidence is neither Normal nor persistence evidence. In particular,
         # stale frames cannot create an incident or erase pending fresh evidence.
+        # A declared capture gap is different: persistence cannot bridge a physical
+        # discontinuity, so pending evidence is discarded.
+        if frame["quality"]["dropout"]:
+            self.reset()
+            return None
         if not quality_is_usable(frame["quality"]):
             return None
         candidates = [

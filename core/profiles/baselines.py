@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import os
+import tempfile
+from pathlib import Path
 from threading import RLock
 
 from core.contracts.validation import PUBLIC, validate_record
@@ -12,9 +16,34 @@ from core.contracts.validation import PUBLIC, validate_record
 class BaselineStore:
     """Stores canonical JSON bytes so callers can never mutate accepted records."""
 
-    def __init__(self) -> None:
+    def __init__(self, directory: str | Path | None = None) -> None:
         self._records: dict[tuple[str, int], bytes] = {}
         self._lock = RLock()
+        self.directory = Path(directory) if directory is not None else None
+        if self.directory is not None:
+            self.directory.mkdir(parents=True, exist_ok=True)
+            for path in self.directory.glob("*.json"):
+                encoded = path.read_bytes()
+                profile = json.loads(encoded.decode("utf-8"))
+                validate_record(profile, PUBLIC, "BaselineProfile")
+                self._records[(profile["baseline_id"], profile["version"])] = encoded
+
+    def _path(self, key: tuple[str, int]) -> Path:
+        identity = f"{key[0]}\0{key[1]}".encode("utf-8")
+        return self.directory / f"{hashlib.sha256(identity).hexdigest()}.json"
+
+    @staticmethod
+    def _atomic_write(path: Path, encoded: bytes) -> None:
+        descriptor, temporary = tempfile.mkstemp(prefix=path.name, suffix=".tmp", dir=path.parent)
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
     def save(self, profile: dict) -> None:
         validate_record(profile, PUBLIC, "BaselineProfile")
@@ -24,6 +53,12 @@ class BaselineStore:
             existing = self._records.get(key)
             if existing is not None and existing != encoded:
                 raise ValueError("immutable baseline identity already exists")
+            if self.directory is not None:
+                path = self._path(key)
+                if path.exists() and path.read_bytes() != encoded:
+                    raise ValueError("immutable baseline file already exists")
+                if not path.exists():
+                    self._atomic_write(path, encoded)
             self._records[key] = encoded
 
     def get(self, baseline_id: str, version: int) -> dict:

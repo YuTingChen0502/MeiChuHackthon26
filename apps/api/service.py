@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
+import os
+import tempfile
 import wave
 from pathlib import Path
 
@@ -78,6 +81,90 @@ class RuntimeAPI:
         self.sessions: dict[str, PASession] = {}
         self.handlers: dict[str, CommandHandler] = {}
         self._counters = {name: 0 for name in ("project", "song", "asset", "job", "reference", "session")}
+        self._state_path = self.storage_dir / "runtime-state.json"
+        self._load_state()
+
+    @staticmethod
+    def _atomic_json(path: Path, value: dict) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary = tempfile.mkstemp(prefix=path.name, suffix=".tmp", dir=path.parent)
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                json.dump(value, stream, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+
+    def _save_state(self) -> None:
+        self._atomic_json(
+            self._state_path,
+            {
+                "state_format": "pa-runtime-api-state-v1",
+                "counters": self._counters,
+                "projects": self.projects,
+                "songs": self.songs,
+                "assets": self.assets,
+                "jobs": self.jobs,
+                "references": self.references,
+            },
+        )
+
+    def _session_dir(self, session_id: str) -> Path:
+        return self.storage_dir / "sessions" / session_id
+
+    def _save_session_state(self, session_id: str, state: dict) -> None:
+        self._atomic_json(self._session_dir(session_id) / "state.json", state)
+
+    def _load_state(self) -> None:
+        if self._state_path.exists():
+            state = json.loads(self._state_path.read_text(encoding="utf-8"))
+            if state.get("state_format") != "pa-runtime-api-state-v1":
+                raise ValueError("unsupported RuntimeAPI persisted state")
+            self._counters = state["counters"]
+            self.projects = state["projects"]
+            self.songs = state["songs"]
+            self.assets = state["assets"]
+            self.jobs = state["jobs"]
+            self.references = state["references"]
+        sessions_dir = self.storage_dir / "sessions"
+        if not sessions_dir.exists():
+            return
+        for directory in sorted(path for path in sessions_dir.iterdir() if path.is_dir()):
+            state_path = directory / "state.json"
+            ledger = JsonCommandLedger(directory / "commands.json")
+            candidates = []
+            if state_path.exists():
+                candidates.append(json.loads(state_path.read_text(encoding="utf-8")))
+            ledger_state = ledger.latest_session_state()
+            if ledger_state is not None:
+                candidates.append(ledger_state)
+            if not candidates:
+                continue
+            session_state = max(
+                candidates, key=lambda item: (item["event_sequence"], item["state_version"])
+            )
+            session_id = session_state["session_id"]
+            baseline_store = BaselineStore(directory / "baselines")
+            kwargs = {}
+            if self.monotonic_clock is not None:
+                kwargs["monotonic_clock"] = self.monotonic_clock
+            if self.wall_clock is not None:
+                kwargs["wall_clock"] = self.wall_clock
+            session = PASession.from_state(
+                session_state,
+                analyzer=self.analyzer_factory(),
+                baseline_store=baseline_store,
+                **kwargs,
+            )
+            session.set_persistence_callback(
+                lambda value, identifier=session_id: self._save_session_state(identifier, value)
+            )
+            self.sessions[session_id] = session
+            self.handlers[session_id] = CommandHandler(session=session, ledger=ledger)
+            session.suspend_for_runtime_restart()
 
     def _id(self, kind: str) -> str:
         self._counters[kind] += 1
@@ -104,6 +191,7 @@ class RuntimeAPI:
         project_id = self._id("project")
         record = {"project_id": project_id, "name": name.strip()}
         self.projects[project_id] = record
+        self._save_state()
         return 201, dict(record)
 
     def create_song(self, request: dict) -> tuple[int, dict]:
@@ -137,6 +225,7 @@ class RuntimeAPI:
             "reference_id": None,
         }
         self.songs[song_id] = record
+        self._save_state()
         return 201, {key: value for key, value in record.items() if key != "instrument_config"} | {
             "instrument_config": record["instrument_config"]
         }
@@ -155,6 +244,7 @@ class RuntimeAPI:
             "channels": channels,
             "samples": samples,
         }
+        self._save_state()
         return 201, {
             "asset_id": asset_id,
             "content_hash": digest,
@@ -182,6 +272,7 @@ class RuntimeAPI:
             "retryable": False,
         }
         self.jobs[job_id] = job
+        self._save_state()
         return 202, dict(job)
 
     def run_reference_job(self, job_id: str) -> tuple[int, dict]:
@@ -210,10 +301,12 @@ class RuntimeAPI:
             )
         except Exception as exc:
             job.update(status="failed", progress=1.0, error=str(exc), retryable=False)
+            self._save_state()
             return 200, dict(job)
         self.references[profile["reference_id"]] = profile
         song["reference_id"] = profile["reference_id"]
         job.update(status="completed", progress=1.0, error=None, retryable=False)
+        self._save_state()
         return 200, dict(job)
 
     def get_job(self, job_id: str) -> tuple[int, dict]:
@@ -248,12 +341,17 @@ class RuntimeAPI:
             source=source,
             capture_fingerprint=capture,
             analyzer=analyzer,
-            baseline_store=BaselineStore(),
+            baseline_store=BaselineStore(self._session_dir(session_id) / "baselines"),
             **kwargs,
         )
-        ledger = JsonCommandLedger(self.storage_dir / "sessions" / session_id / "commands.json")
+        ledger = JsonCommandLedger(self._session_dir(session_id) / "commands.json")
+        session.set_persistence_callback(
+            lambda value, identifier=session_id: self._save_session_state(identifier, value)
+        )
         self.sessions[session_id] = session
         self.handlers[session_id] = CommandHandler(session=session, ledger=ledger)
+        self._save_session_state(session_id, session.export_state())
+        self._save_state()
         return 201, session.snapshot()
 
     def get_session(self, session_id: str) -> tuple[int, dict]:
@@ -265,6 +363,7 @@ class RuntimeAPI:
         if session_id not in self.handlers or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
         response = self.handlers[session_id].handle(command)
+        self._save_session_state(session_id, self.sessions[session_id].export_state())
         return response["http_status"], response
 
     def accept_baseline(self, session_id: str, command: dict) -> tuple[int, dict]:

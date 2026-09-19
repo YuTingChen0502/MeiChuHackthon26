@@ -201,6 +201,20 @@ class PAVerticalSliceTests(unittest.TestCase):
         self.assertEqual("baseline_immutable_live", rejected["error"]["code"])
         self.assertEqual(stored_before_live, self.session.snapshot()["active_baseline"])
 
+        prior_event_id = final["incident"]["event"]["event_id"]
+        self.open_persistent_incident("live-second", 40)
+        second = self.session.snapshot()
+        self.assertNotEqual(prior_event_id, second["incident"]["event"]["event_id"])
+        self.assertEqual("active", second["incident_state"])
+        self.assertEqual(1, len(second["recommendations"]))
+        audited_event_ids = [
+            record["payload"]["event"]["event_id"]
+            for record in self.session.audit_records()
+            if record["kind"] in ("incident_opened", "incident_revised")
+        ]
+        self.assertIn(prior_event_id, audited_event_ids)
+        self.assertIn(second["incident"]["event"]["event_id"], audited_event_ids)
+
     def test_stale_command_and_incompatible_profile_are_rejected(self):
         stale = command(self.session.snapshot(), "stale-command", "pause")
         self.analyzer.queue(FakeEvidenceSpec(deltas_db={"guitar": 0, "bass": 0, "drums": 0}))
@@ -245,6 +259,35 @@ class PAVerticalSliceTests(unittest.TestCase):
         self.assertIsNone(snapshot["incident"])
         self.assertTrue(snapshot["latest_frame"]["instruments"][0]["confidence"]["abstained"])
         self.assertEqual("unknown", snapshot["latest_frame"]["instruments"][0]["status"])
+
+    def test_capture_gap_resets_pending_incident_persistence(self):
+        anomaly = FakeEvidenceSpec(deltas_db={"guitar": 4, "bass": 0, "drums": 0})
+        self.analyzer.queue(anomaly, anomaly, anomaly, anomaly)
+        self.session.observe_window(self.window("before-gap", 2))
+        self.session.observe_window(self.window("gap", 3), quality=quality_state(dropout=True))
+        self.session.observe_window(self.window("after-gap-1", 4))
+        self.assertIsNone(self.session.snapshot()["incident"])
+        self.session.observe_window(self.window("after-gap-2", 5))
+        self.assertEqual("active", self.session.snapshot()["incident_state"])
+
+    def test_pause_suppresses_incidents_and_recommendations(self):
+        self.apply("pause", "pause")
+        anomaly = FakeEvidenceSpec(deltas_db={"guitar": 4, "bass": 0, "drums": 0})
+        self.analyzer.queue(anomaly, anomaly)
+        self.session.observe_window(self.window("paused-1", 2))
+        self.session.observe_window(self.window("paused-2", 3))
+        snapshot = self.session.snapshot()
+        self.assertEqual("SUSPENDED", snapshot["song"]["workflow_state"])
+        self.assertIsNone(snapshot["incident"])
+        self.assertEqual([], snapshot["recommendations"])
+
+    def test_stopped_session_rejects_fresh_commands(self):
+        self.apply("stop", "stop")
+        stopped = self.session.snapshot()
+        response = self.handler.handle(command(stopped, "recheck-after-stop", "recheck", {"adjustment_id": None}))
+        self.assertEqual(409, response["http_status"])
+        self.assertEqual("session_stopped", response["error"]["code"])
+        self.assertEqual("STOPPED", self.session.snapshot()["song"]["workflow_state"])
 
     def test_silence_or_disconnection_is_inconclusive_not_recovered(self):
         self.open_persistent_incident("silence", 2)
