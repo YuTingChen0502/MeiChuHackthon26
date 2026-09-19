@@ -35,17 +35,52 @@ python -m pip install -r requirements-runtime.txt
 python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 1 --loop asyncio --http h11 --ws websockets-sansio
 ```
 
-Set `PA_RUNTIME_STORAGE_DIR` for durable state and optionally
-`PA_AUDIO_DEVICE_IDS=mic-1,mic-2` for runtime-verified device IDs. An empty device
-list is reported honestly as unavailable. Host and browser Origin checks are
-loopback-only by default.
+Set `PA_RUNTIME_STORAGE_DIR` for durable state. Native discovery uses the optional
+sounddevice/PortAudio backend; the launcher no longer trusts `PA_AUDIO_DEVICE_IDS`.
+The proposed native dependency pins are sounddevice 0.5.6, cffi 2.1.1 and pycparser 3.0;
+Lead integration into the root dependency set remains required. A missing backend
+is reported as `native_backend_unavailable`; file execution remains available.
 
-When `apps/ui/` is present in the integrated checkout, the same process serves only
-that directory at `/apps/ui/`; it never mounts the repository root. This Runtime
-checkpoint still uses `FakeInstrumentAnalyzer`, and `PA_AUDIO_DEVICE_IDS` is only a
-runtime availability/Live gate. Native microphone capture and its sustained audio
-worker remain a separate integration gate; no fake evidence is presented as physical
-capture or model accuracy.
+Creating a session starts managed acquisition. File replay is paced on the session
+clock; native capture uses a bounded callback queue and a separate analysis worker.
+Pause/Stop release capture. Resume creates a new analysis run on the same session
+clock; uploaded-file Resume replays the selected asset from its beginning. EOF,
+device loss and worker errors suspend with an explicit reason. After process restart,
+create a new session/clock. State transitions and command retries retain CP1 semantics.
+
+The common planner defaults to W=192000/hop=48000 samples (4/1 seconds at 48 kHz).
+Native input is mono float32 without amplitude normalization. The callback copies
+at most 1024 samples into an eight-packet queue; two planned windows may wait for
+analysis. Oldest queued windows and results older than two seconds are dropped or
+abstained, with discontinuity gates. Timing uses ADC-anchored sample counts and a
+50 ms clock-jitter budget; gross drift, status errors and lost samples start a new
+run. These are transport settings, not a validated ML operating envelope.
+
+Recent retention is 128 frames with PCM hashes and 128 events per session. Baseline
+selection must fit entirely within retained coverage. Overlap contributes unique
+seconds and qualified nonoverlapping windows. The durable API retains a 128-record
+audit tail in memory and archives every immutable audit record, bound evidence frame
+and hash transactionally in SQLite. Baseline versions, command retry ledgers and
+audit disk storage grow with human/workflow history and are not silently pruned.
+Uploaded assets remain bounded by the upload limits; the asset catalogue is durable.
+
+The production launcher uses ContinuousFakeInstrumentAnalyzer: unscripted windows
+produce explicit example-only abstention. A non-fake injected analyzer is wrapped by
+RealAnalyzerAdapter and its evidence remains uncalibrated, with null probabilities,
+intervals and instrument advice. Production confidence requires a Lead-approved
+empirical bundle; there is no bypass flag. Client-supplied physical provenance,
+gain, enhancements and geometry remain unverified. Native opening alone cannot
+qualify Live. No public schemas or UI routes were added.
+
+`RuntimeAPI(available_audio_devices={...})` retains the in-process CP1 scripted Fake
+harness, with managed capture disabled by default for that explicit test seam. It is
+not used by the production launcher. `managed_audio=True` selects managed capture
+for a supplied test backend. Worker diagnostics are available to Runtime through
+`api.workers[session_id].metrics()`; snapshots/events expose suspension and quality
+through existing fields. The UI does not consume a new metrics contract.
+
+The same server serves only `apps/ui/` at `/apps/ui/`, never the repository root.
+See `CP2_RUNTIME_CHECKPOINT.md` for measured validation and external gates.
 
 ## Setup request/response example
 

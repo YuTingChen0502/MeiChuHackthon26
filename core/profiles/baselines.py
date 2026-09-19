@@ -109,8 +109,9 @@ def build_baseline_profile(
     instrument_ids = [item["instrument_id"] for item in instrument_config["instruments"]]
     duration_by_instrument = {instrument_id: 0.0 for instrument_id in instrument_ids}
     windows_by_instrument = {instrument_id: 0 for instrument_id in instrument_ids}
-    for frame in frames:
-        duration = (frame["sample_end"] - frame["sample_start"]) / frame["sample_rate_hz"]
+    covered_end = {instrument_id: -1 for instrument_id in instrument_ids}
+    qualified_end = dict(covered_end)
+    for frame in sorted(frames, key=lambda item: item["sample_start"]):
         if frame["quality"]["stale"] or frame["quality"]["dropout"]:
             raise ValueError("baseline interval contains stale or disconnected audio")
         if frame["quality"]["comparability"] != "comparable":
@@ -121,8 +122,13 @@ def build_baseline_profile(
             if state["instrument_id"] not in duration_by_instrument:
                 continue
             if state["activity"] == "active" and not state["confidence"]["abstained"]:
-                duration_by_instrument[state["instrument_id"]] += duration
-                windows_by_instrument[state["instrument_id"]] += 1
+                identifier = state["instrument_id"]
+                unique = max(0, frame["sample_end"] - max(frame["sample_start"], covered_end[identifier]))
+                duration_by_instrument[identifier] += unique / frame["sample_rate_hz"]
+                covered_end[identifier] = max(covered_end[identifier], frame["sample_end"])
+                if frame["sample_start"] >= qualified_end[identifier]:
+                    windows_by_instrument[identifier] += 1
+                    qualified_end[identifier] = frame["sample_end"]
             if not reference_difference_accepted and state["status"] != "normal":
                 raise ValueError("reference difference requires explicit human acceptance")
     if any(count == 0 for count in windows_by_instrument.values()):
