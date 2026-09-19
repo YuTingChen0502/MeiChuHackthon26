@@ -118,6 +118,30 @@ def self_test():
             pass
         else:
             raise AssertionError('unsafe export permitted')
+        # Exercise the actual archive boundary in a disposable repository, not just
+        # regex matches. This fixture contains no private data or real credentials.
+        root = Path(directory) / 'source'
+        root.mkdir()
+        (root / 'README.md').write_text('Public source fixture.\n', encoding='utf-8')
+        (root / 'app.py').write_text('print("fixture")\n', encoding='utf-8')
+        (root / '.env').write_text('TEST_PLACEHOLDER_ONLY=1\n', encoding='utf-8')
+        (root / '.pa-runtime').mkdir()
+        (root / '.pa-runtime' / 'context.json').write_text('{}', encoding='utf-8')
+        (root / 'docs' / 'official').mkdir(parents=True)
+        (root / 'docs' / 'official' / 'authority.pdf').write_bytes(b'NOT A REAL PDF')
+        for args in (['init', '-q'], ['add', '.'],
+                     ['-c', 'user.name=Release audit fixture', '-c',
+                      'user.email=release-test@example.invalid', 'commit', '-qm', 'fixture']):
+            subprocess.run(['git', *args], cwd=root, check=True, capture_output=True)
+        report = audit(root)
+        result = export_snapshot(report, Path(directory) / 'source.zip', root)
+        with zipfile.ZipFile(result['archive']) as archive:
+            assert set(archive.namelist()) == {'README.md', 'app.py', 'RELEASE_AUDIT.json'}
+            manifest = json.loads(archive.read('RELEASE_AUDIT.json'))
+            for name, digest in manifest['files'].items():
+                assert hashlib.sha256(archive.read(name)).hexdigest() == digest
+        (root / 'app.py').write_text('https://example.invalid/?X-Amz-' + 'Signature=fixture', encoding='utf-8')
+        assert audit(root)['status'] == 'FAIL'
     print('release audit self-tests: PASS')
 
 
