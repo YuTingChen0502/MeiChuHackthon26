@@ -2,8 +2,8 @@
   "milestone": "FINAL_MVP_PRODUCT_INTEGRATION",
   "status": "MVP_CANDIDATE_ENGINEERING_INTEGRATION_COMPLETE",
   "updated": "2026-09-20",
-  "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_integration_commit": "a84d026f931463efa5485e36c98f2f136b4db2b7",
+  "latest_approved_shared_commit": "7f884e6",
+  "latest_integration_commit": "252d8221fc85b8ca0537ef456e6359158d5b7513",
   "lanes": {
     "ML": {
       "commit": "795f179bde8bbae9b3e25b8a591e2d25735ddfde",
@@ -12,12 +12,12 @@
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "f9098018d0bfd2f501058ce6190d1403a48be12c",
-      "status": "CHECKPOINT_ACCEPTED; integrated42695c4; full234Python/34UI and actual CPU Runtime probe PASS"
+      "commit": "221c401cfdbf76e51d699490c6901c4681584a9b",
+      "status": "CHECKPOINT_ACCEPTED; reference progress/lifecycle and additive native device metadata integrated"
     },
     "UI": {
-      "commit": "6cef9d5006f2a72847227297ba6766f19bfb464f",
-      "status": "CHECKPOINT_ACCEPTED; integrated a84d026; corrected baseline interval recovery; UI39 and full integrated suite PASS"
+      "commit": "d377b571c4dfc5646ec4d539358e673c3a475881",
+      "status": "CHECKPOINT_ACCEPTED; progress-sensitive polling, request deadlines and friendly microphone labels integrated"
     }
   },
   "pending_reviews": [],
@@ -58,16 +58,19 @@
     "ML/REAL_ANALYZER_CANDIDATE_READY/795f179bde8bbae9b3e25b8a591e2d25735ddfde": "accepted and merged df62ce9; exact artifact hashes, restricted-fixture provenance and candidate gates retained",
     "UI/MVP_PRODUCT_UI_READY/95656cb723affac55d794d1dce1a86fd866b5ff3": "corrections required, directly routed; no-frame draft remains stale indefinitely and run/clock binding cannot be refreshed",
     "Runtime/MVP_NATIVE_RUNTIME_READY/f9098018d0bfd2f501058ce6190d1403a48be12c": "accepted and merged42695c4; native/soak source lineage checked; full main suite and clean-SHA P1 Runtime probe pass",
-    "UI/MVP_PRODUCT_UI_READY/6cef9d5006f2a72847227297ba6766f19bfb464f": "accepted and merged a84d026; no-frame/run/clock recovery, explicit fresh interval selection and reviewed clock submission; full234Python/39UI/Fake smoke PASS"
+    "UI/MVP_PRODUCT_UI_READY/6cef9d5006f2a72847227297ba6766f19bfb464f": "accepted and merged a84d026; no-frame/run/clock recovery, explicit fresh interval selection and reviewed clock submission; full234Python/39UI/Fake smoke PASS",
+    "CP2-RUNTIME/CORRECTION_COMPLETE/605e868fe2064a82909a476a00cb86c768a79b0c": "accepted; running progress and durable input-construction failure regressions pass",
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/221c401cfdbf76e51d699490c6901c4681584a9b": "accepted; metadata/default/legacy/filter regressions pass, no guessed physical deduplication",
+    "UI/CORRECTION_COMPLETE/d377b571c4dfc5646ec4d539358e673c3a475881": "accepted; UI43 and full suite pass; unrelated later visual checkpoint excluded"
   },
   "integration_validation": {
-    "commit": "a84d026f931463efa5485e36c98f2f136b4db2b7",
-    "python_tests": 234,
-    "ui_tests": 39,
+    "commit": "252d8221fc85b8ca0537ef456e6359158d5b7513",
+    "python_tests": 239,
+    "ui_tests": 43,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS zero findings; final clean documentation commit scanned separately",
+    "release_scan": "PASS clean executable integration zero findings",
     "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
-    "browser": "Prior product browser evidence retained; UI owner reported corrected actual form-to-baseline submission, operator preservation and enforced unverified-capture Live rejection",
+    "browser": "PASS long226s44.1kstereo upload -> advancing progress -> completed -> native rehearsal; one transient WASAPI start failure recovered via Resume; fresh native frames observed. See ACCEPTANCE_REFERENCE_MIC_FIX.md.",
     "actual_p1_runtime_probe": "PASS clean42695c4,20.052s,actual CPU reference/cache/file+synthetic-mic abstention,HTTP200/WS replay; docs/implementation/evidence/p1_runtime_42695c4.json"
   },
   "release": {
@@ -77,7 +80,7 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "a84d026f931463efa5485e36c98f2f136b4db2b7",
+  "latest_approved_main_implementation": "252d8221fc85b8ca0537ef456e6359158d5b7513",
   "remaining": [
     "empirical calibration and supported operating envelope",
     "MI300 final adaptation lineage",
