@@ -115,6 +115,7 @@ class RuntimeAPI:
         self.assets: dict[str, dict] = {}
         self.jobs: dict[str, dict] = {}
         self.references: dict[str, dict] = {}
+        self.reference_models: dict[str, dict] = {}
         self.sessions: dict[str, PASession] = {}
         self.handlers: dict[str, CommandHandler] = {}
         self._counters = {
@@ -132,6 +133,7 @@ class RuntimeAPI:
             "assets": self.assets,
             "jobs": self.jobs,
             "references": self.references,
+            "reference_models": self.reference_models,
         }
 
     def _save_state(self) -> None:
@@ -155,6 +157,7 @@ class RuntimeAPI:
             self.assets = state["assets"]
             self.jobs = state["jobs"]
             self.references = state["references"]
+            self.reference_models = state.get("reference_models", {})
         interrupted = False
         for job in self.jobs.values():
             if job["status"] in ("queued", "running"):
@@ -383,6 +386,7 @@ class RuntimeAPI:
         )
         try:
             with self._temporary_analyzer() as analyzer:
+                reference_model = copy.deepcopy(analyzer.capabilities()["model"])
                 profile = ReferenceBuilder(pipeline=self.pipeline, analyzer=analyzer).build(
                     audio_input=audio_input,
                     session_id=f"reference-job:{job_id}",
@@ -398,6 +402,7 @@ class RuntimeAPI:
             self._validate("ReferenceJob", job)
             return 200, dict(job)
         self.references[profile["reference_id"]] = profile
+        self.reference_models[profile["reference_id"]] = reference_model
         if song.get("pending_reference_job_id") == job_id:
             song["reference_id"] = profile["reference_id"]
         job.update(status="completed", progress=1.0, error=None, retryable=False)
@@ -424,8 +429,8 @@ class RuntimeAPI:
         if reference["song_id"] != song["song_id"] or song["reference_id"] != reference_id:
             raise APIError(409, "reference_not_selected", "Reference is not the selected completed revision.")
         model = self.analyzer_capabilities()["model"]
-        if any(reference[key] != model[key] for key in ("model_bundle_id", "frontend_id", "taxonomy_id")):
-            raise APIError(409, "incompatible_reference", "Reanalyze the reference with the active model/frontend/taxonomy.")
+        if self.reference_models.get(reference_id) != model or any(reference[key] != model[key] for key in ("model_bundle_id", "frontend_id", "taxonomy_id")):
+            raise APIError(409, "incompatible_reference", "Reanalyze the reference with the exact active model/frontend/taxonomy/execution/level-scale identity.")
         source = request.get("source")
         capture = copy.deepcopy(request.get("capture_fingerprint"))
         source_id = source["input_asset_or_device_id"]
