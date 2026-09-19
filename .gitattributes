@@ -1,0 +1,3 @@
+# Frozen evidence hashes refer to exact published bytes on every execution host.
+models/candidates/nano4-p1-adapted-cp2b-v1/** -text
+models/candidates/nano4-p1-adapted-mvp-v1/** -text
