@@ -43,6 +43,7 @@ class FakeInstrumentAnalyzer:
         return {
             "provider": "fake-simulated",
             "example_only": True,
+            "supported_families": ["guitar", "bass", "drums", "vocals", "piano"],
             "evidence_modes": ["source_level_deltas", "source_levels"],
             "model": copy.deepcopy(self.MODEL),
         }

@@ -86,7 +86,7 @@ class JsonCommandLedger:
 
 
 class CommandHandler:
-    def __init__(self, *, session, ledger: JsonCommandLedger) -> None:
+    def __init__(self, *, session, ledger) -> None:
         self.session = session
         self.ledger = ledger
         self._lock = RLock()
@@ -125,6 +125,7 @@ class CommandHandler:
                     message="Idempotency key was already used for different content.",
                     retryable=False,
                 )
+            pre_state = self.session.export_state()
             try:
                 validate_record(command, WIRE, "SessionCommand")
                 snapshot = self.session.apply_command(command)
@@ -139,6 +140,7 @@ class CommandHandler:
                     "error": None,
                 }
             except ValidationError as exc:
+                self.session.restore_state(pre_state)
                 response = self._rejected(
                     command,
                     self.session,
@@ -148,6 +150,7 @@ class CommandHandler:
                     retryable=False,
                 )
             except ValueError as exc:
+                self.session.restore_state(pre_state)
                 response = self._rejected(
                     command,
                     self.session,
@@ -157,6 +160,7 @@ class CommandHandler:
                     retryable=False,
                 )
             except SessionCommandError as exc:
+                self.session.restore_state(pre_state)
                 response = self._rejected(
                     command,
                     self.session,
@@ -166,11 +170,15 @@ class CommandHandler:
                     retryable=exc.retryable,
                 )
             validate_response(response)
-            self.ledger.put(
-                command["session_id"],
-                command["idempotency_key"],
-                command_text,
-                response,
-                session_state=self.session.export_state(),
-            )
+            try:
+                self.ledger.put(
+                    command["session_id"],
+                    command["idempotency_key"],
+                    command_text,
+                    response,
+                    session_state=self.session.export_state(),
+                )
+            except Exception:
+                self.session.restore_state(pre_state)
+                raise
             return copy.deepcopy(response)

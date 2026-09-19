@@ -41,6 +41,119 @@ def command(snapshot, key, action, payload=None):
 
 
 class RuntimeAPIServiceTests(unittest.TestCase):
+    @staticmethod
+    def create_rehearsal_session(api):
+        _, project = api.create_project({"name": "Persistence project"})
+        _, song = api.create_song({
+            "project_id": project["project_id"],
+            "name": "Persistence song",
+            "instruments": [
+                {"instrument_id": name, "family": name}
+                for name in ("guitar", "bass", "drums")
+            ],
+        })
+        _, asset = api.upload_audio(wav_bytes([0.1] * 20), filename="reference.wav")
+        _, job = api.start_reference_job(song["song_id"], {"asset_id": asset["asset_id"]})
+        _, job = api.run_reference_job(job["job_id"])
+        _, snapshot = api.create_session({
+            "song_id": song["song_id"],
+            "reference_id": job["reference_id"],
+            "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-1"},
+            "capture_fingerprint": {
+                "device_id": "mic-1", "profile_id": "fixed-v1", "native_sample_rate_hz": 10,
+                "channels": 1, "gain_setting": "fixed", "enhancements_verified_disabled": True,
+                "geometry_id": "demo", "provenance": "physical_verified",
+            },
+        })
+        return song, asset, job, snapshot
+
+    def test_reference_supersession_and_failed_command_commit_are_safe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            api = RuntimeAPI(
+                storage_dir=directory,
+                window_size_samples=10,
+                available_audio_devices={"mic-1"},
+            )
+            _, project = api.create_project({"name": "Supersession"})
+            _, song = api.create_song({
+                "project_id": project["project_id"], "name": "Song",
+                "instruments": [
+                    {"instrument_id": name, "family": name}
+                    for name in ("guitar", "bass", "drums")
+                ],
+            })
+            _, first_asset = api.upload_audio(wav_bytes([0.1] * 20), filename="first.wav")
+            _, second_asset = api.upload_audio(wav_bytes([0.2] * 20), filename="second.wav")
+            _, first_job = api.start_reference_job(
+                song["song_id"], {"asset_id": first_asset["asset_id"]}
+            )
+            _, second_job = api.start_reference_job(
+                song["song_id"], {"asset_id": second_asset["asset_id"]}
+            )
+            api.run_reference_job(first_job["job_id"])
+            self.assertIsNone(api.songs[song["song_id"]]["reference_id"])
+            api.run_reference_job(second_job["job_id"])
+            self.assertEqual(
+                second_job["reference_id"], api.songs[song["song_id"]]["reference_id"]
+            )
+
+            _, snapshot = api.create_session({
+                "song_id": song["song_id"],
+                "reference_id": second_job["reference_id"],
+                "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-1"},
+                "capture_fingerprint": {
+                    "device_id": "mic-1", "profile_id": "fixed-v1", "native_sample_rate_hz": 10,
+                    "channels": 1, "gain_setting": "fixed", "enhancements_verified_disabled": True,
+                    "geometry_id": "demo", "provenance": "physical_verified",
+                },
+            })
+            session_id = snapshot["session_id"]
+            runtime = api.runtime_session(session_id)
+            runtime.analyzer.queue(
+                FakeEvidenceSpec(deltas_db={"guitar": 0, "bass": 0, "drums": 0})
+            )
+            audio_input = MicAudioInput(
+                input_asset_or_device_id="mic-1",
+                clock_id=snapshot["source"]["clock_id"],
+                sample_rate_hz=10,
+                samples=[0.1] * 10,
+                origin_monotonic_s=2,
+            )
+            window = next(api.pipeline.iter_windows(
+                audio_input, session_id=session_id, analysis_run_id="atomic-baseline"
+            ))
+            runtime.observe_window(window)
+            snapshot = runtime.snapshot()
+            accept = command(snapshot, "atomic-accept", "accept_baseline", {
+                "interval": {
+                    "analysis_run_id": window.analysis_run_id,
+                    "clock_id": window.clock_id,
+                    "sample_rate_hz": window.sample_rate_hz,
+                    "sample_start": window.sample_start,
+                    "sample_end": window.sample_end,
+                },
+                "accepted_by": "human-pa",
+                "reference_difference_accepted": True,
+                "acceptance_note": "atomic durability regression",
+            })
+            before = runtime.export_state()
+            original = api._store.record_command
+
+            def fail_commit(**_kwargs):
+                raise OSError("simulated durable commit failure")
+
+            api._store.record_command = fail_commit
+            with self.assertRaises(OSError):
+                api.accept_baseline(session_id, accept)
+            self.assertEqual(before, runtime.export_state())
+            self.assertEqual(0, runtime.baseline_store.count())
+            api._store.record_command = original
+
+            status, response = api.accept_baseline(session_id, accept)
+            self.assertEqual(200, status)
+            self.assertTrue(response["snapshot"]["active_baseline"]["immutable"])
+            self.assertEqual(1, runtime.baseline_store.count())
+
     def test_setup_upload_job_commands_and_reconnect_facade(self):
         with tempfile.TemporaryDirectory() as directory:
             clock = Clock()
@@ -49,6 +162,7 @@ class RuntimeAPIServiceTests(unittest.TestCase):
                 window_size_samples=10,
                 monotonic_clock=clock,
                 wall_clock=lambda: "2026-09-19T12:00:00+08:00",
+                available_audio_devices={"mic-1", "mic-2"},
             )
             status, project = api.create_project({"name": "Demo project"})
             self.assertEqual(201, status)
@@ -63,10 +177,12 @@ class RuntimeAPIServiceTests(unittest.TestCase):
             self.assertEqual(202, status)
             status, job = api.run_reference_job(job["job_id"])
             self.assertEqual("completed", job["status"])
+            self.assertEqual(asset["content_hash"], api.references[job["reference_id"]]["source_asset_hash"])
 
             status, snapshot = api.create_session({
                 "song_id": song["song_id"],
-                "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-1", "clock_id": "clock-1"},
+                "reference_id": job["reference_id"],
+                "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-1"},
                 "capture_fingerprint": {
                     "device_id": "mic-1", "profile_id": "fixed-v1", "native_sample_rate_hz": 10,
                     "channels": 1, "gain_setting": "fixed", "enhancements_verified_disabled": True,
@@ -129,6 +245,7 @@ class RuntimeAPIServiceTests(unittest.TestCase):
                 window_size_samples=10,
                 monotonic_clock=clock,
                 wall_clock=lambda: "2026-09-19T12:00:00+08:00",
+                available_audio_devices={"mic-1", "mic-2"},
             )
             status, restored = restarted.get_session(session_id)
             self.assertEqual(200, status)
@@ -150,7 +267,8 @@ class RuntimeAPIServiceTests(unittest.TestCase):
 
             status, new_session = restarted.create_session({
                 "song_id": song["song_id"],
-                "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-2", "clock_id": "clock-2"},
+                "reference_id": job["reference_id"],
+                "source": {"input_kind": "live_microphone", "input_asset_or_device_id": "mic-2"},
                 "capture_fingerprint": {
                     "device_id": "mic-2", "profile_id": "fixed-v1", "native_sample_rate_hz": 10,
                     "channels": 1, "gain_setting": "fixed", "enhancements_verified_disabled": True,

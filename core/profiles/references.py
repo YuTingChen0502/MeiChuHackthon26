@@ -29,6 +29,7 @@ class ReferenceBuilder:
         reference_id: str,
         song_id: str,
         instrument_config: dict,
+        source_asset_hash: str | None = None,
     ) -> dict:
         windows = list(
             self.pipeline.iter_windows(
@@ -52,7 +53,7 @@ class ReferenceBuilder:
             "schema_version": "1.0",
             "reference_id": reference_id,
             "song_id": song_id,
-            "source_asset_hash": self._audio_hash(audio_input),
+            "source_asset_hash": source_asset_hash or self._audio_hash(audio_input),
             "model_bundle_id": model["model_bundle_id"],
             "frontend_id": model["frontend_id"],
             "taxonomy_id": model["taxonomy_id"],

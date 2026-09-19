@@ -70,6 +70,22 @@ class BaselineStore:
         with self._lock:
             return len(self._records)
 
+    def records(self) -> list[dict]:
+        with self._lock:
+            encoded = list(self._records.values())
+        return [json.loads(item.decode("utf-8")) for item in encoded]
+
+    def replace_records(self, profiles: list[dict]) -> None:
+        replacement = {}
+        for profile in profiles:
+            validate_record(profile, PUBLIC, "BaselineProfile")
+            key = (profile["baseline_id"], profile["version"])
+            replacement[key] = json.dumps(
+                profile, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        with self._lock:
+            self._records = replacement
+
 
 def build_baseline_profile(
     *,

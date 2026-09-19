@@ -1,26 +1,23 @@
-"""Concrete in-process L2 setup/upload/job/session application facade.
-
-The first checkpoint intentionally keeps transport separate. These methods define
-the request/response payloads that a later loopback HTTP/WebSocket adapter delegates
-to without duplicating workflow logic.
-"""
+"""Runtime application service behind the loopback HTTP/WebSocket transport."""
 
 from __future__ import annotations
 
 import hashlib
 import io
-import json
-import os
-import tempfile
 import wave
 from pathlib import Path
+from threading import RLock
+
+from jsonschema import ValidationError
 
 from core.audio import FileAudioInput, SharedAudioPipeline
+from core.contracts.validation import SETUP, validate_record
 from core.profiles import BaselineStore, ReferenceBuilder
 from core.runtime import FakeInstrumentAnalyzer
 from roles.pa import PASession
 
-from .commands import CommandHandler, JsonCommandLedger
+from .commands import CommandHandler
+from .persistence import SQLiteCommandLedger, SQLiteRuntimeStore
 
 
 class APIError(Exception):
@@ -64,6 +61,9 @@ class RuntimeAPI:
         analyzer_factory=FakeInstrumentAnalyzer,
         monotonic_clock=None,
         wall_clock=None,
+        available_audio_devices: set[str] | None = None,
+        max_upload_bytes: int = 128 * 1024 * 1024,
+        max_audio_duration_s: float = 900.0,
     ) -> None:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -73,6 +73,10 @@ class RuntimeAPI:
         self.analyzer_factory = analyzer_factory
         self.monotonic_clock = monotonic_clock
         self.wall_clock = wall_clock
+        self.available_audio_devices = set(available_audio_devices or ())
+        self.max_upload_bytes = max_upload_bytes
+        self.max_audio_duration_s = max_audio_duration_s
+        self._lock = RLock()
         self.projects: dict[str, dict] = {}
         self.songs: dict[str, dict] = {}
         self.assets: dict[str, dict] = {}
@@ -80,74 +84,47 @@ class RuntimeAPI:
         self.references: dict[str, dict] = {}
         self.sessions: dict[str, PASession] = {}
         self.handlers: dict[str, CommandHandler] = {}
-        self._counters = {name: 0 for name in ("project", "song", "asset", "job", "reference", "session")}
-        self._state_path = self.storage_dir / "runtime-state.json"
+        self._counters = {
+            name: 0 for name in ("project", "song", "asset", "job", "reference", "session", "clock")
+        }
+        self._store = SQLiteRuntimeStore(self.storage_dir / "runtime.sqlite3")
         self._load_state()
 
-    @staticmethod
-    def _atomic_json(path: Path, value: dict) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        descriptor, temporary = tempfile.mkstemp(prefix=path.name, suffix=".tmp", dir=path.parent)
-        try:
-            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-                json.dump(value, stream, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temporary, path)
-        finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+    def _runtime_state_payload(self) -> dict:
+        return {
+            "state_format": "pa-runtime-api-state-v1",
+            "counters": self._counters,
+            "projects": self.projects,
+            "songs": self.songs,
+            "assets": self.assets,
+            "jobs": self.jobs,
+            "references": self.references,
+        }
 
     def _save_state(self) -> None:
-        self._atomic_json(
-            self._state_path,
-            {
-                "state_format": "pa-runtime-api-state-v1",
-                "counters": self._counters,
-                "projects": self.projects,
-                "songs": self.songs,
-                "assets": self.assets,
-                "jobs": self.jobs,
-                "references": self.references,
-            },
-        )
-
-    def _session_dir(self, session_id: str) -> Path:
-        return self.storage_dir / "sessions" / session_id
+        with self._lock:
+            self._store.save_runtime_state(self._runtime_state_payload())
 
     def _save_session_state(self, session_id: str, state: dict) -> None:
-        self._atomic_json(self._session_dir(session_id) / "state.json", state)
+        if state["session_id"] != session_id:
+            raise ValueError("session persistence identity mismatch")
+        self._store.save_session(state)
 
     def _load_state(self) -> None:
-        if self._state_path.exists():
-            state = json.loads(self._state_path.read_text(encoding="utf-8"))
+        state = self._store.load_runtime_state()
+        if state is not None:
             if state.get("state_format") != "pa-runtime-api-state-v1":
                 raise ValueError("unsupported RuntimeAPI persisted state")
             self._counters = state["counters"]
+            self._counters.setdefault("clock", 0)
             self.projects = state["projects"]
             self.songs = state["songs"]
             self.assets = state["assets"]
             self.jobs = state["jobs"]
             self.references = state["references"]
-        sessions_dir = self.storage_dir / "sessions"
-        if not sessions_dir.exists():
-            return
-        for directory in sorted(path for path in sessions_dir.iterdir() if path.is_dir()):
-            state_path = directory / "state.json"
-            ledger = JsonCommandLedger(directory / "commands.json")
-            candidates = []
-            if state_path.exists():
-                candidates.append(json.loads(state_path.read_text(encoding="utf-8")))
-            ledger_state = ledger.latest_session_state()
-            if ledger_state is not None:
-                candidates.append(ledger_state)
-            if not candidates:
-                continue
-            session_state = max(
-                candidates, key=lambda item: (item["event_sequence"], item["state_version"])
-            )
+        for session_state in self._store.load_sessions():
             session_id = session_state["session_id"]
-            baseline_store = BaselineStore(directory / "baselines")
+            baseline_store = BaselineStore()
             kwargs = {}
             if self.monotonic_clock is not None:
                 kwargs["monotonic_clock"] = self.monotonic_clock
@@ -163,12 +140,22 @@ class RuntimeAPI:
                 lambda value, identifier=session_id: self._save_session_state(identifier, value)
             )
             self.sessions[session_id] = session
+            ledger = SQLiteCommandLedger(self._store, session_id)
             self.handlers[session_id] = CommandHandler(session=session, ledger=ledger)
             session.suspend_for_runtime_restart()
 
     def _id(self, kind: str) -> str:
-        self._counters[kind] += 1
-        return f"{kind}-{self._counters[kind]}"
+        with self._lock:
+            self._counters[kind] += 1
+            return f"{kind}-{self._counters[kind]}"
+
+    @staticmethod
+    def _validate(name: str, value: dict) -> None:
+        try:
+            validate_record(value, SETUP, name)
+        except (ValidationError, ValueError) as exc:
+            message = exc.message if isinstance(exc, ValidationError) else str(exc)
+            raise APIError(422, "invalid_setup_payload", message) from exc
 
     def health(self) -> tuple[int, dict]:
         analyzer = self.analyzer_factory()
@@ -182,24 +169,30 @@ class RuntimeAPI:
         }
 
     def audio_devices(self) -> tuple[int, dict]:
-        return 200, {"devices": [], "discovery_status": "not_connected_in_checkpoint"}
+        return 200, {
+            "devices": [{"device_id": value} for value in sorted(self.available_audio_devices)],
+            "discovery_status": "available" if self.available_audio_devices else "not_connected_in_checkpoint",
+        }
 
     def create_project(self, request: dict) -> tuple[int, dict]:
+        self._validate("CreateProjectRequest", request)
         name = request.get("name")
         if not isinstance(name, str) or not name.strip():
             raise APIError(422, "invalid_project", "Project name is required.")
         project_id = self._id("project")
         record = {"project_id": project_id, "name": name.strip()}
+        self._validate("ProjectResponse", record)
         self.projects[project_id] = record
         self._save_state()
         return 201, dict(record)
 
     def create_song(self, request: dict) -> tuple[int, dict]:
+        self._validate("CreateSongRequest", request)
         project_id, name, instruments = (
             request.get("project_id"), request.get("name"), request.get("instruments")
         )
         if project_id not in self.projects:
-            raise APIError(422, "unknown_project", "Project does not exist.")
+            raise APIError(404, "unknown_project", "Project does not exist.")
         if not isinstance(name, str) or not name.strip() or not isinstance(instruments, list) or not instruments:
             raise APIError(422, "invalid_song", "Song name and instruments are required.")
         seen = set()
@@ -215,25 +208,32 @@ class RuntimeAPI:
         if len(families) != len(set(families)):
             raise APIError(422, "duplicate_family", "V1 SongState requires unique configured families.")
         song_id = self._id("song")
+        supported_set = set(self.analyzer_factory().capabilities().get("supported_families", ()))
         record = {
             "song_id": song_id,
             "project_id": project_id,
             "name": name.strip(),
             "instrument_config": {"instrument_config_version": 1, "instruments": normalized},
-            "supported_families": families,
-            "unsupported_families": [],
+            "supported_families": [family for family in families if family in supported_set],
+            "unsupported_families": [family for family in families if family not in supported_set],
             "reference_id": None,
+            "pending_reference_job_id": None,
         }
         self.songs[song_id] = record
         self._save_state()
-        return 201, {key: value for key, value in record.items() if key != "instrument_config"} | {
-            "instrument_config": record["instrument_config"]
-        }
+        response = {key: value for key, value in record.items() if key != "pending_reference_job_id"}
+        self._validate("SongSetupResponse", response)
+        return 201, response
 
     def upload_audio(self, content: bytes, *, filename: str) -> tuple[int, dict]:
         if not content:
             raise APIError(422, "empty_upload", "Audio upload is empty.")
+        if len(content) > self.max_upload_bytes:
+            raise APIError(413, "audio_too_large", "Audio upload exceeds the configured byte limit.")
         sample_rate, samples, channels = _decode_pcm16_wav(content)
+        duration_s = len(samples) / sample_rate
+        if duration_s > self.max_audio_duration_s:
+            raise APIError(413, "audio_too_long", "Audio upload exceeds the configured duration limit.")
         asset_id = self._id("asset")
         digest = f"sha256:{hashlib.sha256(content).hexdigest()}"
         self.assets[asset_id] = {
@@ -245,19 +245,24 @@ class RuntimeAPI:
             "samples": samples,
         }
         self._save_state()
-        return 201, {
+        response = {
             "asset_id": asset_id,
             "content_hash": digest,
             "sample_rate_hz": sample_rate,
             "channels": channels,
-            "duration_s": len(samples) / sample_rate,
+            "duration_s": duration_s,
         }
+        self._validate("AudioAssetResponse", response)
+        return 201, response
 
     def start_reference_job(self, song_id: str, request: dict) -> tuple[int, dict]:
+        self._validate("StartReferenceRequest", request)
         song = self.songs.get(song_id)
         asset = self.assets.get(request.get("asset_id"))
-        if song is None or asset is None:
-            raise APIError(422, "unknown_song_or_asset", "Song and audio asset must exist.")
+        if song is None:
+            raise APIError(404, "unknown_song", "Song does not exist.")
+        if asset is None:
+            raise APIError(404, "unknown_audio_asset", "Audio asset does not exist.")
         job_id = self._id("job")
         reference_id = self._id("reference")
         job = {
@@ -272,7 +277,9 @@ class RuntimeAPI:
             "retryable": False,
         }
         self.jobs[job_id] = job
+        song["pending_reference_job_id"] = job_id
         self._save_state()
+        self._validate("ReferenceJob", job)
         return 202, dict(job)
 
     def run_reference_job(self, job_id: str) -> tuple[int, dict]:
@@ -282,6 +289,8 @@ class RuntimeAPI:
         if job["status"] == "completed":
             return 200, dict(job)
         song, asset = self.songs[job["song_id"]], self.assets[job["asset_id"]]
+        job.update(status="running", progress=0.1, error=None, retryable=False)
+        self._save_state()
         analyzer = self.analyzer_factory()
         audio_input = FileAudioInput(
             input_asset_or_device_id=asset["asset_id"],
@@ -298,33 +307,55 @@ class RuntimeAPI:
                 reference_id=job["reference_id"],
                 song_id=job["song_id"],
                 instrument_config=song["instrument_config"],
+                source_asset_hash=asset["content_hash"],
             )
         except Exception as exc:
             job.update(status="failed", progress=1.0, error=str(exc), retryable=False)
             self._save_state()
+            self._validate("ReferenceJob", job)
             return 200, dict(job)
         self.references[profile["reference_id"]] = profile
-        song["reference_id"] = profile["reference_id"]
+        if song.get("pending_reference_job_id") == job_id:
+            song["reference_id"] = profile["reference_id"]
         job.update(status="completed", progress=1.0, error=None, retryable=False)
         self._save_state()
+        self._validate("ReferenceJob", job)
         return 200, dict(job)
 
     def get_job(self, job_id: str) -> tuple[int, dict]:
         if job_id not in self.jobs:
             raise APIError(404, "unknown_job", "Job does not exist.")
-        return 200, dict(self.jobs[job_id])
+        job = dict(self.jobs[job_id])
+        self._validate("ReferenceJob", job)
+        return 200, job
 
     def create_session(self, request: dict) -> tuple[int, dict]:
+        self._validate("CreateSessionRequest", request)
         song = self.songs.get(request.get("song_id"))
-        if song is None or song["reference_id"] not in self.references:
+        reference_id = request.get("reference_id")
+        reference = self.references.get(reference_id)
+        if song is None:
+            raise APIError(404, "unknown_song", "Song does not exist.")
+        if reference is None:
             raise APIError(409, "reference_not_ready", "A completed reference profile is required.")
+        if reference["song_id"] != song["song_id"] or song["reference_id"] != reference_id:
+            raise APIError(409, "reference_not_selected", "Reference is not the selected completed revision.")
         source = request.get("source")
         capture = request.get("capture_fingerprint")
-        if not isinstance(source, dict) or set(source) != {"input_kind", "input_asset_or_device_id", "clock_id"}:
-            raise APIError(422, "invalid_source", "Session source binding is incomplete.")
-        if not isinstance(capture, dict):
-            raise APIError(422, "invalid_capture", "Capture fingerprint is required.")
+        source_id = source["input_asset_or_device_id"]
+        if capture["device_id"] != source_id:
+            raise APIError(422, "capture_source_mismatch", "Capture device must match the selected source.")
+        runtime_verified = False
+        if source["input_kind"] == "uploaded_file":
+            if source_id not in self.assets:
+                raise APIError(404, "unknown_audio_asset", "Uploaded session source does not exist.")
+        else:
+            if source_id not in self.available_audio_devices:
+                raise APIError(503, "audio_device_unavailable", "Microphone is not available to this runtime.")
+            runtime_verified = True
         session_id = self._id("session")
+        source_binding = dict(source)
+        source_binding["clock_id"] = self._id("clock")
         analyzer = self.analyzer_factory()
         kwargs = {}
         if self.monotonic_clock is not None:
@@ -337,22 +368,26 @@ class RuntimeAPI:
             song_id=song["song_id"],
             song_name=song["name"],
             instrument_config=song["instrument_config"],
-            reference_profile=self.references[song["reference_id"]],
-            source=source,
+            reference_profile=reference,
+            source=source_binding,
             capture_fingerprint=capture,
             analyzer=analyzer,
-            baseline_store=BaselineStore(self._session_dir(session_id) / "baselines"),
+            baseline_store=BaselineStore(),
+            capture_runtime_verified=runtime_verified,
             **kwargs,
         )
-        ledger = JsonCommandLedger(self._session_dir(session_id) / "commands.json")
+        ledger = SQLiteCommandLedger(self._store, session_id)
         session.set_persistence_callback(
             lambda value, identifier=session_id: self._save_session_state(identifier, value)
         )
+        response = session.snapshot()
+        self._validate("CreateSessionResponse", response)
+        self._store.save_runtime_and_session(
+            self._runtime_state_payload(), session.export_state()
+        )
         self.sessions[session_id] = session
         self.handlers[session_id] = CommandHandler(session=session, ledger=ledger)
-        self._save_session_state(session_id, session.export_state())
-        self._save_state()
-        return 201, session.snapshot()
+        return 201, response
 
     def get_session(self, session_id: str) -> tuple[int, dict]:
         if session_id not in self.sessions:
@@ -362,14 +397,18 @@ class RuntimeAPI:
     def post_action(self, session_id: str, command: dict) -> tuple[int, dict]:
         if session_id not in self.handlers or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
+        if command.get("action") == "accept_baseline":
+            raise APIError(422, "wrong_endpoint", "accept_baseline must use the baseline endpoint.")
         response = self.handlers[session_id].handle(command)
-        self._save_session_state(session_id, self.sessions[session_id].export_state())
         return response["http_status"], response
 
     def accept_baseline(self, session_id: str, command: dict) -> tuple[int, dict]:
         if command.get("action") != "accept_baseline":
             raise APIError(422, "wrong_endpoint", "Baseline endpoint requires accept_baseline.")
-        return self.post_action(session_id, command)
+        if session_id not in self.handlers or command.get("session_id") != session_id:
+            raise APIError(422, "session_mismatch", "URL and command session IDs must match.")
+        response = self.handlers[session_id].handle(command)
+        return response["http_status"], response
 
     def connect_events(self, session_id: str, *, after_sequence: int | None = None) -> tuple[int, dict]:
         if session_id not in self.sessions:

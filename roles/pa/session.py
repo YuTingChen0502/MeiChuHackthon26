@@ -74,6 +74,7 @@ class PASession:
         settling_policy_s: float = 0.5,
         persistence_frames: int = 2,
         event_retention: int = 128,
+        capture_runtime_verified: bool = True,
     ) -> None:
         validate_record(reference_profile, PUBLIC, "ReferenceProfile")
         self.session_id = session_id
@@ -81,6 +82,7 @@ class PASession:
         self.reference = copy.deepcopy(reference_profile)
         self.source = copy.deepcopy(source)
         self.capture_fingerprint = copy.deepcopy(capture_fingerprint)
+        self.capture_runtime_verified = capture_runtime_verified
         self.analyzer = analyzer
         self.baseline_store = baseline_store or BaselineStore()
         self.monotonic_clock = monotonic_clock
@@ -205,6 +207,8 @@ class PASession:
             "reference": copy.deepcopy(self.reference),
             "source": copy.deepcopy(self.source),
             "capture_fingerprint": copy.deepcopy(self.capture_fingerprint),
+            "capture_runtime_verified": self.capture_runtime_verified,
+            "baseline_records": self.baseline_store.records(),
             "execution": copy.deepcopy(self.execution),
             "song": copy.deepcopy(self.song),
             "state_version": self.state_version,
@@ -263,37 +267,60 @@ class PASession:
             settling_policy_s=state["settling_policy_s"],
             persistence_frames=state["persistence_frames"],
             event_retention=state["event_retention"],
+            capture_runtime_verified=state.get("capture_runtime_verified", False),
         )
-        with session._lock:
-            session.execution = copy.deepcopy(state["execution"])
-            session.song = copy.deepcopy(song)
-            session.state_version = state["state_version"]
-            session.event_sequence = state["event_sequence"]
-            session.session_mode = state["session_mode"]
-            session.incident_state = state["incident_state"]
-            session.baseline = copy.deepcopy(state["baseline"])
-            if session.baseline is not None:
-                session.baseline_store.save(session.baseline)
-            session.incident = copy.deepcopy(state["incident"])
-            session.adjustment = copy.deepcopy(state["adjustment"])
-            session.latest_frame = copy.deepcopy(state["latest_frame"])
-            session.recommendations = copy.deepcopy(state["recommendations"])
-            session.latest_verification = copy.deepcopy(state["latest_verification"])
-            session.suspension_reasons = list(state["suspension_reasons"])
-            session._events = copy.deepcopy(state["events"])
-            session._audit_records = copy.deepcopy(state.get("audit_records", []))
-            session._frames = copy.deepcopy(state["frames"])
-            session._frame_audio_hashes = dict(state["frame_audio_hashes"])
-            session._frame_sequence = state["frame_sequence"]
-            session._incident_counter = state["incident_counter"]
-            session._adjustment_counter = state["adjustment_counter"]
-            session._verification_counter = state["verification_counter"]
-            session._incident_before_balance = state["incident_before_balance"]
-            session._verification_armed = state["verification_armed"]
-            session._require_fresh_after_resume = state["require_fresh_after_resume"]
-            session._detector.reset()
-            validate_snapshot(session.snapshot())
+        session.restore_state(state)
         return session
+
+    @_synchronized
+    def restore_state(self, state: dict) -> None:
+        """Replace mutable state exactly, including immutable-baseline history.
+
+        Command handling uses this only to restore a pre-command snapshot when its
+        durable transaction fails. It deliberately does not invoke persistence.
+        """
+        if state.get("state_format") != "pa-session-state-v1":
+            raise ValueError("unsupported persisted session state")
+        if state.get("session_id") != self.session_id:
+            raise ValueError("persisted state belongs to a different session")
+        self.instrument_config = copy.deepcopy(state["instrument_config"])
+        self.reference = copy.deepcopy(state["reference"])
+        self.source = copy.deepcopy(state["source"])
+        self.capture_fingerprint = copy.deepcopy(state["capture_fingerprint"])
+        self.capture_runtime_verified = state.get("capture_runtime_verified", False)
+        self.execution = copy.deepcopy(state["execution"])
+        self.song = copy.deepcopy(state["song"])
+        self.state_version = state["state_version"]
+        self.event_sequence = state["event_sequence"]
+        self.session_mode = state["session_mode"]
+        self.incident_state = state["incident_state"]
+        self.baseline = copy.deepcopy(state["baseline"])
+        baseline_records = state.get("baseline_records")
+        if baseline_records is None:
+            baseline_records = [] if self.baseline is None else [self.baseline]
+        self.baseline_store.replace_records(copy.deepcopy(baseline_records))
+        self.incident = copy.deepcopy(state["incident"])
+        self.adjustment = copy.deepcopy(state["adjustment"])
+        self.latest_frame = copy.deepcopy(state["latest_frame"])
+        self.recommendations = copy.deepcopy(state["recommendations"])
+        self.latest_verification = copy.deepcopy(state["latest_verification"])
+        self.suspension_reasons = list(state["suspension_reasons"])
+        self._events = copy.deepcopy(state["events"])
+        self._audit_records = copy.deepcopy(state.get("audit_records", []))
+        self._frames = copy.deepcopy(state["frames"])
+        self._frame_audio_hashes = dict(state["frame_audio_hashes"])
+        self._frame_sequence = state["frame_sequence"]
+        self._incident_counter = state["incident_counter"]
+        self._adjustment_counter = state["adjustment_counter"]
+        self._verification_counter = state["verification_counter"]
+        self._incident_before_balance = state["incident_before_balance"]
+        self._verification_armed = state["verification_armed"]
+        self._require_fresh_after_resume = state["require_fresh_after_resume"]
+        self.settling_policy_s = state["settling_policy_s"]
+        self.persistence_frames = state["persistence_frames"]
+        self.event_retention = state["event_retention"]
+        self._detector = PersistentAnomalyPolicy(required_frames=self.persistence_frames)
+        validate_snapshot(self.snapshot())
 
     @_synchronized
     def audit_records(self) -> list[dict]:
@@ -526,6 +553,10 @@ class PASession:
             self.song["workflow_state"] = "LIVE_ANOMALY" if self.session_mode == "live" else "ANOMALY_DETECTED"
         self._audit("verification", verification)
         self._audit("incident_revised", self.incident)
+        if outcome in ("partial", "not_recovered"):
+            # The completed attempt remains immutable in audit/verification history,
+            # while the active incident may enter another human correction loop.
+            self.adjustment = None
         self._transition()
         self._append_event(verification)
 
@@ -686,6 +717,11 @@ class PASession:
     def _start_live(self) -> None:
         if self.session_mode != "rehearsal" or self.baseline is None:
             raise SessionCommandError("invalid_state", "Live requires an accepted rehearsal baseline.")
+        if not self.capture_runtime_verified:
+            raise SessionCommandError(
+                "capture_not_runtime_verified",
+                "Live requires a runtime-verified capture device/profile.",
+            )
         expected = self.execution
         for key in ("model_bundle_id", "frontend_id", "execution_profile_id"):
             if self.baseline[key] != expected[key]:

@@ -306,6 +306,26 @@ class PAVerticalSliceTests(unittest.TestCase):
         self.assertIsNotNone(snapshot["incident"])
         self.assertNotEqual("resolved", snapshot["incident"]["event"]["state"])
 
+    def test_partial_verification_permits_another_human_correction(self):
+        self.open_persistent_incident("partial", 2)
+        self.apply("partial-start", "start_adjustment")
+        self.clock.value = 10
+        adjustment_id = self.session.snapshot()["adjustment"]["adjustment_id"]
+        self.apply("partial-complete", "complete_adjustment", {"adjustment_id": adjustment_id})
+        self.apply("partial-recheck", "recheck", {"adjustment_id": adjustment_id})
+        self.analyzer.queue(
+            FakeEvidenceSpec(deltas_db={"guitar": 3, "bass": 0, "drums": 0})
+        )
+        self.session.observe_window(self.window("partial-after", 12))
+        snapshot = self.session.snapshot()
+        self.assertEqual("partial", snapshot["latest_verification"]["outcome"])
+        self.assertEqual("active", snapshot["incident_state"])
+        self.assertIsNone(snapshot["adjustment"])
+
+        second = self.apply("partial-second-start", "start_adjustment")["snapshot"]
+        self.assertEqual("adjusting", second["incident_state"])
+        self.assertNotEqual(adjustment_id, second["adjustment"]["adjustment_id"])
+
     def test_reconnect_gap_returns_authoritative_snapshot_event(self):
         self.session.event_retention = 2
         self.analyzer.queue(

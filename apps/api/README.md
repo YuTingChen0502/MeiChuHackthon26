@@ -1,9 +1,9 @@
 # Runtime API checkpoint
 
-`RuntimeAPI` is the reviewed in-process transport boundary for the first fake-driven
-checkpoint. It does not start a network listener and does not add a root dependency.
-A later loopback HTTP/WebSocket adapter should delegate directly to these methods;
-the UI must not import a `PASession` or mutate snapshots.
+`RuntimeAPI` is the application boundary for the fake-driven checkpoint. The
+Starlette adapter in `apps.api.transport` exposes the frozen loopback HTTP/WebSocket
+surface and delegates workflow changes to this service. The UI must not import a
+`PASession` or mutate snapshots.
 
 Projects, songs, uploaded PCM, reference jobs/profiles, immutable baselines, command
 responses, event history and session counters are persisted under `storage_dir`.
@@ -28,18 +28,17 @@ must continue in a newly created session/clock.
 | `POST /v1/sessions/{id}/baseline` | `accept_baseline(id, SessionCommand)` |
 | `WS /v1/sessions/{id}/events?after_sequence=N` | `connect_events(id, after_sequence=N)` |
 
-The current supported launch is an in-process Python application:
+The supported loopback launch is:
 
-```python
-from apps.api import RuntimeAPI
-
-api = RuntimeAPI(storage_dir="runtime-data", window_size_samples=48000 * 4)
-status, health = api.health()
+```text
+python -m pip install -r requirements-runtime.txt
+python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 1 --loop asyncio --http h11 --ws websockets-sansio
 ```
 
-There is deliberately no claimed HTTP/WebSocket launcher in this commit. Binding a
-network stack requires the Lead to select/integrate the root deployment dependency.
-The method boundary and all returned session records already use the frozen schemas.
+Set `PA_RUNTIME_STORAGE_DIR` for durable state and optionally
+`PA_AUDIO_DEVICE_IDS=mic-1,mic-2` for runtime-verified device IDs. An empty device
+list is reported honestly as unavailable. Host and browser Origin checks are
+loopback-only by default.
 
 ## Setup request/response example
 
@@ -55,8 +54,10 @@ request is:
 ```
 
 Upload 16-bit PCM WAV bytes, then submit `{"asset_id":"asset-1"}` to the reference
-handler. It returns `202` and a `job_id`; poll the job until `status=completed` and
-use `POST /v1/sessions` with a source binding and complete capture fingerprint.
+handler. It returns `202`; the application runs the reference job asynchronously.
+Poll until `status=completed`, then create a session with the explicit completed
+`reference_id`, source `input_kind` plus `input_asset_or_device_id`, and a complete
+capture fingerprint. The server allocates `clock_id`.
 
 ## Commands and reconnect
 
@@ -68,8 +69,14 @@ For adjustment, send `start_adjustment`, retain the returned authoritative
 
 Reconnect atomically from an authoritative snapshot cursor:
 
-1. `connect_events(session_id)` returns `snapshot` and cursor `N`.
-2. Connect the event transport with `after_sequence=N`.
-3. `connect_events(session_id, after_sequence=N)` returns every retained event after
-   `N`, or one fresh `SessionSnapshot` event if retention cannot cover the gap.
+1. GET the session snapshot and retain its `event_sequence` cursor `N`.
+2. Connect `WS /v1/sessions/{id}/events?after_sequence=N`.
+3. The socket sends individual retained and ongoing `SessionEvent` records. A
+   retention gap produces one authoritative snapshot event before live delivery.
 4. Discard duplicate sequences and refresh from a snapshot on an unexplained gap.
+
+Runtime identities, setup records, sessions, command results, and immutable baseline
+versions are stored in one SQLite database. Each command response, resulting session
+state, and baseline promotion commit atomically; failed commits restore the in-memory
+pre-command state. Restored sessions are suspended because process restart changes
+the monotonic clock and require a newly created session for sensing.
