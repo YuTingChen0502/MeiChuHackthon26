@@ -23,8 +23,8 @@ its assigned directories; directories are not permission to alter another bounda
 | Lane | Exclusive writable directories | Responsibility |
 |---|---|---|
 | ML / Evidence | analyzers/, training/, benchmarks/, models/, assets/ | Pair/oracle generation, separation/direct/hybrid adapters, fine-tuning, calibration experiments, benchmark manifests and licensed asset provenance |
-| Runtime / PA Core | core/audio/, core/profiles/, core/runtime/, roles/pa/, apps/api/ | Shared inputs/frontend, model execution orchestration, profiles, deviation/confidence/state/verification, PA policy, session API and persistence |
-| UI / Demo | apps/ui/, demo_player/ | Operator presentation/session controls and separate human-operated physical playback environment |
+| Runtime / PA Core | core/audio/, core/profiles/, core/runtime/, roles/pa/, apps/api/, tests/runtime/, tests/integration/ | Shared inputs/frontend, model execution orchestration, profiles, deviation/confidence/state/verification, PA policy, session API, persistence and Runtime integration tests |
+| UI / Demo | apps/ui/, demo_player/, docs/demo/, tests/ui/ | Operator presentation/session controls, isolated physical playback environment, and lane-specific documentation/tests |
 
 The Lead exclusively owns `contracts/`, `core/contracts/`, `docs/implementation/`,
 authority/design documents and root build/dependency configuration. Root changes are
@@ -32,6 +32,20 @@ integrated by the Lead, not made opportunistically by a lane. FakeInstrumentAnal
 lives in `core/runtime/` and emits the shared evidence type; production analyzer
 adapters live in `analyzers/`. Runtime adapters in ML analyzer packages encapsulate
 model-specific execution; orchestration/capture providers belong to Runtime.
+
+Lead checkpoint review of UI commit `33a68e154e2d458c6808b79757837dcff753feee`
+explicitly assigns `docs/demo/` and `tests/ui/` to UI / Demo. This resolves the
+checkpoint's supporting-file ownership exception; it does not grant ownership of
+the rest of `docs/` or `tests/`. Review disposition and integration prerequisites are
+recorded in `docs/implementation/UI_DEMO_CHECKPOINT_REVIEW_V1.md`.
+
+Lead review of Runtime commit `78a362ea184ec3f5302c0cef271c16a06299d316` assigns
+`tests/runtime/` and `tests/integration/` to Runtime / PA Core. The approved local
+transport, setup payloads and migration requirements are now frozen in
+`contracts/PA_SETUP_TRANSPORT_V1.md` and `contracts/PA_SETUP_WIRE_V1.schema.json`.
+Root `requirements-runtime.txt` remains Lead-owned. Runtime may implement the approved
+adapter without waiting for another dependency-selection approval; browser integration
+still requires passing the checkpoint corrections and transport acceptance tests.
 
 Create one isolated `codex/` branch/worktree per lane from the same Lead-integrated
 freeze commit. No remote machine is a separate source of code changes. Ownership

@@ -1,0 +1,360 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:pa-controller:setup-wire:1.0",
+  "title": "PA Setup Wire Contract V1",
+  "description": "Endpoint-specific request/response definitions. Validate via the named $defs entry. Transport and migration details: PA_SETUP_TRANSPORT_V1.md.",
+  "oneOf": [
+    { "$ref": "#/$defs/CreateProjectRequest" },
+    { "$ref": "#/$defs/ProjectResponse" },
+    { "$ref": "#/$defs/CreateSongRequest" },
+    { "$ref": "#/$defs/SongSetupResponse" },
+    { "$ref": "#/$defs/AudioAssetResponse" },
+    { "$ref": "#/$defs/StartReferenceRequest" },
+    { "$ref": "#/$defs/ReferenceJob" },
+    { "$ref": "#/$defs/CreateSessionRequest" },
+    { "$ref": "#/$defs/CreateSessionResponse" },
+    { "$ref": "#/$defs/SetupError" }
+  ],
+  "$defs": {
+    "CreateProjectRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ProjectResponse": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "project_id",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "CreateSongRequest": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instruments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "instrument_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "family": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "instrument_id",
+              "family"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "project_id",
+        "name",
+        "instruments"
+      ],
+      "additionalProperties": false
+    },
+    "SongSetupResponse": {
+      "type": "object",
+      "properties": {
+        "song_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instrument_config": {
+          "$ref": "urn:pa-controller:analyzer:1.0#/$defs/InstrumentConfig"
+        },
+        "supported_families": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "unsupported_families": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "reference_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "song_id",
+        "project_id",
+        "name",
+        "instrument_config",
+        "supported_families",
+        "unsupported_families",
+        "reference_id"
+      ],
+      "additionalProperties": false
+    },
+    "AudioAssetResponse": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration_s": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "asset_id",
+        "content_hash",
+        "sample_rate_hz",
+        "channels",
+        "duration_s"
+      ],
+      "additionalProperties": false
+    },
+    "StartReferenceRequest": {
+      "type": "object",
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "asset_id"
+      ],
+      "additionalProperties": false
+    },
+    "ReferenceJob": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "reference_analysis"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        "song_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "progress": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "error": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "kind",
+        "status",
+        "song_id",
+        "asset_id",
+        "reference_id",
+        "progress",
+        "error",
+        "retryable"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "progress": {
+                "const": 1
+              },
+              "error": {
+                "type": "null"
+              },
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SessionSourceRequest": {
+      "type": "object",
+      "properties": {
+        "input_kind": {
+          "enum": [
+            "uploaded_file",
+            "live_microphone"
+          ]
+        },
+        "input_asset_or_device_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "input_kind",
+        "input_asset_or_device_id"
+      ],
+      "additionalProperties": false
+    },
+    "CreateSessionRequest": {
+      "type": "object",
+      "properties": {
+        "song_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "$ref": "urn:pa-controller:setup-wire:1.0#/$defs/SessionSourceRequest"
+        },
+        "capture_fingerprint": {
+          "$ref": "urn:pa-controller:contracts:1.0#/$defs/CaptureFingerprint"
+        }
+      },
+      "required": [
+        "song_id",
+        "reference_id",
+        "source",
+        "capture_fingerprint"
+      ],
+      "additionalProperties": false
+    },
+    "CreateSessionResponse": {
+      "$ref": "urn:pa-controller:session-wire:1.0#/$defs/SessionSnapshot"
+    },
+    "SetupError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "urn:pa-controller:session-wire:1.0#/$defs/Error"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
