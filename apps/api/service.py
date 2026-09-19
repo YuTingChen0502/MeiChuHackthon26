@@ -386,15 +386,24 @@ class RuntimeAPI:
         song, asset = self.songs[job["song_id"]], self.assets[job["asset_id"]]
         job.update(status="running", progress=0.1, error=None, retryable=False)
         self._save_state()
-        audio_input = FileAudioInput(
-            input_asset_or_device_id=asset["asset_id"],
-            clock_id=f"job-clock:{job_id}",
-            sample_rate_hz=asset["sample_rate_hz"],
-            samples=asset["samples"],
-            clipping_blocks=asset.get("clipping_blocks"),
-            origin_monotonic_s=0.0,
-        )
+        class ReferenceJobInput(FileAudioInput):
+            def chunks(input_self):
+                for chunk in super().chunks():
+                    # Transient progress follows PCM consumed by the shared pipeline.
+                    # Completion remains reserved for successful analyzer preparation
+                    # and profile persistence; polling does not rewrite the full asset.
+                    job["progress"] = 0.1 + 0.8 * chunk.sample_end / len(input_self.samples)
+                    yield chunk
+
         try:
+            audio_input = ReferenceJobInput(
+                input_asset_or_device_id=asset["asset_id"],
+                clock_id=f"job-clock:{job_id}",
+                sample_rate_hz=asset["sample_rate_hz"],
+                samples=asset["samples"],
+                clipping_blocks=asset.get("clipping_blocks"),
+                origin_monotonic_s=0.0,
+            )
             with self._temporary_analyzer() as analyzer:
                 reference_model = copy.deepcopy(analyzer.capabilities()["model"])
                 profile = ReferenceBuilder(pipeline=self.pipeline, analyzer=analyzer).build(
