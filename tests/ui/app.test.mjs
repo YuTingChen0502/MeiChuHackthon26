@@ -626,7 +626,7 @@ test('isolated demo player has no Runtime transport or filename rendering path',
 test('UI source contains no client-side audio inference or automatic mixer execution', async () => {
   const source = await readFile(new URL('../../apps/ui/app.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /AudioContext|AnalyserNode|getUserMedia|automatic_execution\s*:\s*true/);
-  assert.match(source, /Runtime remains the only evidence source/);
+  assert.match(source, /Measurements come from the audio analysis/);
   assert.match(source, /function button\(text,fn,cls='primary',type='button'\)/);
   assert.match(source, /runtimeAdapter\?\.stopEvents\(\)/);
   assert.match(source, /operationStatus=text/);
@@ -636,12 +636,30 @@ test('UI source contains no client-side audio inference or automatic mixer execu
   assert.match(source, /\['keys',0\]/);
   assert.doesNotMatch(source, /Requested sample rate/);
   assert.match(source, /Analyze reference and start rehearsal/);
-  assert.match(source, /Use latest Runtime evidence/);
+  assert.match(source, /Use latest observation/);
   assert.match(source, /clock_id:d\.get\('clock'\)/);
 });
-test('responsive card grid supports variable counts without fixed four-card selectors', async () => {
+test('responsive evidence rows support variable counts without fixed four-card selectors', async () => {
   const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /repeat\(auto-fit,minmax/);
-  assert.match(css, /\[hidden\]\{display:none!important\}/);
+  assert.match(css, /\.instrument-grid\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/s);
+  assert.match(css, /\.instrument-card\s*\{[^}]*grid-template-areas:/s);
+  assert.match(css, /@media\s*\(max-width:\s*980px\)[\s\S]*\.instrument-card\s*\{/);
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/);
   assert.doesNotMatch(css, /nth-child\(4\)/);
+});
+
+test('Harmonix visual tokens stay restrained and free of decorative effects', async () => {
+  const css = await readFile(new URL('../../apps/ui/styles.css', import.meta.url), 'utf8');
+  const app = await readFile(new URL('../../apps/ui/app.js', import.meta.url), 'utf8');
+  assert.match(css, /--charcoal:\s*#1a1a1a/i);
+  assert.match(css, /--slate:\s*#334155/i);
+  assert.match(css, /--harmonix-blue:\s*#4f7ca8/i);
+  assert.match(css, /--stone:\s*#d9dbe0/i);
+  assert.match(css, /--off-white:\s*#f7f6f3/i);
+  assert.doesNotMatch(css, /radial-gradient|repeating-(?:linear|radial)-gradient|box-shadow|border-radius:\s*999px/i);
+  assert.doesNotMatch(css, /#070b27|#3ee29d|#2fbd4d/i);
+  assert.match(app, /'Harmonix','brand'/);
+  assert.match(app, /'REFERENCE'/);
+  assert.match(app, /'CURRENT STATE'/);
+  assert.match(app, /'SUGGESTED FIX'/);
 });
