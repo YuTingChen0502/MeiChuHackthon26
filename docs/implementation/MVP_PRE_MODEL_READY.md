@@ -15,7 +15,7 @@ or unrelated engineering is allowed to remain disguised as waiting for ML.
 Use the existing ML, canonical Runtime and UI worktrees. The duplicate Runtime audit
 task is stopped. Main originally reviewed at 42ba903; accepted ML 3d161dd merged at
 8d5c5c3332466ed899e909dfcb20b450f737ff9c, accepted Runtime 434b637 merged at
-ff1806c3655e6fbcc208d808a5aba5109e8a789c. Each subsequent integration must record an
+ff1806c3655e6fbcc208d808a5aba5109e8a789c. ML integration-ready fa7068155461e42ece413235347a6bd5f43667ee is accepted on main. Runtime readiness25f8808b751e25abb287c1b3126b898509640637 is accepted at main3b12c787f7bb69bef75114088e0d57d6dc05d163. UI remains under concrete functional correction review. DONE plumbing rows below are backed by the ML artifact-bundle runbook and Runtime milestone report; winner-specific numerical adapters and measured evidence remain separate waiting rows. Each subsequent integration must record an
 exact commit and passing checks. Existing Gate-0/public contracts retain meaning.
 
 ## Complete module matrix
@@ -43,17 +43,17 @@ artifacts are separate rows so templates cannot masquerade as empirical completi
 | Controlled pairs / oracle | ML | DONE | preserved CP1 math, independent gain audit, masks |
 | P1 separation probe infrastructure | ML | DONE | fixed-pair runner; actual music results separate |
 | P2 direct probe infrastructure | ML | DONE | matched offline adapter; no selected fitted winner |
-| Remote bundle manifest/layout | ML | IN_PROGRESS | generic environment/run/config/model/sample/evidence identities |
-| Checkpoint/hash/provenance validation | ML | IN_PROGRESS | reject malformed/missing/mismatched artifacts |
-| Model/frontend/taxonomy/scale/profile binding | ML | IN_PROGRESS | exact five IDs and expected sample/window checks |
-| Trained artifact intake | ML | IN_PROGRESS | safe local cache/import, no implicit executable imports |
-| Nano4 result/evidence import | ML | IN_PROGRESS | source SHA/config/split/seed, sanitized references, no raw data |
-| MI300 result/evidence import | ML | IN_PROGRESS | same interface plus meaningful adaptation lineage for competition |
-| Analyzer registry / production shell | ML | IN_PROGRESS | host allowlist and frozen output validation; safe unavailable |
-| Reference context lifecycle | ML/Runtime | IN_PROGRESS | compatible opaque durable/cache context; no fake production context |
-| Held-out benchmark / comparison tooling | ML | IN_PROGRESS | runnable generic entrypoints with test-only fixtures |
-| Calibration fitting tooling | ML | IN_PROGRESS | separate anomaly/normal event candidates; no automatic acceptance |
-| Export/parity harness | ML | IN_PROGRESS | CPU anchor, exact input/profile hashes, adapter plug-in |
+| Remote bundle manifest/layout | ML | DONE | generic environment/run/config/model/sample/evidence identities |
+| Checkpoint/hash/provenance validation | ML | DONE | reject malformed/missing/mismatched artifacts |
+| Model/frontend/taxonomy/scale/profile binding | ML | DONE | exact five IDs and expected sample/window checks |
+| Trained artifact intake | ML | DONE | safe local cache/import, no implicit executable imports |
+| Nano4 result/evidence import | ML | DONE | source SHA/config/split/seed, sanitized references, no raw data |
+| MI300 result/evidence import | ML | DONE | same interface plus meaningful adaptation lineage for competition |
+| Analyzer registry / production shell | ML | DONE | host allowlist and frozen output validation; safe unavailable |
+| Reference context lifecycle | ML/Runtime | DONE | compatible opaque durable/cache context; no fake production context |
+| Held-out benchmark / comparison tooling | ML | DONE | runnable generic entrypoints with test-only fixtures |
+| Calibration fitting tooling | ML | DONE | separate anomaly/normal event candidates; no automatic acceptance |
+| Export/parity harness | ML | DONE | CPU anchor, exact input/profile hashes, adapter plug-in |
 | Real trained winner / family envelope | ML | WAIT_MODEL | incoming remote artifact and empirical evidence |
 | Fitted confidence / held-out performance | ML | WAIT_MODEL | independent empirical calibration/test records |
 | Winner-specific inference/export adapter | ML | WAIT_MODEL | only actual backend tensor/loading implementation may remain |
@@ -68,19 +68,19 @@ artifacts are separate rows so templates cannot masquerade as empirical completi
 | Dropout/discontinuity / persistence reset | Runtime | DONE | new run/gap gates and tests |
 | Clipping/silence/quality | Runtime | DONE | PCM16 positive rail, invalid data and weak/silent gates |
 | Bounded frames/events/audit history | Runtime | DONE | 128-entry tails; immutable durable audit archive |
-| Analyzer injection / ownership/close | Runtime | IN_PROGRESS | finish factory lifecycle/error paths with replaceable analyzer |
-| Production model unavailable/failure | Runtime | IN_PROGRESS | explicit unavailable; no automatic Fake fallback |
-| Reference analysis jobs | Runtime | IN_PROGRESS | close/error handling and authoritative completion |
-| Baseline context and review policy | Runtime | IN_PROGRESS | accepted retained PCM, reviewed envelope; human-only |
+| Analyzer injection / ownership/close | Runtime | DONE | finish factory lifecycle/error paths with replaceable analyzer |
+| Production model unavailable/failure | Runtime | DONE | explicit unavailable; no automatic Fake fallback |
+| Reference analysis jobs | Runtime | DONE | close/error handling and authoritative completion |
+| Baseline context and review policy | Runtime | DONE | accepted retained PCM, reviewed envelope; human-only |
 | Baseline immutable in Live | Runtime | DONE | existing command/invariant tests |
 | Deviation / common-mode / balance | Runtime | DONE | frozen source delta semantics; downstream centering |
-| Empirical confidence gate consumer | Runtime | IN_PROGRESS | consume approved mappings and envelope; no fake values |
+| Empirical confidence gate consumer | Runtime | DONE | consume approved mappings and envelope; no fake values |
 | PA state tracking / recommendations | Runtime | DONE | existing Fake full loop and abstention gates |
 | Fresh observable verification | Runtime | DONE | post-adjustment complete-window + clock margin tests |
 | Pause/resume/stop | Runtime | DONE | lifecycle/retry/reopen tests; bounded teardown |
 | Persistence/restart | Runtime | DONE | SQLite atomicity, audit, new-clock restart suspension |
 | API and WS/reconnect | Runtime | DONE | loopback transport tests and CP1 smoke |
-| Long-running current Runtime | Runtime | IN_PROGRESS | repeat coherent-revision sustained evidence after changes |
+| Long-running current Runtime | Runtime | DONE | clean7809b1 source:300.344s,297 windows,zero drops/stale/gaps,history128; Runtime checkpoint report |
 | Song creation/setup | UI/Runtime | IN_PROGRESS | real UI/API product-flow acceptance |
 | Existing song reopen/fallback persistence | UI | IN_PROGRESS | durable saved IDs, server validation, stale/restart handling |
 | Reference upload/analysis UX | UI | IN_PROGRESS | asynchronous job flow, failure/retry and selected reference |
@@ -101,16 +101,16 @@ artifacts are separate rows so templates cannot masquerade as empirical completi
 | Fixture fallback / deterministic full app | UI/Runtime | IN_PROGRESS | explicit simulation; no commands from fixture into Runtime |
 | Isolated real-audio demo player | UI | DONE | CP1 media execution/isolation tests; no truth data channel |
 | Physical-demo hookup instructions | UI | IN_PROGRESS | speaker-room-one-mic routing; no browser inference |
-| PN54 inventory script | Runtime | IN_PROGRESS | hardware/provider/device inventory; do not assume hardware |
-| Deployment/cache/log/storage layout | Runtime | IN_PROGRESS | explicit local paths/config and offline startup |
-| One-command launch/config templates | Runtime | IN_PROGRESS | supported Fake/missing/bundle modes with exact commands |
+| PN54 inventory script | Runtime | DONE | hardware/provider/device inventory; do not assume hardware |
+| Deployment/cache/log/storage layout | Runtime | DONE | explicit local paths/config and offline startup |
+| One-command launch/config templates | Runtime | DONE | supported Fake/missing/bundle modes with exact commands |
 | Microphone selection/settings | Runtime/UI | IN_PROGRESS | actual discovery, verification profile separately reviewed |
-| CPU/test-analyzer fallback | Runtime | IN_PROGRESS | explicit mode and compatible profile; no silent real-to-Fake |
-| Runtime parity/sustained harness | Runtime/ML | IN_PROGRESS | portable correctness and sample/clock/profile checks |
-| Offline/cache behavior | Runtime/ML | IN_PROGRESS | no runtime downloads/cloud perception; unavailable fail closed |
+| CPU/test-analyzer fallback | Runtime | DONE | explicit mode and compatible profile; no silent real-to-Fake |
+| Runtime parity/sustained harness | Runtime/ML | DONE | portable correctness and sample/clock/profile checks |
+| Offline/cache behavior | Runtime/ML | DONE | no runtime downloads/cloud perception; unavailable fail closed |
 | PN54 model parity/profile | Runtime | WAIT_HARDWARE | actual PN54 plus selected artifact; local run is not proof |
 | Rights-cleared fixture/demo asset ledger | ML/UI | IN_PROGRESS | generated audio permitted; actual music requires remote provenance |
-| Model/evidence manifest templates | ML | IN_PROGRESS | exact missing fields remain pending, not guessed |
+| Model/evidence manifest templates | ML | DONE | exact missing fields remain pending, not guessed |
 | Reproducible run commands | Lead/Runtime/UI | IN_PROGRESS | test the final documented commands |
 | Demo sequence/hardware checklist | UI | IN_PROGRESS | full guided PA path and acoustic wiring |
 | Presentation skeleton/evidence slots | UI | IN_PROGRESS | only measured values/results stay blank |

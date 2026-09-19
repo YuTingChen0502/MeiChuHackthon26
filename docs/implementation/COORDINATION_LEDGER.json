@@ -3,8 +3,8 @@
   "status": "IN_PROGRESS",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
-  "latest_pushed_main": "07c66486a33a25e87b150f23de5862833ff20658",
-  "latest_integration_commit": "07c66486a33a25e87b150f23de5862833ff20658",
+  "latest_pushed_main": "3b12c787f7bb69bef75114088e0d57d6dc05d163",
+  "latest_integration_commit": "3b12c787f7bb69bef75114088e0d57d6dc05d163",
   "lanes": {
     "ML": {
       "commit": "fa7068155461e42ece413235347a6bd5f43667ee",
@@ -13,8 +13,8 @@
       "empirical_claim": "No trained artifact or real-audio capability accepted"
     },
     "Runtime": {
-      "commit": "c0d60e3b45c2a246c226abbdc8e1f67c791a7870",
-      "status": "integrated; shared28/runtime30/integration51 passed; actual native and sustained evidence report pending"
+      "commit": "25f8808b751e25abb287c1b3126b898509640637",
+      "status": "RUNTIME_PRE_MODEL_READY accepted; integration52 passed; native and300s reports integrated"
     },
     "UI": {
       "commit": "abb5229ae35556ef93674cd3ed72cfdf62c7f992",
@@ -22,8 +22,7 @@
     }
   },
   "pending_reviews": [
-    "Runtime final current-source native/soak evidence",
-    "UI six concrete functional corrections and actual guided product flow"
+    "UI functional corrections including catalog fallback, target identities, verification feedback and actual guided product flow"
   ],
   "cross_lane_requests": [
     {
@@ -43,6 +42,7 @@
     "CP2-ML/CORRECTION_COMPLETE/a3a4695316d0bb5c33559df716b94b053434c6f1": "accepted; analyzer30 and release audit passed on main31c98c1",
     "CP2-ML/CHECKPOINT_COMMIT/fa7068155461e42ece413235347a6bd5f43667ee": "accepted and integrated atfc6e4ad; final report retained",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/c0d60e3": "reviewed and integrated via4a99d74 at07c6648; sustained evidence pending",
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/25f8808b751e25abb287c1b3126b898509640637": "accepted and integrated at3b12c78; integration52, source audit and evidence lineage verified",
     "CP2-UI/CHECKPOINT_COMMIT/abb5229ae35556ef93674cd3ed72cfdf62c7f992": "six concrete corrections requested; not integrated",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/170f1c1": "recorded; superseded by continuing coherent16bf1d3 review",
     "CP2-RUNTIME/CROSS_LANE_REQUEST/e4884bdacf2ab0a17e4ad8cb43a0f38804f78ffb": "ML merge acknowledged; actual-loader validation continuing"
