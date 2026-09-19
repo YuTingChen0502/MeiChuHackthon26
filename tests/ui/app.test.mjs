@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { balanceText, commandFor, confidenceText, displayStatus, fixtureRehearsal, fixtureScenario, freshness, SETUP_ENDPOINT_PLAN } from '../../apps/ui/app.js';
+import { balanceText, canMutate, commandFor, confidenceText, displayStatus, fixtureRehearsal, fixtureScenario, freshness, receiptIsFresh, SETUP_ENDPOINT_PLAN } from '../../apps/ui/app.js';
 import { RuntimeAdapter } from '../../apps/ui/runtime-adapter.js';
 
 const confidence = (abstained = false) => ({ abstained, reasons: abstained ? ['noise_overlap'] : [], calibration_status: abstained ? 'out_of_envelope' : 'calibrated', probability: abstained ? null : .9, magnitude_tolerance_db: 1.5 });
@@ -22,6 +22,13 @@ test('marks stale and static fixture data without pretending it is fresh', () =>
   assert.equal(freshness({ example_only:true, published_monotonic_s:5, quality:{ stale:true } }, 8), 'Stale fixture frame — do not act');
   assert.equal(freshness({ example_only:true, published_monotonic_s:5, quality:{ stale:false } }), 'Fixture/static frame — data age unavailable');
   assert.equal(freshness({ example_only:false, published_monotonic_s:5, quality:{ stale:false } }, 8), '3.0 s old');
+});
+test('fixture mode never permits mutations and expired local receipt freshness is gated', () => {
+  const snapshot = { session_id:'s-1' };
+  assert.equal(canMutate('fixture', { snapshot }, snapshot, true), false);
+  assert.equal(receiptIsFresh({ quality:{ stale:false } }, 1_000, true, 7_000), false);
+  assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 6_000), true);
+  assert.equal(receiptIsFresh({ quality:{ stale:true } }, 2_000, true, 2_100), false);
 });
 test('renders tolerance as probability semantics and only renders an actual interval', () => {
   const withoutInterval = confidence(false);
@@ -75,5 +82,38 @@ test('runtime adapter posts commands to the frozen route and refreshes a conflic
     assert.deepEqual(refreshed, [{ session_id:'s-1', state_version:8 }]);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+test('runtime adapter ignores delayed snapshots and refreshes after a frame-only event', async () => {
+  const originalFetch = globalThis.fetch;
+  const snapshots = [];
+  globalThis.fetch = async () => ({ ok:true, status:200, json:async () => ({ session_id:'s-1', state_version:3, event_sequence:3 }) });
+  try {
+    const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
+    adapter.acceptSnapshot({ session_id:'s-1', state_version:3, event_sequence:2 });
+    assert.equal(adapter.acceptSnapshot({ session_id:'s-1', state_version:2, event_sequence:1 }), false);
+    await adapter.handleEvent('s-1', { session_id:'s-1', event_sequence:3, payload:{ record_type:'AnalysisFrame' } });
+    assert.deepEqual(snapshots, [{ session_id:'s-1', state_version:3, event_sequence:2 }, { session_id:'s-1', state_version:3, event_sequence:3 }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWebSocket = globalThis.WebSocket;
+  const originalLocation = globalThis.location;
+  const sockets = [];
+  globalThis.fetch = async () => ({ ok:true, status:200, json:async () => ({ session_id:'s-1', state_version:4, event_sequence:9 }) });
+  globalThis.location = { protocol:'http:', host:'127.0.0.1:8000' };
+  globalThis.WebSocket = class { constructor(url) { this.url = url; sockets.push(this); } close() {} };
+  try {
+    const adapter = new RuntimeAdapter({ onSnapshot() {}, onStatus() {} });
+    await adapter.recover('s-1');
+    assert.match(sockets[0].url, /after_sequence=9$/);
+    adapter.stopEvents();
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.WebSocket = originalWebSocket;
+    globalThis.location = originalLocation;
   }
 });

@@ -32,9 +32,21 @@ selected rights-cleared audio file. Its status is driven by HTML media events, n
 button intent. File names and prepared scenario truth are intentionally not rendered
 or transmitted outside that browser process.
 
-## Runtime integration request
+## Runtime launch and UI integration
 
-The UI respects the L2 setup order and frozen session-wire commands. Concrete
-setup/upload/reference-job response models and command endpoint availability are
-Runtime-lane work. Until those handlers exist, this checkpoint remains a fixture
-adapter and does not send mutations.
+The approved local Runtime listener serves the UI at `/apps/ui/` and exposes the
+frozen setup/session routes. Launch it from the repository root with the Lead-pinned
+environment:
+
+```text
+python -m pip install -r requirements-runtime.txt
+python -m uvicorn apps.api.transport:app --host 127.0.0.1 --port 8000 --workers 1 --loop asyncio --http h11 --ws websockets-sansio
+```
+
+The UI probes `/v1/health` before attempting setup. With Runtime available, it
+creates the project/song, uploads PCM16 WAV reference bytes, waits for the reference
+job, creates a rehearsal session, then consumes authoritative snapshots/events. On a
+409 command conflict it refreshes the server snapshot. If Runtime is absent, local
+development may fall back to the shared illustrative fixture only when a development
+server exposes it; the Runtime listener intentionally serves only `apps/ui/` and does
+not mount the repository or demo-player data.

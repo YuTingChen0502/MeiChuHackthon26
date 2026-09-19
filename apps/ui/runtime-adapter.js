@@ -1,9 +1,13 @@
 export class RuntimeAdapter {
-  constructor({ onSnapshot, onStatus }) {
+  constructor({ onSnapshot, onStatus, onConnection }) {
     this.onSnapshot = onSnapshot;
     this.onStatus = onStatus;
+    this.onConnection = onConnection ?? (() => {});
     this.socket = null;
     this.snapshot = null;
+    this.cursor = 0;
+    this.reconnectTimer = null;
+    this.stopped = false;
   }
 
   async request(path, options = {}) {
@@ -52,22 +56,56 @@ export class RuntimeAdapter {
   async refresh(sessionId) { this.acceptSnapshot(await this.request(`/sessions/${encodeURIComponent(sessionId)}`)); }
 
   acceptSnapshot(snapshot) {
+    if (this.snapshot && this.snapshot.session_id === snapshot.session_id &&
+      (snapshot.event_sequence < this.snapshot.event_sequence ||
+       (snapshot.event_sequence === this.snapshot.event_sequence && snapshot.state_version < this.snapshot.state_version))) return false;
     this.snapshot = snapshot;
+    this.cursor = Math.max(this.cursor, snapshot.event_sequence);
     this.onSnapshot(snapshot);
+    return true;
   }
 
   connect(sessionId, cursor) {
+    this.stopped = false;
     this.socket?.close();
+    this.cursor = Math.max(this.cursor, cursor);
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.socket = new WebSocket(`${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/events?after_sequence=${cursor}`);
-    this.socket.onopen = () => this.onStatus('Connected to local Runtime event stream.');
-    this.socket.onmessage = async event => {
-      const received = JSON.parse(event.data);
-      const payload = received.payload;
-      if (payload?.record_type === 'SessionSnapshot') this.acceptSnapshot(payload);
-      else if (this.snapshot && received.event_sequence > this.snapshot.event_sequence + 1) await this.refresh(sessionId);
+    const socket = new WebSocket(`${protocol}//${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/events?after_sequence=${cursor}`);
+    this.socket = socket;
+    socket.onopen = () => { if (this.socket === socket) { this.onConnection(true); this.onStatus('Connected to local Runtime event stream.'); } };
+    socket.onmessage = event => this.handleEvent(sessionId, JSON.parse(event.data));
+    socket.onerror = () => this.onStatus('Runtime event stream unavailable; corrective controls are gated.');
+    socket.onclose = () => {
+      if (this.socket !== socket) return;
+      this.onConnection(false);
+      this.onStatus('Runtime event stream disconnected; corrective controls are gated.');
+      if (!this.stopped) this.reconnectTimer = setTimeout(() => this.recover(sessionId), 500);
     };
-    this.socket.onerror = () => this.onStatus('Runtime event stream unavailable; use Refresh after commands.');
-    this.socket.onclose = () => this.onStatus('Runtime event stream disconnected.');
+  }
+
+  async handleEvent(sessionId, event) {
+    if (event.session_id !== sessionId || event.event_sequence <= this.cursor) return;
+    if (event.event_sequence !== this.cursor + 1) { await this.recover(sessionId); return; }
+    this.cursor = event.event_sequence;
+    if (event.payload?.record_type === 'SessionSnapshot') this.acceptSnapshot(event.payload);
+    else await this.refresh(sessionId);
+  }
+
+  async recover(sessionId) {
+    try {
+      await this.refresh(sessionId);
+      this.connect(sessionId, this.cursor);
+      this.onStatus('Runtime event stream reconnected from an authoritative snapshot.');
+    } catch {
+      this.onConnection(false);
+      this.onStatus('Runtime reconnect failed; corrective controls remain gated.');
+      if (!this.stopped) this.reconnectTimer = setTimeout(() => this.recover(sessionId), 1000);
+    }
+  }
+
+  stopEvents() {
+    this.stopped = true;
+    clearTimeout(this.reconnectTimer);
+    this.socket?.close();
   }
 }

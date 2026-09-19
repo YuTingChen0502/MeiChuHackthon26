@@ -2,6 +2,12 @@ import { RuntimeAdapter } from './runtime-adapter.js';
 
 const FIXTURE_PATH = '../../contracts/examples/pa_shared_v1.json';
 let runtimeAdapter = null;
+let viewMode = 'fixture';
+let runtimeConnected = false;
+let authoritativeReceiptMs = null;
+let lastFrameId = null;
+let fixtureLocked = false;
+export const RECEIPT_FRESHNESS_MAX_MS = 5000;
 
 export const SETUP_ENDPOINT_PLAN = [
   'POST /v1/projects  — project and setlist metadata',
@@ -33,6 +39,23 @@ export function freshness(frame, authoritativeNowMonotonicS = null) {
   if (typeof authoritativeNowMonotonicS !== 'number') return frame.example_only ? 'Fixture/static frame — data age unavailable' : 'Data age unavailable';
   const age = Math.max(0, authoritativeNowMonotonicS - frame.published_monotonic_s);
   return `${age.toFixed(1)} s old`;
+}
+
+export function receiptFreshness(frame, receiptMs, connected) {
+  if (!frame) return 'No observation received';
+  if (frame.quality.stale) return 'Stale frame — corrective controls are gated';
+  if (!connected || receiptMs === null) return 'Data freshness unknown — corrective controls are gated';
+  const ageMs = Math.max(0, Date.now() - receiptMs);
+  if (ageMs > RECEIPT_FRESHNESS_MAX_MS) return `Local receipt age ${(ageMs / 1000).toFixed(1)} s — freshness unknown; corrective controls are gated`;
+  return `Received ${(ageMs / 1000).toFixed(1)} s ago (local receipt age)`;
+}
+
+export function receiptIsFresh(frame, receiptMs, connected, nowMs = Date.now()) {
+  return Boolean(frame) && !frame.quality.stale && connected && receiptMs !== null && nowMs - receiptMs <= RECEIPT_FRESHNESS_MAX_MS;
+}
+
+export function canMutate(view, adapter, snapshot, connected) {
+  return view === 'authoritative' && Boolean(adapter) && adapter.snapshot?.session_id === snapshot?.session_id && connected;
 }
 
 export function commandFor(snapshot, action, payload = {}, idempotencyKey = `ui-${action}-fixture`) {
@@ -111,7 +134,7 @@ function render(snapshot) {
     profileItem('IDEAL REFERENCE', snapshot.active_reference?.reference_id ?? 'Not ready', 'Immutable uploaded mixed reference'),
     profileItem('ACCEPTED BASELINE', snapshot.active_baseline ? `${snapshot.active_baseline.baseline_id} v${snapshot.active_baseline.version}` : 'Not accepted', 'Human acceptance only; never automatic'),
   );
-  document.querySelector('#freshness').textContent = freshness(frame);
+  document.querySelector('#freshness').textContent = viewMode === 'authoritative' ? receiptFreshness(frame, authoritativeReceiptMs, runtimeConnected) : freshness(frame);
   const cards = (frame?.instruments ?? []).map(instrument => {
     const card = document.createElement('article');
     const stateClass = ['normal', 'too_loud', 'too_quiet', 'unknown', 'inactive', 'unsupported'].includes(instrument.status) ? instrument.status : 'unknown';
@@ -123,7 +146,8 @@ function render(snapshot) {
   const rec = snapshot.recommendations?.[0];
   const recommendation = document.querySelector('#recommendation');
   const expired = rec && frame && rec.expires_monotonic_s <= frame.published_monotonic_s;
-  recommendation.replaceChildren(...(!rec ? [node('p', 'No current recommendation.', 'muted')] : expired ? [node('strong', 'Recommendation expired', 'negative'), node('p', 'Do not act on expired recommendation data.', 'muted')] : [node('strong', `${rec.instrument_id}: ${rec.action.replaceAll('_',' ')}`), node('p', rec.human_control_hint ?? 'No operator hint supplied.'), node('p', `${rec.suggested_step_db === null ? 'No numeric step is available.' : `Suggested bounded step: ${rec.suggested_step_db} dB`} · Human executes; automatic execution is false. Expires at session t=${rec.expires_monotonic_s}s.`, 'muted')]));
+  const freshnessUnknown = viewMode === 'authoritative' && !receiptIsFresh(frame, authoritativeReceiptMs, runtimeConnected);
+  recommendation.replaceChildren(...(!rec ? [node('p', 'No current recommendation.', 'muted')] : expired ? [node('strong', 'Recommendation expired', 'negative'), node('p', 'Do not act on expired recommendation data.', 'muted')] : freshnessUnknown ? [node('strong', 'Recommendation withheld', 'negative'), node('p', 'Data freshness is unknown; wait for a fresh authoritative frame.', 'muted')] : [node('strong', `${rec.instrument_id}: ${rec.action.replaceAll('_',' ')}`), node('p', rec.human_control_hint ?? 'No operator hint supplied.'), node('p', `${rec.suggested_step_db === null ? 'No numeric step is available.' : `Suggested bounded step: ${rec.suggested_step_db} dB`} · Human executes; automatic execution is false. Expires at session t=${rec.expires_monotonic_s}s.`, 'muted')]));
   const verification = snapshot.latest_verification;
   const verificationPanel = document.querySelector('#verification');
   verificationPanel.replaceChildren(...(!verification ? [node('p', 'No verification result yet.', 'muted')] : [node('strong', verification.outcome.replaceAll('_',' '), verification.outcome === 'recovered' ? '' : 'negative'), node('p', verification.source_observable ? 'Post-adjustment source was observable.' : 'No recovery claim: fresh, observable post-adjustment audio is still required.', 'muted'), node('p', verification.reason_codes.join(', '), 'muted')]));
@@ -131,6 +155,7 @@ function render(snapshot) {
 }
 
 function renderControls(snapshot) {
+  if (!snapshot) { document.querySelector('#controls').replaceChildren(node('p', 'Create or load an authoritative session to enable controls.', 'muted')); return; }
   const recheckPayload = { adjustment_id: snapshot.adjustment?.adjustment_id ?? null };
   const qualified = document.querySelector('#qualified-interval').checked;
   const differenceChoice = document.querySelector('input[name="reference-difference"]:checked')?.value;
@@ -138,15 +163,17 @@ function renderControls(snapshot) {
   const interval = { analysis_run_id:document.querySelector('#acceptance-run').value.trim(), clock_id:snapshot.source.clock_id, sample_rate_hz:Number(document.querySelector('#acceptance-rate').value), sample_start:Number(document.querySelector('#acceptance-start').value), sample_end:Number(document.querySelector('#acceptance-end').value) };
   const acceptPayload = { interval, accepted_by:acceptedBy, reference_difference_accepted:differenceChoice === 'true', acceptance_note:null };
   const acceptanceReady = qualified && differenceChoice !== undefined && acceptedBy.length > 0 && interval.analysis_run_id && Number.isInteger(interval.sample_rate_hz) && interval.sample_rate_hz > 0 && Number.isInteger(interval.sample_start) && Number.isInteger(interval.sample_end) && interval.sample_start >= 0 && interval.sample_end > interval.sample_start;
-  const actions = [ ['recheck','Recheck',recheckPayload,false], ['accept_baseline','Accept as Baseline',acceptPayload, snapshot.session_mode !== 'rehearsal' || !acceptanceReady], ['start_adjustment','Start adjustment',{},false], ['complete_adjustment','Complete adjustment',{ adjustment_id:snapshot.adjustment?.adjustment_id ?? 'unavailable' },!snapshot.adjustment], ['start_live','Enter Live',{},!snapshot.active_baseline], ['pause','Pause',{},false], ['resume','Resume',{},false], ['stop','Stop session',{},false] ];
+  const authoritative = canMutate(viewMode, runtimeAdapter, snapshot, runtimeConnected);
+  const correctiveFresh = authoritative && receiptIsFresh(snapshot.latest_frame, authoritativeReceiptMs, runtimeConnected);
+  const actions = [ ['recheck','Recheck',recheckPayload,!correctiveFresh], ['accept_baseline','Accept as Baseline',acceptPayload,!correctiveFresh || snapshot.session_mode !== 'rehearsal' || !acceptanceReady], ['start_adjustment','Start adjustment',{},!correctiveFresh], ['complete_adjustment','Complete adjustment',{ adjustment_id:snapshot.adjustment?.adjustment_id ?? 'unavailable' },!correctiveFresh || !snapshot.adjustment], ['start_live','Enter Live',{},!authoritative || !snapshot.active_baseline], ['pause','Pause',{},!authoritative], ['resume','Resume',{},!authoritative], ['stop','Stop session',{},!authoritative] ];
   const controlPanel = document.querySelector('#controls');
   controlPanel.replaceChildren(...actions.map(([action, label, payload, disabled]) => {
     const button = node('button', label);
     button.disabled = disabled;
     button.addEventListener('click', () => {
       const command = commandFor(snapshot, action, payload, `${runtimeAdapter ? 'ui' : 'fixture'}-${action}-${crypto.randomUUID()}`);
-      if (!runtimeAdapter) {
-        document.querySelector('#command-status').textContent = `Fixture adapter prepared ${command.action}; Runtime is not connected.`;
+      if (!authoritative) {
+        document.querySelector('#command-status').textContent = 'Fixture display is non-mutating.';
         return;
       }
       runtimeAdapter.command(command).then(() => {
@@ -160,27 +187,57 @@ function renderControls(snapshot) {
 }
 
 async function start() {
-  const response = await fetch(FIXTURE_PATH);
-  const fixtures = await response.json();
-  const liveSnapshot = fixtureScenario(fixtures);
-  const rehearsalSnapshot = fixtureRehearsal(fixtures);
-  let snapshot = liveSnapshot;
-  render(snapshot);
+  let snapshot = null;
   const adapter = new RuntimeAdapter({
-    onSnapshot(next) { snapshot = next; render(snapshot); },
+    onSnapshot(next) {
+      if (fixtureLocked) return;
+      viewMode = 'authoritative';
+      snapshot = next;
+      if (next.latest_frame?.frame_id && next.latest_frame.frame_id !== lastFrameId) {
+        lastFrameId = next.latest_frame.frame_id;
+        authoritativeReceiptMs = Date.now();
+      }
+      render(snapshot);
+    },
     onStatus(message) { document.querySelector('#command-status').textContent = message; },
+    onConnection(connected) {
+      runtimeConnected = connected;
+      if (viewMode === 'authoritative' && snapshot) render(snapshot);
+    },
   });
   try {
     await adapter.health();
     runtimeAdapter = adapter;
+    viewMode = 'authoritative';
     document.querySelector('#source-mode').textContent = 'Local Runtime connected. Live records are authoritative; fixture buttons remain illustrative.';
     document.querySelector('#command-status').textContent = 'Local Runtime available. Complete setup to start an authoritative session.';
+    document.querySelector('#mode').textContent = 'SETUP · no session';
+    document.querySelector('#summary').replaceChildren(summaryItem('SESSION', 'No authoritative session loaded.'));
+    document.querySelector('#profiles').replaceChildren(profileItem('REFERENCE / BASELINE', 'Awaiting setup', 'Create a song and uploaded ideal reference to begin.'));
+    document.querySelector('#freshness').textContent = 'No observation received';
+    document.querySelector('#instrument-cards').replaceChildren(node('p', 'Awaiting authoritative session.', 'muted'));
+    document.querySelector('#recommendation').replaceChildren(node('p', 'No current recommendation.', 'muted'));
+    document.querySelector('#verification').replaceChildren(node('p', 'No verification result yet.', 'muted'));
+    renderControls(null);
   } catch {
-    document.querySelector('#command-status').textContent = 'Fixture mode: local Runtime is unavailable.';
+    viewMode = 'fixture';
+    try {
+      const response = await fetch(FIXTURE_PATH);
+      const fixtures = await response.json();
+      const liveSnapshot = fixtureScenario(fixtures);
+      const rehearsalSnapshot = fixtureRehearsal(fixtures);
+      snapshot = liveSnapshot;
+      render(snapshot);
+      document.querySelector('#fixture-live').addEventListener('click', () => { fixtureLocked = true; viewMode = 'fixture'; snapshot = liveSnapshot; render(snapshot); });
+      document.querySelector('#fixture-rehearsal').addEventListener('click', () => { fixtureLocked = true; viewMode = 'fixture'; snapshot = rehearsalSnapshot; render(snapshot); });
+      document.querySelector('#command-status').textContent = 'Fixture mode: local Runtime is unavailable.';
+    } catch {
+      document.querySelector('#source-mode').textContent = 'Runtime unavailable and no local fixture asset is served.';
+      document.querySelector('#command-status').textContent = 'Fixture fallback is unavailable; start the approved Runtime listener or local static development server.';
+      renderControls(null);
+    }
   }
-  document.querySelector('#fixture-live').addEventListener('click', () => { snapshot = liveSnapshot; render(snapshot); });
-  document.querySelector('#fixture-rehearsal').addEventListener('click', () => { snapshot = rehearsalSnapshot; render(snapshot); });
-  document.querySelector('#baseline-acceptance').addEventListener('input', () => renderControls(snapshot));
+  document.querySelector('#baseline-acceptance').addEventListener('input', () => { if (snapshot) renderControls(snapshot); });
   document.querySelector('#show-setup').addEventListener('click', () => { const plan = document.querySelector('#setup-plan'); plan.hidden = !plan.hidden; plan.textContent = SETUP_ENDPOINT_PLAN.join('\n'); });
   document.querySelector('#setup-form').addEventListener('submit', event => {
     event.preventDefault();
@@ -188,9 +245,10 @@ async function start() {
     const reference = data.get('reference');
     const selected = { project:data.get('project'), song:data.get('song'), families:data.get('families').split(',').map(value => value.trim()).filter(Boolean), reference, source:data.get('source'), sourceId:data.get('sourceId'), captureProfile:data.get('captureProfile'), geometryId:data.get('geometryId') };
     const plan = document.querySelector('#setup-plan');
-    if (runtimeAdapter) {
+    if (runtimeAdapter && viewMode === 'authoritative') {
       if (!(reference instanceof File)) { document.querySelector('#command-status').textContent = 'Choose a PCM16 WAV ideal reference before setup.'; return; }
       document.querySelector('#command-status').textContent = 'Creating project, song, reference profile, and rehearsal session…';
+      fixtureLocked = false;
       runtimeAdapter.setup(selected).then(() => { document.querySelector('#command-status').textContent = 'Authoritative rehearsal session created.'; }).catch(error => { document.querySelector('#command-status').textContent = `Setup failed: ${error.message}`; });
       return;
     }
