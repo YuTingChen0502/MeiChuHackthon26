@@ -4,7 +4,7 @@
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "53577717e482da3c794d89c2fd11436c1a333572",
   "latest_pushed_main": "3b12c787f7bb69bef75114088e0d57d6dc05d163",
-  "latest_integration_commit": "3b12c787f7bb69bef75114088e0d57d6dc05d163",
+  "latest_integration_commit": "6e49fb270d2f1a428a085e1d0f5837d5b88a8e9e",
   "lanes": {
     "ML": {
       "commit": "fa7068155461e42ece413235347a6bd5f43667ee",
@@ -17,13 +17,11 @@
       "status": "RUNTIME_PRE_MODEL_READY accepted; integration52 passed; native and300s reports integrated"
     },
     "UI": {
-      "commit": "e328e7509fa7e5f3b74fcb2c48d9f23ad892882e",
-      "status": "corrections committed; Lead synced main at57feaa3; actual guided/cancellation validation pending"
+      "commit": "947dae26f2410023d71f0b4a024e14f5e7e75592",
+      "status": "UI_PRE_MODEL_READY accepted and integrated; final whole-main validation running"
     }
   },
-  "pending_reviews": [
-    "UI corrected product flow and authoritative server-cancelled probe reconciliation"
-  ],
+  "pending_reviews": [],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -34,6 +32,11 @@
       "id": "UI/guided-route",
       "owner": "Runtime",
       "status": "RESOLVED: GET/POST guided routes pushed main07c6648; UI notified to sync"
+    },
+    {
+      "id": "launcher-custom-port-origin",
+      "owner": "Runtime",
+      "status": "CORRECTION_RECEIVED eaf5b73; focused2 tests independently pass"
     }
   ],
   "events": {
@@ -47,19 +50,21 @@
     "CP2-UI/CORRECTION_COMPLETE/e328e7509fa7e5f3b74fcb2c48d9f23ad892882e": "recorded; UI31/shared28 and prior smoke reported; final actual-route review pending",
     "CP2-UI/BLOCKER/abb5229ae35556ef93674cd3ed72cfdf62c7f992": "RESOLVED: worker main sync was approval-blocked; Lead performed reviewed synchronization at57feaa300b9fc874aab3dcd3e43eaebdb50a2334, preserving clean UI checkpoint",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/170f1c1": "recorded; superseded by continuing coherent16bf1d3 review",
-    "CP2-RUNTIME/CROSS_LANE_REQUEST/e4884bdacf2ab0a17e4ad8cb43a0f38804f78ffb": "ML merge acknowledged; actual-loader validation continuing"
+    "CP2-RUNTIME/CROSS_LANE_REQUEST/e4884bdacf2ab0a17e4ad8cb43a0f38804f78ffb": "ML merge acknowledged; actual-loader validation continuing",
+    "CP2-UI/CHECKPOINT_COMMIT/947dae26f2410023d71f0b4a024e14f5e7e75592": "accepted; clean ownership/ancestry verified, UI34 independently passed; merged at6e49fb2",
+    "CP2-UI/CORRECTION_COMPLETE/947dae26f2410023d71f0b4a024e14f5e7e75592": "read-only old IAB origin cache diagnosis; fresh origin correct; no source issue"
   },
   "integration_validation": {
-    "commit": "07c66486a33a25e87b150f23de5862833ff20658",
-    "python_tests": 206,
-    "ui_tests": 12,
+    "commit": "6e49fb270d2f1a428a085e1d0f5837d5b88a8e9e",
+    "python_tests": 207,
+    "ui_tests": 34,
     "cp1_full_smoke": "PASS",
-    "release_scan": "PASS with zero findings; final UI integration run still required",
+    "release_scan": "PASS zero findings; source archive pending final clean commit",
     "documented_launch": "PASS on local Python3.12: explicit fake mode, health example_only, 7 actual native input entries, UI HTTP200"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
     "credential_value_recorded": false,
-    "user_design_references": "Untracked main copies preserved pending UI-owned integration"
+    "user_design_references": "13 verified originals preserved in temporary backup; identical UI-owned references now tracked through accepted merge"
   }
 }
