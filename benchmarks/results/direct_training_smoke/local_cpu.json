@@ -1,0 +1,109 @@
+{
+  "claim_scope": "training_mechanics_only_no_audio_feasibility_claim",
+  "config": {
+    "batch_size": 16,
+    "config_id": "direct-training-smoke-v1",
+    "consistency_pairs": [
+      [
+        0,
+        1
+      ],
+      [
+        2,
+        3
+      ]
+    ],
+    "deterministic_algorithms": true,
+    "embedding_dim": 12,
+    "hidden_dim": 32,
+    "learning_rate": 0.01,
+    "loss_weights": {
+      "activity": 0.25,
+      "common": 0.5,
+      "consistency": 0.25,
+      "event": 0.25,
+      "level": 1.0
+    },
+    "optimizer_steps": 8,
+    "scale_feature_dim": 8,
+    "schema_version": "1.0",
+    "seed": 260919,
+    "source_count": 4,
+    "weight_decay": 0.0001
+  },
+  "config_sha256": "7cb96b2a9d8f065fb3340dab6f1c52211836e4e375c5307dd8611b59b705ccd0",
+  "environment": {
+    "deterministic_algorithms": true,
+    "device_name": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "machine": "AMD64",
+    "pid": 17696,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "python_executable": "C:\\Users\\USER\\AppData\\Local\\Programs\\Python\\Python314\\python.exe",
+    "requested_device": "cpu",
+    "resolved_device": "cpu",
+    "torch_cuda_version": null,
+    "torch_hip_version": null,
+    "torch_version": "2.11.0+cpu"
+  },
+  "git_commit": "9fba0193e507f776ff7e23e098086718e07a9b6f",
+  "model_checkpoint": {
+    "after_sha256": "3048d5460068ccdba356d9506c69fa3ca37df0780823b30356be8a5a45ffdc7f",
+    "before_sha256": "b2e279a79450187a254554f8126f8bfb031c3620112c8fb70155bef466f03b39",
+    "encoder": "synthetic_features_no_encoder_loaded",
+    "head_initialization": "seeded_random_smoke_only"
+  },
+  "optimizer_audit": {
+    "changed_parameter_count": 12,
+    "changed_parameters": [
+      "activity.bias",
+      "activity.weight",
+      "common_gain.bias",
+      "common_gain.weight",
+      "event.bias",
+      "event.weight",
+      "fusion.0.bias",
+      "fusion.0.weight",
+      "fusion.1.bias",
+      "fusion.1.weight",
+      "source_delta.bias",
+      "source_delta.weight"
+    ],
+    "elapsed_s": 0.016700700001820223,
+    "final_loss": 1.2777589559555054,
+    "initial_loss": 2.165099859237671,
+    "loss_history": [
+      2.165099859237671,
+      1.9753367900848389,
+      1.7915072441101074,
+      1.6612448692321777,
+      1.5583176612854004,
+      1.4582256078720093,
+      1.3634061813354492,
+      1.2777589559555054
+    ],
+    "nonzero_gradient_parameter_count": 12,
+    "nonzero_gradient_parameters": [
+      "activity.bias",
+      "activity.weight",
+      "common_gain.bias",
+      "common_gain.weight",
+      "event.bias",
+      "event.weight",
+      "fusion.0.bias",
+      "fusion.0.weight",
+      "fusion.1.bias",
+      "fusion.1.weight",
+      "source_delta.bias",
+      "source_delta.weight"
+    ],
+    "optimizer": "AdamW",
+    "steps": 8,
+    "trainable_parameter_count": 12
+  },
+  "record_type": "DirectTrainingSmoke",
+  "schema_version": "1.0",
+  "seed": 260919,
+  "status": "pass"
+}
