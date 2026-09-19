@@ -1,3 +1,4 @@
+import http.client
 import json
 import socket
 import tempfile
@@ -6,6 +7,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import uvicorn
 from websockets.exceptions import InvalidStatus
@@ -37,8 +39,15 @@ class TransportTests(unittest.TestCase):
             storage_dir=self.temporary.name,
             window_size_samples=10,
             available_audio_devices={"mic-1"},
+            max_upload_bytes=256,
         )
-        application = create_app(runtime)
+        self.runtime = runtime
+        self.ui_directory = Path(self.temporary.name) / "ui"
+        self.ui_directory.mkdir()
+        (self.ui_directory / "index.html").write_text(
+            "<!doctype html><title>PA UI</title>", encoding="utf-8"
+        )
+        application = create_app(runtime, ui_directory=self.ui_directory)
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             self.port = probe.getsockname()[1]
@@ -205,6 +214,52 @@ class TransportTests(unittest.TestCase):
             _, job = self.request("GET", f"/v1/jobs/{job['job_id']}")
         self.assertEqual("failed", job["status"])
         self.assertIsNotNone(job["error"])
+
+    def test_chunked_upload_is_bounded_and_same_origin_ui_is_served(self):
+        with urllib.request.urlopen(self.base + "/apps/ui/", timeout=5) as response:
+            self.assertEqual(200, response.status)
+            self.assertIn(b"PA UI", response.read())
+
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            connection.request(
+                "POST",
+                "/v1/audio-assets",
+                body=iter((b"x" * 200, b"y" * 100)),
+                headers={"Content-Type": "audio/wav", "Origin": self.origin},
+                encode_chunked=True,
+            )
+            response = connection.getresponse()
+            payload = json.loads(response.read())
+        finally:
+            connection.close()
+        self.assertEqual(413, response.status)
+        self.assertEqual("audio_too_large", payload["error"]["code"])
+
+    def test_idle_websocket_disconnect_stops_subscription_polling(self):
+        snapshot = self.setup_session()
+        original = self.runtime.connect_events
+        calls = []
+        calls_lock = threading.Lock()
+
+        def counted(*args, **kwargs):
+            with calls_lock:
+                calls.append(time.monotonic())
+            return original(*args, **kwargs)
+
+        self.runtime.connect_events = counted
+        uri = (
+            f"ws://127.0.0.1:{self.port}/v1/sessions/{snapshot['session_id']}/events"
+            f"?after_sequence={snapshot['event_sequence']}"
+        )
+        with connect(uri, origin=self.origin, open_timeout=5):
+            time.sleep(0.12)
+        time.sleep(0.15)
+        with calls_lock:
+            settled_count = len(calls)
+        time.sleep(0.15)
+        with calls_lock:
+            self.assertEqual(settled_count, len(calls))
 
 
 if __name__ == "__main__":

@@ -19,6 +19,17 @@ class PersistentAnomalyPolicy:
         self._key = None
         self._frames = []
 
+    def export_state(self) -> dict:
+        return {
+            "key": list(self._key) if self._key is not None else None,
+            "frames": copy.deepcopy(self._frames),
+        }
+
+    def restore_state(self, state: dict) -> None:
+        key = state.get("key")
+        self._key = tuple(key) if key is not None else None
+        self._frames = copy.deepcopy(state.get("frames", []))
+
     def observe(self, frame: dict) -> tuple[dict, list[str]] | None:
         # Unusable evidence is neither Normal nor persistence evidence. In particular,
         # stale frames cannot create an incident or erase pending fresh evidence.

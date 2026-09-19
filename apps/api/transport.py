@@ -13,7 +13,8 @@ from starlette.applications import Starlette
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Route, WebSocketRoute
+from starlette.routing import Mount, Route, WebSocketRoute
+from starlette.staticfiles import StaticFiles
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from core.contracts.validation import SETUP, validate_record
@@ -99,9 +100,15 @@ async def upload_audio(request: Request):
                     raise APIError(413, "audio_too_large", "Audio upload exceeds the byte limit.")
             except ValueError as exc:
                 raise APIError(422, "invalid_content_length", "Content-Length is invalid.") from exc
-        content = await request.body()
+        content = bytearray()
+        async for chunk in request.stream():
+            if len(content) + len(chunk) > _api(request).max_upload_bytes:
+                raise APIError(413, "audio_too_large", "Audio upload exceeds the byte limit.")
+            content.extend(chunk)
         filename = request.headers.get("x-audio-filename", "uploaded.wav")
-        return await asyncio.to_thread(_api(request).upload_audio, content, filename=filename)
+        return await asyncio.to_thread(
+            _api(request).upload_audio, bytes(content), filename=filename
+        )
     return await _call(request, operation)
 
 
@@ -186,7 +193,12 @@ async def session_events(websocket: WebSocket):
             for event in batch["events"]:
                 await websocket.send_json(event)
                 cursor = event["event_sequence"]
-            await asyncio.sleep(0.05)
+            try:
+                message = await asyncio.wait_for(websocket.receive(), timeout=0.05)
+            except TimeoutError:
+                continue
+            if message["type"] == "websocket.disconnect":
+                return
     except WebSocketDisconnect:
         return
 
@@ -207,7 +219,11 @@ ROUTES = [
 ]
 
 
-def create_app(runtime_api: RuntimeAPI | None = None) -> Starlette:
+def create_app(
+    runtime_api: RuntimeAPI | None = None,
+    *,
+    ui_directory: str | Path | None = None,
+) -> Starlette:
     @asynccontextmanager
     async def lifespan(application):
         if runtime_api is not None:
@@ -241,7 +257,21 @@ def create_app(runtime_api: RuntimeAPI | None = None) -> Starlette:
         if application.state.background_tasks:
             await asyncio.gather(*application.state.background_tasks, return_exceptions=True)
 
-    application = Starlette(routes=ROUTES, lifespan=lifespan)
+    selected_ui = (
+        Path(ui_directory)
+        if ui_directory is not None
+        else Path(__file__).resolve().parents[1] / "ui"
+    )
+    routes = list(ROUTES)
+    if selected_ui.is_dir():
+        routes.append(
+            Mount(
+                "/apps/ui",
+                app=StaticFiles(directory=selected_ui, html=True),
+                name="ui",
+            )
+        )
+    application = Starlette(routes=routes, lifespan=lifespan)
     application.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=["127.0.0.1", "localhost", "testserver"],

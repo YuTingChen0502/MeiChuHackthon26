@@ -40,6 +40,13 @@ Set `PA_RUNTIME_STORAGE_DIR` for durable state and optionally
 list is reported honestly as unavailable. Host and browser Origin checks are
 loopback-only by default.
 
+When `apps/ui/` is present in the integrated checkout, the same process serves only
+that directory at `/apps/ui/`; it never mounts the repository root. This Runtime
+checkpoint still uses `FakeInstrumentAnalyzer`, and `PA_AUDIO_DEVICE_IDS` is only a
+runtime availability/Live gate. Native microphone capture and its sustained audio
+worker remain a separate integration gate; no fake evidence is presented as physical
+capture or model accuracy.
+
 ## Setup request/response example
 
 ```json

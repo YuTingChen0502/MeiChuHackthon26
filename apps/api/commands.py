@@ -112,7 +112,10 @@ class CommandHandler:
         if not isinstance(command, dict) or not command.get("session_id") or not command.get("idempotency_key"):
             raise ValueError("command lacks a usable session/idempotency envelope")
         command_text = canonical_command(command)
-        with self.ledger.lock, self._lock:
+        # Every Runtime writer uses session -> durable-store lock order. Holding the
+        # session lock through commit/rollback prevents snapshots from observing an
+        # uncommitted command version.
+        with self._lock, self.session.command_transaction(), self.ledger.lock:
             existing = self.ledger.get(command["session_id"], command["idempotency_key"])
             if existing is not None:
                 if existing["command"] == command_text:

@@ -7,6 +7,7 @@ import hashlib
 import json
 import struct
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
 from threading import RLock
@@ -40,10 +41,15 @@ def _persisted(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         with self._lock:
-            result = method(self, *args, **kwargs)
-            if self._persistence_callback is not None:
-                self._persistence_callback(self.export_state())
-            return result
+            pre_state = self.export_state()
+            try:
+                result = method(self, *args, **kwargs)
+                if self._persistence_callback is not None:
+                    self._persistence_callback(self.export_state())
+                return result
+            except Exception:
+                self.restore_state(pre_state)
+                raise
     return wrapper
 
 
@@ -198,6 +204,12 @@ class PASession:
         with self._lock:
             self._persistence_callback = callback
 
+    @contextmanager
+    def command_transaction(self):
+        """Hold the session lock across mutation, durable commit, or rollback."""
+        with self._lock:
+            yield
+
     @_synchronized
     def export_state(self) -> dict:
         return {
@@ -233,6 +245,7 @@ class PASession:
             "incident_before_balance": self._incident_before_balance,
             "verification_armed": self._verification_armed,
             "require_fresh_after_resume": self._require_fresh_after_resume,
+            "detector_state": self._detector.export_state(),
             "settling_policy_s": self.settling_policy_s,
             "persistence_frames": self.persistence_frames,
             "event_retention": self.event_retention,
@@ -320,6 +333,7 @@ class PASession:
         self.persistence_frames = state["persistence_frames"]
         self.event_retention = state["event_retention"]
         self._detector = PersistentAnomalyPolicy(required_frames=self.persistence_frames)
+        self._detector.restore_state(state.get("detector_state", {}))
         validate_snapshot(self.snapshot())
 
     @_synchronized
@@ -427,18 +441,19 @@ class PASession:
         self._frame_audio_hashes[frame["frame_id"]] = self._audio_hash(window)
         self._append_event(frame)
 
-        if self._verification_armed and self.adjustment is not None:
-            if self.incident is None:
-                self._consider_proactive_recheck(frame, window.start_monotonic_s)
-            else:
-                self._consider_verification(frame, window.start_monotonic_s)
-            return copy.deepcopy(frame)
         if self.song["workflow_state"] == "SUSPENDED":
             # Paused sessions may continue publishing diagnostics, but cannot advance
             # persistence, open incidents, or emit corrective recommendations.
             return copy.deepcopy(frame)
         if self._require_fresh_after_resume:
-            self._require_fresh_after_resume = False
+            if quality_is_usable(frame["quality"]):
+                self._require_fresh_after_resume = False
+            return copy.deepcopy(frame)
+        if self._verification_armed and self.adjustment is not None:
+            if self.incident is None:
+                self._consider_proactive_recheck(frame, window.start_monotonic_s)
+            else:
+                self._consider_verification(frame, window.start_monotonic_s)
             return copy.deepcopy(frame)
         if (
             self.incident is not None
@@ -553,9 +568,9 @@ class PASession:
             self.song["workflow_state"] = "LIVE_ANOMALY" if self.session_mode == "live" else "ANOMALY_DETECTED"
         self._audit("verification", verification)
         self._audit("incident_revised", self.incident)
-        if outcome in ("partial", "not_recovered"):
+        if outcome in ("recovered", "partial", "not_recovered"):
             # The completed attempt remains immutable in audit/verification history,
-            # while the active incident may enter another human correction loop.
+            # while a remaining active incident may enter another correction loop.
             self.adjustment = None
         self._transition()
         self._append_event(verification)
@@ -582,8 +597,7 @@ class PASession:
         except ValueError as exc:
             raise SessionCommandError("stale_or_invalid_binding", str(exc), retryable=True) from exc
         action = command["action"]
-        if self.song["workflow_state"] == "STOPPED":
-            raise SessionCommandError("session_stopped", "STOPPED is terminal for this session.")
+        self._authorize_action(action)
         if action == "accept_baseline":
             self._accept_baseline(command["payload"])
         elif action == "start_adjustment":
@@ -605,6 +619,32 @@ class PASession:
         else:
             raise SessionCommandError("unsupported_action", f"Unsupported action: {action}", http_status=422)
         return self.snapshot()
+
+    def _authorize_action(self, action: str) -> None:
+        workflow = self.song["workflow_state"]
+        if workflow == "STOPPED":
+            raise SessionCommandError("session_stopped", "STOPPED is terminal for this session.")
+        if workflow == "SUSPENDED":
+            if action in ("resume", "stop"):
+                return
+            raise SessionCommandError(
+                "session_suspended",
+                "Suspended sessions accept only resume or stop.",
+            )
+        if action in ("accept_baseline", "start_live"):
+            if self.adjustment is not None:
+                raise SessionCommandError(
+                    "unresolved_adjustment",
+                    "Complete and verify or cancel the current human adjustment first.",
+                )
+            if self.incident is not None and self.incident["event"]["state"] not in (
+                "resolved",
+                "dismissed",
+            ):
+                raise SessionCommandError(
+                    "unresolved_incident",
+                    "Resolve or dismiss the current incident first.",
+                )
 
     def _start_adjustment(self) -> None:
         if self.song["workflow_state"] == "STOPPED" or self.adjustment is not None:
@@ -750,11 +790,10 @@ class PASession:
         self._transition()
 
     def _pause(self) -> None:
-        if self.song["workflow_state"] == "STOPPED":
-            raise SessionCommandError("invalid_state", "Stopped session cannot pause.")
         self.song["workflow_state"] = "SUSPENDED"
         self.suspension_reasons = ["operator_paused"]
         self.recommendations = []
+        self._verification_armed = False
         self._detector.reset()
         self._transition()
 
@@ -766,7 +805,24 @@ class PASession:
                 "new_session_required",
                 "Application restart changed the clock; start a new session instead.",
             )
-        self.song["workflow_state"] = "LIVE_MONITORING" if self.session_mode == "live" else "REHEARSAL"
+        if self.adjustment is not None:
+            if self.adjustment["completed_monotonic_s"] is None:
+                self.song["workflow_state"] = "PA_ADJUSTING"
+            else:
+                self.song["workflow_state"] = (
+                    "VERIFY_RECOVERY" if self.session_mode == "live" else "RECHECK"
+                )
+        elif self.incident is not None and self.incident["event"]["state"] not in (
+            "resolved",
+            "dismissed",
+        ):
+            self.song["workflow_state"] = (
+                "LIVE_ANOMALY" if self.session_mode == "live" else "ANOMALY_DETECTED"
+            )
+        else:
+            self.song["workflow_state"] = (
+                "LIVE_MONITORING" if self.session_mode == "live" else "REHEARSAL"
+            )
         self.suspension_reasons = []
         self._require_fresh_after_resume = True
         self._transition()

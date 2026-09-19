@@ -1,5 +1,6 @@
 import io
 import tempfile
+import threading
 import unittest
 import wave
 
@@ -154,6 +155,58 @@ class RuntimeAPIServiceTests(unittest.TestCase):
             self.assertTrue(response["snapshot"]["active_baseline"]["immutable"])
             self.assertEqual(1, runtime.baseline_store.count())
 
+    def test_failed_commit_is_never_visible_to_concurrent_snapshot_reader(self):
+        with tempfile.TemporaryDirectory() as directory:
+            api = RuntimeAPI(
+                storage_dir=directory,
+                window_size_samples=10,
+                available_audio_devices={"mic-1"},
+            )
+            _, _, _, snapshot = self.create_rehearsal_session(api)
+            session_id = snapshot["session_id"]
+            original = api._store.record_command
+            entered_commit = threading.Barrier(2)
+            release_commit = threading.Event()
+            reader_done = threading.Event()
+            command_errors = []
+            reader_results = []
+
+            def blocked_failure(**_kwargs):
+                entered_commit.wait(timeout=5)
+                if not release_commit.wait(timeout=5):
+                    raise TimeoutError("test did not release simulated commit")
+                raise OSError("simulated durable commit failure")
+
+            def run_command():
+                try:
+                    api.post_action(session_id, command(snapshot, "blocked-pause", "pause"))
+                except Exception as exc:
+                    command_errors.append(exc)
+
+            def read_snapshot():
+                reader_results.append(api.get_session(session_id)[1])
+                reader_done.set()
+
+            api._store.record_command = blocked_failure
+            command_thread = threading.Thread(target=run_command)
+            reader_thread = threading.Thread(target=read_snapshot)
+            try:
+                command_thread.start()
+                entered_commit.wait(timeout=5)
+                reader_thread.start()
+                self.assertFalse(reader_done.wait(timeout=0.2))
+            finally:
+                release_commit.set()
+                command_thread.join(timeout=5)
+                reader_thread.join(timeout=5)
+                api._store.record_command = original
+
+            self.assertEqual(1, len(command_errors))
+            self.assertIsInstance(command_errors[0], OSError)
+            self.assertEqual(1, len(reader_results))
+            self.assertEqual(snapshot["state_version"], reader_results[0]["state_version"])
+            self.assertEqual("REHEARSAL", reader_results[0]["song"]["workflow_state"])
+
     def test_setup_upload_job_commands_and_reconnect_facade(self):
         with tempfile.TemporaryDirectory() as directory:
             clock = Clock()
@@ -253,6 +306,16 @@ class RuntimeAPIServiceTests(unittest.TestCase):
             self.assertIn("runtime_restart_requires_new_session", restored["suspension_reasons"])
             self.assertTrue(restored["active_baseline"]["immutable"])
 
+            status, rejected_pause = restarted.post_action(
+                session_id, command(restored, "pause-after-restart", "pause")
+            )
+            self.assertEqual(409, status)
+            self.assertEqual("session_suspended", rejected_pause["error"]["code"])
+            self.assertIn(
+                "runtime_restart_requires_new_session",
+                rejected_pause["snapshot"]["suspension_reasons"],
+            )
+
             # A completed command retry survives a new RuntimeAPI instance and is
             # returned before the restored session's newer restart-suspension state.
             status, retried = restarted.accept_baseline(session_id, accept)
@@ -260,7 +323,8 @@ class RuntimeAPIServiceTests(unittest.TestCase):
             self.assertEqual(accept_response, retried)
 
             status, resume = restarted.post_action(
-                session_id, command(restored, "resume-after-restart", "resume")
+                session_id,
+                command(rejected_pause["snapshot"], "resume-after-restart", "resume"),
             )
             self.assertEqual(409, status)
             self.assertEqual("new_session_required", resume["error"]["code"])

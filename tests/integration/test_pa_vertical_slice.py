@@ -133,6 +133,7 @@ class PAVerticalSliceTests(unittest.TestCase):
             {"adjustment_id": self.session.snapshot()["adjustment"]["adjustment_id"]},
         )
         adjustment_id = completed["snapshot"]["adjustment"]["adjustment_id"]
+        cutoff = completed["snapshot"]["adjustment"]["verification_not_before_monotonic_s"]
         self.apply(f"{prefix}-recheck", "recheck", {"adjustment_id": adjustment_id})
         self.analyzer.queue(FakeEvidenceSpec(deltas_db={"guitar": 0, "bass": 0, "drums": 0}))
         corrected = self.window(f"{prefix}-corrected", corrected_start)
@@ -141,7 +142,7 @@ class PAVerticalSliceTests(unittest.TestCase):
         self.assertEqual("recovered", snapshot["latest_verification"]["outcome"])
         self.assertGreaterEqual(
             snapshot["latest_verification"]["first_evidence_sample_start_monotonic_s"],
-            snapshot["adjustment"]["verification_not_before_monotonic_s"],
+            cutoff,
         )
         return corrected, snapshot
 
@@ -280,6 +281,108 @@ class PAVerticalSliceTests(unittest.TestCase):
         self.assertEqual("SUSPENDED", snapshot["song"]["workflow_state"])
         self.assertIsNone(snapshot["incident"])
         self.assertEqual([], snapshot["recommendations"])
+
+        rejected = self.handler.handle(
+            command(snapshot, "paused-recheck", "recheck", {"adjustment_id": None})
+        )
+        self.assertEqual(409, rejected["http_status"])
+        self.assertEqual("session_suspended", rejected["error"]["code"])
+        self.assertEqual("SUSPENDED", rejected["snapshot"]["song"]["workflow_state"])
+        self.assertEqual(["operator_paused"], rejected["snapshot"]["suspension_reasons"])
+
+    def test_pause_disarms_verification_and_keeps_audio_diagnostic_only(self):
+        self.open_persistent_incident("pause-verification", 2)
+        self.apply("pause-verification-start", "start_adjustment")
+        self.clock.value = 10
+        adjustment_id = self.session.snapshot()["adjustment"]["adjustment_id"]
+        self.apply(
+            "pause-verification-complete",
+            "complete_adjustment",
+            {"adjustment_id": adjustment_id},
+        )
+        self.apply(
+            "pause-verification-recheck", "recheck", {"adjustment_id": adjustment_id}
+        )
+        self.apply("pause-during-verification", "pause")
+        self.analyzer.queue(
+            FakeEvidenceSpec(deltas_db={"guitar": 0, "bass": 0, "drums": 0})
+        )
+        self.session.observe_window(self.window("paused-corrected", 12))
+        snapshot = self.session.snapshot()
+        self.assertEqual("SUSPENDED", snapshot["song"]["workflow_state"])
+        self.assertIsNone(snapshot["latest_verification"])
+        self.assertFalse(self.session.export_state()["verification_armed"])
+
+    def test_rejected_command_preserves_pending_detector_streak(self):
+        anomaly = FakeEvidenceSpec(deltas_db={"guitar": 4, "bass": 0, "drums": 0})
+        self.analyzer.queue(anomaly, anomaly)
+        self.session.observe_window(self.window("pending-before-rejection", 2))
+        rejected = self.handler.handle(
+            command(self.session.snapshot(), "invalid-resume", "resume")
+        )
+        self.assertEqual(409, rejected["http_status"])
+        self.session.observe_window(self.window("pending-after-rejection", 3))
+        self.assertEqual("active", self.session.snapshot()["incident_state"])
+
+    def test_failed_observation_persistence_restores_session_state(self):
+        before = self.session.export_state()
+
+        def fail_persistence(_state):
+            raise OSError("simulated observation persistence failure")
+
+        self.session.set_persistence_callback(fail_persistence)
+        self.analyzer.queue(
+            FakeEvidenceSpec(deltas_db={"guitar": 0, "bass": 0, "drums": 0})
+        )
+        try:
+            with self.assertRaises(OSError):
+                self.session.observe_window(self.window("failed-observation", 2))
+        finally:
+            self.session.set_persistence_callback(None)
+        self.assertEqual(before, self.session.export_state())
+
+    def test_unresolved_adjustment_blocks_baseline_and_live_promotion(self):
+        self.analyzer.queue(
+            FakeEvidenceSpec(deltas_db={"guitar": 0, "bass": 0, "drums": 0})
+        )
+        accepted_window = self.window("unresolved-baseline", 2)
+        self.session.observe_window(accepted_window)
+        interval = {
+            "analysis_run_id": accepted_window.analysis_run_id,
+            "clock_id": accepted_window.clock_id,
+            "sample_rate_hz": accepted_window.sample_rate_hz,
+            "sample_start": accepted_window.sample_start,
+            "sample_end": accepted_window.sample_end,
+        }
+        self.apply(
+            "unresolved-accept-first",
+            "accept_baseline",
+            {
+                "interval": interval,
+                "accepted_by": "human-pa",
+                "reference_difference_accepted": True,
+                "acceptance_note": "initial baseline",
+            },
+        )
+        self.apply("unresolved-start-adjustment", "start_adjustment")
+        for key, action, payload in (
+            (
+                "unresolved-accept-again",
+                "accept_baseline",
+                {
+                    "interval": interval,
+                    "accepted_by": "human-pa",
+                    "reference_difference_accepted": True,
+                    "acceptance_note": "must not replace during adjustment",
+                },
+            ),
+            ("unresolved-start-live", "start_live", {}),
+        ):
+            rejected = self.handler.handle(
+                command(self.session.snapshot(), key, action, payload)
+            )
+            self.assertEqual(409, rejected["http_status"])
+            self.assertEqual("unresolved_adjustment", rejected["error"]["code"])
 
     def test_stopped_session_rejects_fresh_commands(self):
         self.apply("stop", "stop")
