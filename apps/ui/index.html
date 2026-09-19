@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PA Controller — Operator Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div><p class="eyebrow">AI PERFORMANCE CONTROLLER</p><h1>PA operator console</h1></div>
+        <div id="mode" class="mode">Loading session…</div>
+      </header>
+      <p class="fixture-notice">Fixture mode — illustrative contract data only; it is not audio-model or physical-demo evidence. <button id="fixture-live" class="link-button">View Live incident</button> <button id="fixture-rehearsal" class="link-button">View rehearsal</button></p>
+      <section class="summary" id="summary"></section>
+      <section class="profiles" id="profiles"></section>
+      <section aria-labelledby="signal-title">
+        <div class="section-heading"><div><p class="eyebrow">CURRENT OBSERVATION</p><h2 id="signal-title">Instrument balance</h2></div><p id="freshness"></p></div>
+        <div class="instrument-grid" id="instrument-cards"></div>
+      </section>
+      <section class="lower-grid">
+        <article class="panel"><p class="eyebrow">PA RECOMMENDATION</p><div id="recommendation"></div></article>
+        <article class="panel"><p class="eyebrow">POST-ADJUSTMENT VERIFICATION</p><div id="verification"></div></article>
+      </section>
+      <section class="panel controls" aria-labelledby="controls-title">
+        <div><p class="eyebrow">EXPLICIT HUMAN CONTROLS</p><h2 id="controls-title">Session actions</h2></div>
+        <div id="controls" class="control-grid"></div>
+        <p id="command-status" class="command-status" aria-live="polite"></p>
+      </section>
+      <section class="panel setup" aria-labelledby="setup-title">
+        <div><p class="eyebrow">SETUP / UPLOAD</p><h2 id="setup-title">Create the declared song and reference</h2></div>
+        <p>Uses the frozen L2 order: project → song with declared families → audio asset → reference job → session. The local fixture adapter prepares requests but does not send audio or mutations.</p>
+        <form id="setup-form">
+          <label>Project <input name="project" value="Demo set" required /></label>
+          <label>Song <input name="song" value="Example song" required /></label>
+          <label>Known families <input name="families" value="guitar, bass, drums" required /></label>
+          <label>Mixed ideal reference <input name="reference" type="file" accept="audio/*" /></label>
+          <label>Session source <select name="source"><option value="live_microphone">Live microphone</option><option value="uploaded_file">Uploaded rehearsal audio</option></select></label>
+          <button type="submit">Prepare setup requests</button>
+        </form>
+        <ol><li>Create project and song.</li><li>Declare known instrument families.</li><li>Upload the mixed ideal reference.</li><li>Wait for the reference job.</li><li>Start a rehearsal or live-microphone session.</li></ol>
+        <button id="show-setup" class="secondary">Show endpoint plan</button>
+        <pre id="setup-plan" hidden></pre>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
