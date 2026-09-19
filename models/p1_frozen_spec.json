@@ -24,5 +24,11 @@
   "level_scale_id": "htdemucs6s-source-rms-dbfs-before-centering-v1",
   "supported_candidate_families": [
     "bass"
-  ]
+  ],
+  "smoke_files": {
+    "reference.wav": "6543c8f16dcd181c699b163939b820db12e535ddce9babaea4f5a05e017f0d0e",
+    "observation.wav": "29078f8d554cc9eb070e763851c756b6f2a6d3c897f8c4ddd274b759cebf7eb7",
+    "inference-run-1.json": "63e15811778798dcf4d1a4c3a8d047f014497081c4615ed6e4053613b176002e",
+    "fixture_provenance.json": "9cb5d74e958cec374048d650f84b06d03fb4be675e0e26591b708f5ac4b3d934"
+  }
 }

@@ -166,6 +166,12 @@ class P1ContractTests(unittest.TestCase):
         finally:
             a.close()
 
+    def test_reference_rejects_mixed_input_timelines(self):
+        one = window(name="reference", start=0)
+        two = replace(window(name="reference", start=44100), input_asset_or_device_id="another-asset")
+        with self.assertRaisesRegex(ValueError, "incompatible input timelines"):
+            self.analyzer.prepare_reference([one, two], self.config)
+
     def test_corrupt_or_missing_reference_context(self):
         key = self.prepared["model_specific_context_asset"].split(":")[1]
         file = self.cache / (key + ".json")

@@ -65,6 +65,8 @@ Its exact class/state reconstructs the single-network bag offline. The subset us
 and strictly replaces only decoder.3.conv_tr and tdecoder.3.conv_tr weight/bias tensors.
 Before/after module hashes must match the publication, and both modules must differ.
 No optimizer, training step or checkpoint substitution occurs.
+The committed smoke WAVs are restricted validation research fixtures, not synthetic audio or public demo assets.
+Their dataset/split/intervention provenance is retained; this integration grants no redistribution rights.
 
 The input is exactly mono44100Hz/176400 samples, duplicated to dual mono without independent
 normalization, clipping rescaling or saved-stem processing. The frontend rejects other shapes;
@@ -84,7 +86,8 @@ fails closed. Cache preparation is bounded to1024 windows.
 
 The supported comparison is deliberately narrow: matched digital excerpts with equal absolute sample
 spans in the supplied reference. A missing/ambiguous span does not trigger guessed alignment.
-No learned room/context matcher exists. Microphone observations, stable_texture, clipping, wrong
+No learned room/context matcher exists. An uploaded-file flag alone cannot establish acoustic provenance:
+the host must supply genuinely comparable matched-digital content. This adapter does not certify that claim. Microphone observations, stable_texture, clipping, wrong
 sample rate/window, changed five-ID profile or missing context cannot produce candidate numeric evidence.
 Accepted digital baselines can reuse the same preparation/context lifecycle; actual live-room or
 re-timed baseline matching remains outside this candidate's evidence envelope.
@@ -116,7 +119,7 @@ python -m benchmarks.p1_candidate_smoke --candidate models/candidates/nano4-p1-a
 ```
 
 The smoke command requires committed source, records exact integration/origin SHA and byte identities,
-uses the published synthetic PCM only, repeats identical inference, and compares raw bass source
+uses only the published MoisesDB-derived restricted validation PCM, repeats identical inference, and compares raw bass source
 levels/delta to the published smoke using0.01dB cross-platform integration tolerance. This is not
 an action threshold, retuning or a real-audio accuracy claim.
 

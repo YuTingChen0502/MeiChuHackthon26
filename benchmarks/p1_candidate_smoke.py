@@ -1,4 +1,4 @@
-"""Bounded CPU integration smoke; published synthetic fixture only, no research."""
+"""Bounded CPU integration smoke; published restricted validation fixture only, no research."""
 import argparse
 import hashlib
 import json
@@ -18,6 +18,11 @@ from core.contracts.validation import validate_analyzer_pair
 
 def run_smoke(candidate, *, cache_dir, device="cpu"):
     candidate = Path(candidate)
+    from analyzers.separation.p1_bundle import DEFAULT_SPEC
+    spec = json.loads(DEFAULT_SPEC.read_text())
+    for name, digest in spec["smoke_files"].items():
+        if sha256_file(candidate / "runtime_smoke" / name) != digest:
+            raise ValueError("Frozen smoke file hash mismatch")
     model_started = time.perf_counter()
     analyzer = load_p1_candidate(candidate, cache_dir=cache_dir, candidate_mode=True, device=device)
     model_seconds = time.perf_counter() - model_started
@@ -40,7 +45,7 @@ def run_smoke(candidate, *, cache_dir, device="cpu"):
             "record_type": "AnalyzerContext", "schema_version": "1.0",
             "model": analyzer.capabilities()["model"], "observation": observation.identity(),
             "instrument_config": config, "target": {"target_kind": "reference",
-                "reference": {"reference_id": "frozen-synthetic-smoke",
+                "reference": {"reference_id": "frozen-validation-smoke",
                               "source_asset_hash": "sha256:" + sha256_file(candidate / "runtime_smoke/reference.wav")},
                 "baseline": None}, "comparison_regime": "matched_excerpt",
             "model_specific_context_asset": prepared["model_specific_context_asset"],
@@ -62,9 +67,12 @@ def run_smoke(candidate, *, cache_dir, device="cpu"):
         }
         return {
             "record_type": "P1CandidateIntegrationSmoke", "schema_version": "1.0",
-            "material_class": "synthetic", "claim": "INTEGRATION_ONLY",
+            "material_class": "real_recorded", "claim": "INTEGRATION_ONLY",
             "input_sha256": {n: sha256_file(candidate / "runtime_smoke" / n)
                              for n in ("reference.wav", "observation.wav", "inference-run-1.json")},
+            "fixture_provenance": json.loads((candidate / "runtime_smoke/fixture_provenance.json").read_text()),
+            "usage": "Private integration verification; no public/demo redistribution approval.",
+            "noise_type": "none", "snr_db": None, "seed": 260920,
             "capabilities": analyzer.capabilities(), "manifest_sha256": hashlib.sha256(analyzer.bundle.data("manifest.json")).hexdigest(),
             "upstream_sha256": analyzer.bundle.manifest["upstream_pretrained_checkpoint"]["sha256"],
             "adapted_sha256": analyzer.bundle.manifest["bundled_adapted_checkpoint"]["sha256"],
@@ -73,7 +81,7 @@ def run_smoke(candidate, *, cache_dir, device="cpu"):
             "parity_errors_db": errors, "parity_passed": max(errors.values()) <= 0.01,
             "timing_seconds": {"model_load": model_seconds, "reference": reference_seconds, "observation": seconds},
             "context": context, "evidence": first, "python": platform.python_version(),
-            "limitations": ["Synthetic smoke only; no real-room/PN54/MI300/production acceptance.",
+            "limitations": ["Restricted validation-excerpt smoke only; no real-room/PN54/MI300/production acceptance.",
                             "Raw source levels only; unsupported anchors never enter evidence.",
                             "Cross-profile tolerance is an integration check, not an accuracy or calibration claim."],
         }
