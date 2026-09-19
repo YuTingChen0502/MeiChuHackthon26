@@ -16,6 +16,7 @@ CONTRACT_DIR = Path(__file__).resolve().parents[2] / "contracts"
 PUBLIC = "urn:pa-controller:contracts:1.0"
 ANALYZER = "urn:pa-controller:analyzer:1.0"
 WIRE = "urn:pa-controller:session-wire:1.0"
+SETUP = "urn:pa-controller:setup-wire:1.0"
 SCHEMAS = {
     document["$id"]: document
     for path in sorted(CONTRACT_DIR.glob("*.schema.json"))
