@@ -76,6 +76,7 @@ test('runtime adapter posts commands to the frozen route and refreshes a conflic
   };
   try {
     const adapter = new RuntimeAdapter({ onSnapshot:snapshot => refreshed.push(snapshot), onStatus() {} });
+    adapter.activateSession('s-1');
     await assert.rejects(() => adapter.command({ session_id:'s-1', action:'pause' }), /stale/);
     assert.equal(received[0][0], '/v1/sessions/s-1/actions');
     assert.equal(received[0][1].method, 'POST');
@@ -90,6 +91,7 @@ test('runtime adapter ignores delayed snapshots and refreshes after a frame-only
   globalThis.fetch = async () => ({ ok:true, status:200, json:async () => ({ session_id:'s-1', state_version:3, event_sequence:3 }) });
   try {
     const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
+    adapter.activateSession('s-1');
     adapter.acceptSnapshot({ session_id:'s-1', state_version:3, event_sequence:2 });
     assert.equal(adapter.acceptSnapshot({ session_id:'s-1', state_version:2, event_sequence:1 }), false);
     await adapter.handleEvent('s-1', { session_id:'s-1', event_sequence:3, payload:{ record_type:'AnalysisFrame' } });
@@ -108,6 +110,7 @@ test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
   globalThis.WebSocket = class { constructor(url) { this.url = url; sockets.push(this); } close() {} };
   try {
     const adapter = new RuntimeAdapter({ onSnapshot() {}, onStatus() {} });
+    adapter.activateSession('s-1');
     await adapter.recover('s-1');
     assert.match(sockets[0].url, /after_sequence=9$/);
     adapter.stopEvents();
@@ -116,4 +119,17 @@ test('runtime adapter reconnects from a fresh snapshot cursor', async () => {
     globalThis.WebSocket = originalWebSocket;
     globalThis.location = originalLocation;
   }
+});
+test('runtime adapter isolates cursor and late responses across deliberate session switches', async () => {
+  const snapshots = [];
+  const adapter = new RuntimeAdapter({ onSnapshot:snapshot => snapshots.push(snapshot), onStatus() {} });
+  adapter.activateSession('old');
+  adapter.acceptSnapshot({ session_id:'old', state_version:4, event_sequence:50 });
+  adapter.activateSession('new');
+  adapter.acceptSnapshot({ session_id:'new', state_version:0, event_sequence:0 });
+  await adapter.handleEvent('new', { session_id:'new', event_sequence:1, payload:{ record_type:'SessionSnapshot', session_id:'new', state_version:1, event_sequence:1 } });
+  assert.equal(adapter.cursor, 1);
+  assert.equal(adapter.acceptSnapshot({ session_id:'old', state_version:5, event_sequence:51 }), false);
+  assert.equal(adapter.snapshot.session_id, 'new');
+  assert.deepEqual(snapshots.map(snapshot => snapshot.session_id), ['old', 'new', 'new']);
 });
