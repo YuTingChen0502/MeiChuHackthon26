@@ -5,8 +5,9 @@
   "evidence_mode": "source_level_deltas",
   "units": "dB",
   "scale_sensitive_branch": ["rms_dbfs", "peak_dbfs"],
+  "training_smoke_config": "training/configs/direct_training_smoke_v1.json",
+  "training_smoke_claim_scope": "training_mechanics_only_no_audio_feasibility_claim",
   "adaptation_plan": "frozen-head warmup then unfreeze final encoder blocks on MI300",
   "adapted_on_mi300": false,
   "selection_status": "open_experiment"
 }
-

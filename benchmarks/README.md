@@ -58,3 +58,18 @@ The plan fixes grouped splits, exact excerpts, scenario/noise grids, seeds, gain
 manifest/config hashes and asset identities. Audio is still hash-verified when a plan
 entry is materialized. Requested gains do not imply observability: silent stems receive
 null regression labels from the oracle and remain useful abstention examples.
+
+The direct path has a finite training-mechanics smoke that loads no audio encoder and
+makes no task-feasibility claim:
+
+```text
+python -m training.direct_smoke \
+  --config training/configs/direct_training_smoke_v1.json \
+  --device auto \
+  --output benchmarks/results/direct_training_smoke.json
+```
+
+Run it before a real MI300 job to record the Torch/ROCm device, verify non-zero
+gradients, prove optimizer weight changes, and reject non-finite masked losses. The
+real adaptation job must replace synthetic features with the approved pretrained
+encoder and manifested controlled pairs.
