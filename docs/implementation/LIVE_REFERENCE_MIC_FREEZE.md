@@ -143,10 +143,18 @@ snapshots through the existing event/reconnect mechanism. No new event envelope.
    old hardware. Keep the reference model context; no re-analysis for a mic change.
 4. Publish starting/new source binding before any new-generation frame. Reject every
    callback/inference completion whose generation/run/clock/endpoint is not current.
-5. First fresh current-generation Runtime frame permits capture.state=active and
-   switch_result=applied; analyzer abstention is still allowed. Missing first audio
-   within the configured finite startup timeout is failure. Capturing valid PCM
-   while inference is pending is listening, not detected/Normal.
+5. First fresh current-generation PCM packet proves acquisition startup and permits
+   switch_result=applied. Keep capture.state=listening until a fresh model frame;
+   model latency/stale output alone must not fail/reopen healthy capture. Missing
+   first PCM within the configured finite acquisition timeout is failure. A fresh
+   current-generation Runtime frame permits capture.state=active, even if PA advice
+   abstains. Capturing PCM while inference is pending is listening, not Normal.
+
+Fence publication and close the stream promptly on switch/stop; allow bounded
+model-call completion/reaping without closing a model concurrently with its own
+inference. Do not treat a five-second join timeout as proof that a slower legitimate
+model or a healthy microphone failed. A stuck worker must be reported/unavailable,
+not allowed to publish into the replacement source or accumulate unbounded threads.
 
 On failure close the attempted stream, try the previous actual endpoint once when
 feasible, with another NEW generation/run/clock and fresh evidence. Terminal
