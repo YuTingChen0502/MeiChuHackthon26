@@ -92,7 +92,8 @@ class P1CandidateAnalyzer:
         """Validate the exact cache shape emitted before the v2 attempt policy."""
         require(set(record) == {"version", "model", "bundle_pin", "instrument_config",
                                 "windows", "context_nonce"}, "Invalid legacy reference context")
-        require(record["version"] == 1 and isinstance(record["context_nonce"], str)
+        require(type(record["version"]) is int and record["version"] == 1
+                and isinstance(record["context_nonce"], str)
                 and record["context_nonce"], "Invalid legacy reference context")
         require(isinstance(record["windows"], list) and record["windows"],
                 "Invalid legacy reference windows")
@@ -181,8 +182,10 @@ class P1CandidateAnalyzer:
         require(record["model"] == self._model and record["bundle_pin"] == self.bundle.identity_hash,
                 "Incompatible reference model/profile")
         require(record["instrument_config"] == config, "Incompatible reference instrument configuration")
-        legacy = record.get("version") == 1 and "reference_policy" not in record
-        current = record.get("version") == 2 and record.get("reference_policy") == self._reference_policy
+        legacy = (type(record.get("version")) is int and record["version"] == 1
+                  and "reference_policy" not in record)
+        current = (type(record.get("version")) is int and record["version"] == 2
+                   and record.get("reference_policy") == self._reference_policy)
         if legacy:
             self._legacy_reference(record)
         elif current:

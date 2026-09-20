@@ -379,6 +379,22 @@ class P1ContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "P1 source levels"):
                 self.analyzer.analyze(self.audio, ctx)
 
+    def test_bool_and_float_versions_never_authorize_v1_or_v2_execution(self):
+        cases = (
+            lambda r: r.update(version=True),
+            lambda r: r.update(version=1.0),
+            lambda r: r.update(version=2.0),
+        )
+        for mutate in cases:
+            with self.subTest(mutate=mutate):
+                ctx = self._cache_fixture(mutate)
+                before = len(self.runner.calls)
+                evidence = self.analyzer.analyze(self.audio, ctx)
+                self.assertEqual(before, len(self.runner.calls))
+                self.assertEqual(["reference_context_reprepare_required"],
+                                 evidence["measurements"][0]["reason_codes"])
+                self.assertIsNone(evidence["matched_context_window_id"])
+
     def test_non_bass_missing_source_or_target_never_becomes_numeric_evidence(self):
         for family in ("drums", "guitar", "vocals"):
             for missing_target in (True, False):
