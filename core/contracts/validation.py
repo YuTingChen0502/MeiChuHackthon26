@@ -175,6 +175,11 @@ def validate_snapshot(snapshot):
             require(not capture["frame_fresh"], "Inactive capture cannot claim a fresh frame")
         if capture["frame_fresh"]:
             require(frame is not None, "Fresh frame flag requires a frame")
+            if timing is not None:
+                require(math.isfinite(frame["capture_end_monotonic_s"]) and
+                        timing["snapshot_monotonic_s"] <=
+                        frame["capture_end_monotonic_s"] + timing["result_max_age_s"],
+                        "Fresh frame exceeds its result age budget")
         if frame is not None:
             require(frame["baseline_id"] is None and frame["baseline_version"] is None,
                     "Live reference frame cannot bind a baseline")

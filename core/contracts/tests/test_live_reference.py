@@ -131,6 +131,16 @@ class LiveReferenceContracts(unittest.TestCase):
         timed['latest_frame']['published_monotonic_s'] = 106
         timed['perception'][0]['adjustment_hint']['expires_monotonic_s'] = 116
         validate_snapshot(timed)
+        for profile, budget, receipt in (('strict_v1', 2, 5), ('candidate_delayed_v1', 20, 12)):
+            boundary = copy.deepcopy(timed)
+            boundary['perception'][0]['adjustment_hint'] = None
+            boundary['analysis_timing'].update(profile_id=profile, result_max_age_s=budget,
+                receipt_max_age_s=receipt, snapshot_monotonic_s=100 + budget)
+            boundary['latest_frame']['published_monotonic_s'] = 101
+            validate_snapshot(boundary)
+            boundary['analysis_timing']['snapshot_monotonic_s'] += .001
+            with self.subTest(profile=profile), self.assertRaises(ValueError):
+                validate_snapshot(boundary)
         for deadline in (106, 121, float('inf')):
             bad = copy.deepcopy(timed)
             bad['perception'][0]['adjustment_hint']['expires_monotonic_s'] = deadline
