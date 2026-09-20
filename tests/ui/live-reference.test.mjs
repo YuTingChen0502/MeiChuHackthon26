@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {RuntimeAdapter} from '../../apps/ui/runtime-adapter.js';
 import {commandFor,commandGuard,fixtureScenario} from '../../apps/ui/app.js';
-import {logicalMicrophones,currentSourceFrame,perceptionPresentation,adjustmentHintPresentation,referenceReprepareRequired,capturePresentation,liveReferenceView} from '../../apps/ui/live-reference.js';
+import {logicalMicrophones,currentSourceFrame,perceptionPresentation,adjustmentHintPresentation,referenceReprepareRequired,capturePresentation,liveReferenceView,receiptMaxAgeMs,analysisTimingPresentation,referenceComparisonPresentation,HintDeadlineTracker,SnapshotClockTracker,FrameResultDeadlineTracker} from '../../apps/ui/live-reference.js';
 const base=JSON.parse(await readFile(new URL('../../contracts/examples/pa_shared_v1.json',import.meta.url),'utf8'));
 function session(){
  const s=fixtureScenario(base);s.workflow_policy='live_reference_v1';s.active_baseline=null;s.song.baseline_id=null;s.incident=null;s.incident_state='none';s.adjustment=null;s.latest_verification=null;
@@ -21,6 +21,84 @@ function hintSession(){
  Object.assign(i.confidence,{calibration_status:'uncalibrated',abstained:true,probability:null});
  return s;
 }
+
+function timedHintSession(){
+ const s=hintSession(),p=s.perception[0];
+ s.analysis_timing={profile_id:'candidate_delayed_v1',queue_max_age_s:2,result_max_age_s:20,hint_hold_s:10,receipt_max_age_s:12,snapshot_monotonic_s:106};
+ Object.assign(s.latest_frame,{sample_rate_hz:44100,sample_start:176400,sample_end:352800,capture_end_monotonic_s:100,published_monotonic_s:106,inference_wall_ms:5800});
+ p.adjustment_hint.expires_monotonic_s=116;
+ return s;
+}
+
+test('candidate receipt budget and delayed-analysis copy use server-relative age plus local elapsed',()=>{
+ const s=timedHintSession();assert.equal(receiptMaxAgeMs(s),12000);assert.equal(receiptMaxAgeMs(session()),5000);
+ s.analysis_timing.profile_id='strict_v1';s.analysis_timing.receipt_max_age_s=5;assert.equal(receiptMaxAgeMs(s),5000);
+ s.analysis_timing.profile_id='candidate_delayed_v1';s.analysis_timing.receipt_max_age_s=12;
+ const value=analysisTimingPresentation(s,1000,3000);
+ assert.equal(value.observation,'Observation captured 8.0 s ago');
+ assert.match(value.processing,/Published 6.0 s after capture.*model processing 5.8 s/);
+ assert.equal(value.receipt,'Received 2.0 s ago');
+});
+
+test('same-frame refreshed snapshot uses its own clock anchor without renewing frame receipt age',()=>{
+ const s=timedHintSession(),clock=new SnapshotClockTracker();clock.update(s,1000);
+ assert.equal(clock.anchor(s),1000);
+ s.analysis_timing.snapshot_monotonic_s=110;clock.update(s,5000);
+ const value=analysisTimingPresentation(s,clock.anchor(s),6000,1000);
+ assert.equal(value.observation,'Observation captured 11.0 s ago');
+ assert.equal(value.receipt,'Received 5.0 s ago');
+ clock.update(s,7000);assert.equal(clock.anchor(s),5000,'identical server snapshot must not renew its local anchor');
+});
+
+test('result lifetime clamps receipt freshness and near-expiry reconnect gets only remaining server budget',()=>{
+ const s=timedHintSession(),tracker=new FrameResultDeadlineTracker();
+ tracker.update(s,1000);assert.equal(tracker.deadline(s),15000);
+ s.analysis_timing.snapshot_monotonic_s=110;tracker.update(s,5000);assert.equal(tracker.deadline(s),15000,'same frame must retain its original result deadline');
+ const reconnect=timedHintSession(),nearExpiry=new FrameResultDeadlineTracker();reconnect.analysis_timing.snapshot_monotonic_s=119;
+ nearExpiry.update(reconnect,5000);assert.equal(nearExpiry.deadline(reconnect),6000);
+ nearExpiry.update(reconnect,5500);assert.equal(nearExpiry.deadline(reconnect),6000,'reconnect repeat must not renew the remaining second');
+ reconnect.latest_frame.quality.stale=true;nearExpiry.update(reconnect,5600);assert.equal(nearExpiry.deadline(reconnect),null);
+ reconnect.latest_frame.quality.stale=false;nearExpiry.update(reconnect,5700);assert.equal(nearExpiry.deadline(reconnect),null,'stale result cannot resurrect on the same frame');
+ assert.equal(new FrameResultDeadlineTracker().deadline(s),undefined,'legacy/unseen frames have no client result clamp');
+});
+
+test('reference interval is explicitly assumed synchronized-start and unavailable without coverage',()=>{
+ const s=timedHintSession(),value=referenceComparisonPresentation(s);
+ assert.equal(value.available,true);assert.match(value.title,/Assumed synchronized-start interval 4.0–8.0 s/);
+ assert.match(value.detail,/not a recognized song position.*restart.*0 s.*late entry.*drift.*section jumps/);
+ for(const mutate of [x=>x.latest_frame.quality.comparability='weak',x=>x.perception[0].reason_codes.push('matched_reference_span_unavailable'),x=>x.latest_frame=null]){
+  const unavailable=timedHintSession();mutate(unavailable);assert.equal(referenceComparisonPresentation(unavailable).available,false);
+ }
+});
+
+test('fixed server hint deadline maps once to local elapsed time and never renews on repeats or reconnect',()=>{
+ const s=timedHintSession(),p=s.perception[0],tracker=new HintDeadlineTracker();
+ tracker.update(s,1000,1000);assert.equal(tracker.deadline(s,p),11000);
+ assert.ok(adjustmentHintPresentation(s,p,{hintDeadlineMs:tracker.deadline(s,p),now:10999}));
+ assert.equal(adjustmentHintPresentation(s,p,{hintDeadlineMs:tracker.deadline(s,p),now:11000}),null);
+ s.analysis_timing.snapshot_monotonic_s=110;tracker.update(s,1000,5000);
+ assert.equal(tracker.deadline(s,p),11000,'equal-frame refresh must not renew');
+ tracker.update(s,1000,7000);assert.equal(tracker.deadline(s,p),11000,'reconnect refresh must not renew');
+});
+
+test('null, contradictory, stale and source lifecycle states clear without same-frame resurrection',()=>{
+ const s=timedHintSession(),p=s.perception[0],tracker=new HintDeadlineTracker();tracker.update(s,1000,1000);
+ const original=structuredClone(p.adjustment_hint);p.adjustment_hint=null;tracker.update(s,1000,1500);assert.equal(tracker.deadline(s,p),null);
+ p.adjustment_hint=original;tracker.update(s,1000,1600);assert.equal(tracker.deadline(s,p),null,'same-frame null is terminal');
+ const contradictory=timedHintSession(),cp=contradictory.perception[0],other=new HintDeadlineTracker();other.update(contradictory,1000,1000);
+ cp.adjustment_hint.direction='increase_level';other.update(contradictory,1000,1200);assert.equal(other.deadline(contradictory,cp),null);
+ const stale=timedHintSession(),sp=stale.perception[0],staleTracker=new HintDeadlineTracker();staleTracker.update(stale,1000,1000);stale.latest_frame.quality.stale=true;staleTracker.update(stale,1000,1200);assert.equal(staleTracker.deadline(stale,sp),null);
+ stale.latest_frame.quality.stale=false;staleTracker.update(stale,1000,1300);assert.equal(staleTracker.deadline(stale,sp),null);
+ const next=timedHintSession(),np=next.perception[0];next.latest_frame.frame_id='next-frame';np.frame_id='next-frame';np.adjustment_hint.evidence_frame_id='next-frame';np.adjustment_hint.expires_monotonic_s=118;next.analysis_timing.snapshot_monotonic_s=108;
+ staleTracker.update(next,1000,2000);assert.equal(staleTracker.deadline(next,np),12000,'new frame receives its own fixed deadline');
+});
+
+test('timed snapshots fail closed without authoritative expiry while legacy snapshots keep receipt behavior',()=>{
+ const s=timedHintSession(),p=s.perception[0],tracker=new HintDeadlineTracker();delete p.adjustment_hint.expires_monotonic_s;tracker.update(s,1000,1000);
+ assert.equal(tracker.deadline(s,p),null);assert.equal(adjustmentHintPresentation(s,p,{hintDeadlineMs:null,now:1000}),null);
+ const legacy=hintSession(),lp=legacy.perception[0],old=new HintDeadlineTracker();old.update(legacy,1000,1000);
+ assert.equal(receiptMaxAgeMs(legacy),5000);assert.ok(adjustmentHintPresentation(legacy,lp,{fresh:true,now:5999}));
+});
 
 test('experimental direction comes only from the current Runtime hint and stays nonnumeric',()=>{
  const s=hintSession(),p=s.perception[0];
@@ -72,7 +150,9 @@ test('unvalidated dataset families stay uncertain and partial keys never acquire
 
 test('UI hint wiring is display-only and setup does not equate lack of validation with unsupported',async()=>{
  const source=await readFile(new URL('../../apps/ui/app.js',import.meta.url),'utf8');
- assert.match(source,/hint=adjustmentHintPresentation\(snapshot,p,options\)/);
+ assert.match(source,/hint=adjustmentHintPresentation\(snapshot,p,\{\.\.\.options,hintDeadlineMs:hintDeadlines\.deadline\(snapshot,p\),now\}\)/);
+ assert.match(source,/hintDeadlines\.update\(next,receiptMs,now\)/);
+ assert.match(source,/receiptMaxAgeMs\(snapshot\)/);
  assert.match(source,/node\('p',hint.text,'listening-note'\)/);
  assert.match(source,/Recognition may remain uncertain; adding a family does not validate its identification/);
 });
@@ -154,7 +234,7 @@ test('detection alone never permits numerical advice and masks remain explicit',
  const s=session(),p=s.perception[0];assert.equal(perceptionPresentation(s,p).numeric,true);
  for(const fields of [{numerical_advice_allowed:false},{action_abstained:true},{calibration_status:'uncalibrated'},{numerical_advice_allowed:undefined}])assert.equal(perceptionPresentation(s,{...p,...fields}).numeric,false);
  for(const state of ['unsupported','uncertain','not_heard']){const result=perceptionPresentation(s,{...p,state});assert.equal(result.state,state);assert.equal(result.numeric,false);}
- s.latest_frame=null;s.capture.state='listening';s.capture.frame_fresh=false;s.capture.switch_result='applied';const pending={...p,state:'listening',frame_id:null,calibration_status:'uncalibrated',numerical_advice_allowed:false};assert.equal(perceptionPresentation(s,pending).label,'Listening');assert.equal(currentSourceFrame(s),false);assert.equal(liveReferenceView(s),'LISTENING');assert.match(capturePresentation(s,{}).title,/Listening/);
+ s.latest_frame=null;s.capture.state='listening';s.capture.frame_fresh=false;s.capture.switch_result='applied';const pending={...p,state:'listening',frame_id:null,calibration_status:'uncalibrated',numerical_advice_allowed:false};assert.equal(perceptionPresentation(s,pending).label,'Listening');assert.equal(currentSourceFrame(s),false);assert.equal(liveReferenceView(s),'LISTENING');assert.match(capturePresentation(s,{}).title,/Capturing audio/);
 });
 test('no-frame listening is explicit and not detection; raw old-source frames are withheld',()=>{
  const s=session();assert.equal(currentSourceFrame(s),true);
@@ -179,8 +259,8 @@ test('current capture state outranks retained rollback and pending outcomes',()=
    s.capture.state=state;const copy=capturePresentation(s,{});assert.match(copy.title,new RegExp(label));assert.doesNotMatch(copy.title,/Restored|Changing/);assert.equal(liveReferenceView(s),'INTERRUPTED');
   }
  }
- s.capture.switch_result='rolled_back';s.capture.state='listening';assert.match(capturePresentation(s,{}).title,/Listening/);
- s.capture.state='active';assert.match(capturePresentation(s,{}, {fresh:false}).title,/fresh audio/);
+ s.capture.switch_result='rolled_back';s.capture.state='listening';assert.match(capturePresentation(s,{}).title,/Capturing audio/);
+ s.capture.state='active';assert.match(capturePresentation(s,{}, {fresh:false}).title,/Capturing audio/);
  assert.match(capturePresentation(s,{}).title,/Restored/);
 });
 
@@ -220,7 +300,7 @@ test('rollback acknowledgement survives listening without promoting stale eviden
  const s=session();s.capture.switch_result='rolled_back';s.capture.state='listening';s.capture.frame_fresh=false;s.latest_frame=null;
  for(const state of ['listening','active']){
   s.capture.state=state;const copy=capturePresentation(s,{}, {fresh:false});
-  assert.match(copy.title,/Restored.*Listening.*fresh audio/);assert.match(copy.detail,/Couldn't use.*previous input was restored.*uncertain.*withheld/);
+  assert.match(copy.title,/Restored.*Capturing audio/);assert.match(copy.detail,/Couldn't use.*previous input was restored.*completed analysis.*withheld/);
   assert.equal(perceptionPresentation(s,s.perception[0],{fresh:false}).numeric,false);
   assert.equal(liveReferenceView(s,{fresh:false}),'LISTENING');
  }
@@ -250,7 +330,7 @@ test('setup uploads and prepares once then creates reference-target Live even wi
 });
 
 test('stale capture and disconnected perception never present positive current evidence',()=>{
- const s=session();assert.match(capturePresentation(s,{}, {fresh:false}).title,/fresh audio/);
+ const s=session(),copy=capturePresentation(s,{}, {fresh:false});assert.match(copy.title,/Capturing audio/);assert.match(copy.detail,/completed observation.*no longer current/i);
  assert.equal(perceptionPresentation(s,s.perception[0],{fresh:false}).numeric,false);
  assert.equal(perceptionPresentation(s,s.perception[0],{connected:false}).state,'unavailable');
  assert.equal(liveReferenceView(s,{fresh:false,recoveredKey:'old-result'}),'LISTENING');
