@@ -1,10 +1,10 @@
 {
-  "milestone": "EXPLICIT_SESSION_DELETION",
-  "status": "SHARED_DELETE_CONTRACT_FROZEN_RUNTIME_UI_IMPLEMENTING",
+  "milestone": "DATASET_FAMILY_PERCEPTION_AND_DIRECTION_HINTS",
+  "status": "SESSION_DELETION_DONE_NEW_USER_AMENDMENT_FROZEN",
   "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
   "updated": "2026-09-20",
-  "latest_approved_shared_commit": "5455f7b8f3c25a98e15e2b8959215b4912ea04e2",
-  "latest_integration_commit": "eae1da72c67cc4dc6729f81a456086337589de76",
+  "latest_approved_shared_commit": "d9e231442b9f6b2acb1060f763561b3109c8e90c",
+  "latest_integration_commit": "456a00b",
   "lanes": {
     "ML": {
       "commit": "302926fadb62833338a0914b954d163f59f389b4",
@@ -13,18 +13,15 @@
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "11ee347b0ecc82934b314620ae969ad28387c200",
-      "status": "Accepted and integrated; 80 integration tests PASS; same-session restart and bounded source switch; actual candidate acceptance pending"
+      "commit": "39df3a5e24a5ea3b66a7d257a004fc01996296c5",
+      "status": "Accepted/integrated;13 deletion tests independently PASS; worker full284Python/74UI/both smokes PASS"
     },
     "UI": {
-      "commit": "ecae296cd69a83e33e8b153dd0effb7484f38551",
-      "status": "Accepted/integrated; 74 UI tests independently PASS; actual candidate browser observed; final rollback wording verified separately"
+      "commit": "3168c1edaba43b7125bf7651528a1c7fff4c8651",
+      "status": "Accepted and cherry-picked456a00b;84UI/actual HTTPWS/browser deletion PASS; next user amendment pending"
     }
   },
-  "pending_reviews": [
-    "Runtime durable deletion/lifecycle checkpoint",
-    "UI confirmed deletion and actual transport/browser checkpoint"
-  ],
+  "pending_reviews": [],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -82,7 +79,11 @@
     "UI/CORRECTION_COMPLETE/ecae296cd69a83e33e8b153dd0effb7484f38551": "Accepted: rolled-back listening capture visibly acknowledges recovery, current errors retain precedence",
     "LEAD/PHYSICAL_CANDIDATE/5ac8a81bd4291da6b71accc889d6ab0f815c0674": "Actual Windows execution PASS; CPU freshness NOT PASS; Linux/PN54 and second physical mic unavailable",
     "LEAD/REALTIME_MIC_INTEGRATED/1d6536130493a690040815a0f728a2a0367c28fc": "Canonical270Python/74UI/both smokes/releaseauditPASS. Windows600sactualcandidate+restart+browserPASS execution; CPUfreshnessNOTPASS; externalhardware gatesremain.",
-    "LEAD/SESSION_DELETE_CONTRACT/5455f7b8f3c25a98e15e2b8959215b4912ea04e2": "User requested deleting accumulated sessions. Additive DELETE endpoint frozen,34sharedPASS; existing Runtime/UI workers dispatched. No historical user session deleted by development."
+    "LEAD/SESSION_DELETE_CONTRACT/5455f7b8f3c25a98e15e2b8959215b4912ea04e2": "User requested deleting accumulated sessions. Additive DELETE endpoint frozen,34sharedPASS; existing Runtime/UI workers dispatched. No historical user session deleted by development.",
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/39df3a5e24a5ea3b66a7d257a004fc01996296c5": "Accepted and merged5239116; durable deletion, source/model lifecycle,13 focused tests independently PASS",
+    "UI/CHECKPOINT_COMMIT/480138508251ed27e0a8f73fa0ff23436951fd74": "Reviewed and mergedef67ce6;84UI independently PASS; actual HTTP/WS/browser acceptance in progress",
+    "UI/CHECKPOINT_COMMIT/3168c1edaba43b7125bf7651528a1c7fff4c8651": "Accepted; browser Cancel/Escape/delete/reload/GET404/reference reuse PASS on isolated temporary test storage; independently84UI and69-eventHTTPWS smoke PASS",
+    "LEAD/DATASET_FAMILY_HINT_CONTRACT/d9e231442b9f6b2acb1060f763561b3109c8e90c": "User authorized dataset-family attempted perception and evidence-backed nonnumeric directions despite calibration abstention.34 shared tests PASS; existing ML/Runtime/UI owners dispatched, historical empirical support unchanged."
   },
   "integration_validation": {
     "commit": "1d6536130493a690040815a0f728a2a0367c28fc",
@@ -105,7 +106,7 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "eae1da72c67cc4dc6729f81a456086337589de76",
+  "latest_approved_main_implementation": "ef67ce60f7ad5b3641274d2b5dcd83f1dbdd7e6a",
   "remaining": [
     "CPU inference slower than offered1s hop and2s freshness gate; needs measured faster host/provider, no freshness widening",
     "Second distinct physical microphone and Linux/PN54 native acceptance unavailable",
@@ -120,5 +121,17 @@
     "confidence": "UNCALIBRATED",
     "production_authorized": false,
     "checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+  },
+  "session_deletion_validation": {
+    "full_suite_commit": "ef67ce60f7ad5b3641274d2b5dcd83f1dbdd7e6a",
+    "python_tests": 284,
+    "ui_tests": 84,
+    "both_workflow_smokes": "PASS",
+    "release_audit": "PASS zero findings",
+    "final_ui_correction": "456a00b",
+    "final_ui_tests": 84,
+    "final_live_reference_http_ws_smoke": "PASS69events incl active/other/repeated deletion,WS4404,retained reference",
+    "browser": "PASS cancel,Escape,confirm deletion,reload absence,GET404,reference reuse on temporary QA data",
+    "real_user_sessions_deleted": false
   }
 }
