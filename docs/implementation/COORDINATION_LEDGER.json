@@ -1,10 +1,10 @@
 {
   "milestone": "BOUNDED_DELAYED_CANDIDATE_ANALYSIS",
-  "status": "SHARED_FREEZE_PUSHED_RUNTIME_UI_AND_CACHE_COMPATIBILITY_IN_PROGRESS",
+  "status": "CORRECTIONS_INTEGRATED_PHYSICAL_AND_CANONICAL_VALIDATION_IN_PROGRESS",
   "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "8d5607d573e5f7cbee50ce26571c62fbf10b06c3",
-  "latest_integration_commit": "0d28ff960f56e773e07311a7b1357e3a117977f7",
+  "latest_integration_commit": "be58f3e196d6e333d6fc0d57acf3716878239b07",
   "lanes": {
     "ML": {
       "commit": "4bfdd532ee8b8bb9bfacc0880b84b0699065bca2",
@@ -13,12 +13,12 @@
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "9645c7d0bd1a6d719fd507e4bb17708640f89f87",
-      "status": "Accepted/integrated; attempted-family perception, current experimental hints, verified retained-reference reprepare; canonical305Python PASS"
+      "commit": "ff7df18ea19390544fac6668215510b4898f5e8c",
+      "status": "Accepted/integrated;18streaming/16live/finalgap1/shared35 independently PASS; physical delayed-candidate acceptance pending"
     },
     "UI": {
       "commit": "ffd82e1575ad727e2e6fa78d703b9bbf8c078dbc",
-      "status": "Accepted pending Runtime integration;102UI independently PASS; read-only deadline/clock/lifecycle review no blockers"
+      "status": "Accepted/integratedbe58f3e;102UI independently PASS; read-only deadline/clock/lifecycle review no blockers"
     }
   },
   "pending_reviews": [],
@@ -40,6 +40,8 @@
     }
   ],
   "events": {
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/0acbcc6c954103b6bdffe0163049aceffdb2cc2c": "Reviewed actual Git SHA (worker first full-SHA report was mistyped); one correction required: clear stale latest_verification on physical gap",
+    "CP2-RUNTIME/CORRECTION_COMPLETE/ff7df18ea19390544fac6668215510b4898f5e8c": "Accepted/integrated; latest verification cleared while incident/adjustment preserved; gap regression independently PASS. Worker branch push auto-review rejected remote trust; Lead canonical integration retained all local commits.",
     "CP2-UI/CHECKPOINT_COMMIT/ffd82e1575ad727e2e6fa78d703b9bbf8c078dbc": "Accepted for integration;102UI independently PASS and86targeted reviewer PASS; bounded deadline, separate receipt/server clocks, assumed reference interval",
     "CP2-ML/CORRECTION_COMPLETE/4bfdd532ee8b8bb9bfacc0880b84b0699065bca2": "Accepted/integrated0d28ff9 after exact-integer version review correction; no source/target/hash integrity bypass;23focused independently PASS",
     "LEAD/DELAYED_TIMING_FREEZE/ae43785ae039523e4b34b06ee9bb2ec8d3582ac5": "Published candidate2s queue/20s result/10s fixed hint/12s UI receipt; strict unchanged;35sharedPASS",
