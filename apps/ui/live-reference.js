@@ -49,11 +49,11 @@ export function referenceComparisonPresentation(s) {
   const f=s?.latest_frame,reasons=(s?.perception??[]).flatMap(p=>p.reason_codes??[]);
   const unavailable=!f||f.reference_id!==s?.active_reference?.reference_id||f.quality?.comparability!=='comparable'||
     reasons.some(reason=>['matched_reference_span_unavailable','reference_context_reprepare_required','alignment_unavailable'].includes(reason));
-  if(unavailable)return {available:false,title:'Reference comparison unavailable',detail:'No matching synchronized-start reference interval is available for this observation.'};
+  if(unavailable)return {available:false,title:'Restart together from 0:00',detail:'Live always starts at Reference 0:00 and does not search for a song position. Restart the microphone source and the performance or playback together.'};
   const start=f.sample_start/f.sample_rate_hz,end=f.sample_end/f.sample_rate_hz;
-  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return {available:false,title:'Reference comparison unavailable',detail:'The listening service did not provide a valid comparison interval.'};
-  return {available:true,title:`Assumed synchronized-start interval ${start.toFixed(1)}–${end.toFixed(1)} s`,
-    detail:'This is the same relative sample interval in the uploaded reference, not a recognized song position. Start, restart, and microphone changes begin again at 0 s; late entry, drift, seeking, loops, and section jumps are not aligned.'};
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return {available:false,title:'Restart together from 0:00',detail:'The listening service did not provide a valid elapsed-time interval.'};
+  return {available:true,title:`From start · Reference ${start.toFixed(1)}–${end.toFixed(1)} s`,
+    detail:'Live 0:00 is fixed to Reference 0:00. Harmonix compares the same elapsed interval and does not search for another song position.'};
 }
 
 const hintScope=s=>`${sourceIdentity(s)??'none'}:${s?.latest_frame?.frame_id??'none'}`;

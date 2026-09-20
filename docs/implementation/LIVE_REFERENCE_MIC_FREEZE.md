@@ -18,11 +18,13 @@ reason, never by itself an execution rejection. Existing candidate support mask
 and production numerical/action abstention remain unchanged.
 
 P1 uses amplitude-preserving mono 44100 Hz, 176400-sample windows, 44100-sample
-host hop. For synchronized demonstration only, new capture generation starts at
-relative canonical sample zero; match each observation [start,end) to the exact
-same reference span. Stream-native rate conversion must preserve this relative
-sample identity. No matching span means explicit comparison alignment unavailable,
-never an invented match. Compatible complete PCM still executes source separation;
+host hop. Product operation is explicitly synchronized-from-start: every new
+capture generation defines Live 0:00 as Reference 0:00 and matches each observation
+[start,end) to the exact same reference span. The product does not search for a
+different song position. Stream-native rate conversion must preserve this relative
+sample identity. No matching span means explicit comparison unavailable and asks
+the operator to restart microphone capture and performance/playback together from
+0:00, never an invented match. Compatible complete PCM still executes source separation;
 missing span alone must not stop perception. Publish invalid/null comparison evidence
 and retain actual six-source output only in diagnostics until alignment exists.
 A gap does not reset the relative song timeline or invent lost

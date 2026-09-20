@@ -62,12 +62,12 @@ test('result lifetime clamps receipt freshness and near-expiry reconnect gets on
  assert.equal(new FrameResultDeadlineTracker().deadline(s),undefined,'legacy/unseen frames have no client result clamp');
 });
 
-test('reference interval is explicitly assumed synchronized-start and unavailable without coverage',()=>{
+test('reference interval is fixed from zero and never presented as song-position search',()=>{
  const s=timedHintSession(),value=referenceComparisonPresentation(s);
- assert.equal(value.available,true);assert.match(value.title,/Assumed synchronized-start interval 4.0–8.0 s/);
- assert.match(value.detail,/not a recognized song position.*restart.*0 s.*late entry.*drift.*section jumps/);
+ assert.equal(value.available,true);assert.match(value.title,/From start · Reference 4.0–8.0 s/);
+ assert.match(value.detail,/Live 0:00 is fixed to Reference 0:00.*does not search/);
  for(const mutate of [x=>x.latest_frame.quality.comparability='weak',x=>x.perception[0].reason_codes.push('matched_reference_span_unavailable'),x=>x.latest_frame=null]){
-  const unavailable=timedHintSession();mutate(unavailable);assert.equal(referenceComparisonPresentation(unavailable).available,false);
+  const unavailable=timedHintSession();mutate(unavailable);const presentation=referenceComparisonPresentation(unavailable);assert.equal(presentation.available,false);assert.match(presentation.title,/Restart together from 0:00/);assert.match(presentation.detail,/does not search/);
  }
 });
 
