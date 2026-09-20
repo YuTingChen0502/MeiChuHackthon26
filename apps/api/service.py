@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import wraps
+
 import copy
 import hashlib
 import io
@@ -24,7 +26,7 @@ from roles.pa import PASession
 
 from .commands import CommandHandler
 from .probes import ProbeCommandHandler
-from .persistence import SQLiteCommandLedger, SQLiteRuntimeStore
+from .persistence import DeletedSessionError, SQLiteCommandLedger, SQLiteRuntimeStore
 
 
 class APIError(Exception):
@@ -64,6 +66,25 @@ def _decode_pcm16_wav(content: bytes) -> tuple[int, tuple[float, ...], int, list
         for start in range(0, len(values), block_values)
     ]
     return sample_rate, mono, channels, clipping_blocks
+
+
+def _session_read(method):
+    @wraps(method)
+    def guarded(self, session_id, *args, **kwargs):
+        self._require_session(session_id)
+        result = method(self, session_id, *args, **kwargs)
+        self._require_session(session_id)
+        return result
+    return guarded
+
+
+def _session_operation(method):
+    @wraps(method)
+    def guarded(self, session_id, *args, **kwargs):
+        with self._lifecycle_lock:
+            self._require_session(session_id)
+            return method(self, session_id, *args, **kwargs)
+    return guarded
 
 
 class RuntimeAPI:
@@ -153,7 +174,10 @@ class RuntimeAPI:
     def _save_session_state(self, session_id: str, state: dict) -> None:
         if state["session_id"] != session_id:
             raise ValueError("session persistence identity mismatch")
-        self._store.save_session(state)
+        try:self._store.save_session(state)
+        except DeletedSessionError:
+            # A callback already in flight lost the durable race to deletion.
+            return
 
     def _load_state(self) -> None:
         state = self._store.load_runtime_state()
@@ -200,6 +224,8 @@ class RuntimeAPI:
     def _id(self, kind: str) -> str:
         with self._lock:
             self._counters[kind] += 1
+            while kind == "session" and self._store.is_deleted(f"{kind}-{self._counters[kind]}"):
+                self._counters[kind] += 1
             return f"{kind}-{self._counters[kind]}"
 
     @staticmethod
@@ -583,10 +609,10 @@ class RuntimeAPI:
                 audio = NativeMicAudioInput(backend=self._native(),
                     device_id=source["input_asset_or_device_id"], clock_id=source["clock_id"],
                     sample_rate_hz=session.capture_fingerprint["native_sample_rate_hz"],
-                    channels=session.capture_fingerprint["channels"], clock=clock)
+                    channels=session.capture_fingerprint["channels"], clock=clock, cancellation=session._deletion_requested)
             def observe(window, quality, max_age):
                 with session.command_transaction():
-                    if session.song["workflow_state"] in ("SUSPENDED", "STOPPED"):
+                    if session._deletion_requested.is_set() or session.song["workflow_state"] in ("SUSPENDED", "STOPPED"):
                         return
                     native = source["input_kind"] == "live_microphone"
                     if native and not session.capture_runtime_verified:
@@ -596,11 +622,12 @@ class RuntimeAPI:
                         session.observe_window(window, quality=quality, max_age_s=max_age,
                                                clock_uncertainty_s=0.05 if native else 0.0)
                     except Exception as exc:
+                        if session._deletion_requested.is_set():return False
                         self._failed_analyzers.add(session.session_id)
                         raise RuntimeError("analyzer_or_processing_failure") from exc
             def ended(reason):
                 with session.command_transaction():
-                    if session.song["workflow_state"] not in ("SUSPENDED", "STOPPED"):
+                    if not session._deletion_requested.is_set() and session.song["workflow_state"] not in ("SUSPENDED", "STOPPED"):
                         session.suspend_for_input(reason)
             worker = AudioWorker(audio_input=audio, pipeline=self.pipeline,
                 session_id=session.session_id, on_window=observe, on_end=ended, clock=clock,
@@ -613,15 +640,48 @@ class RuntimeAPI:
                 failed.stop()
             session.suspend_for_input(f"audio_start_failed:{exc}")
 
-    def _close_session_analyzer(self, session_id):
-        if session_id not in self._closed_sessions:
-            self._closed_sessions.add(session_id)
-            self.sessions[session_id]._baseline_windows.clear()
-            self.sessions[session_id]._baseline_pcm_samples = 0
-            try:
-                self.sessions[session_id].analyzer.close()
+    def _close_session_analyzer(self, session_id, *, session=None):
+        session = session or self.sessions.get(session_id)
+        if session is None:return
+        # Legacy inference holds the session lock; live inference is protected by
+        # the controller's analyzer lock. Deletion invokes this in a safe reaper.
+        with session.command_transaction():
+            if session_id not in self._closed_sessions:
+                self._closed_sessions.add(session_id)
+                session._baseline_windows.clear()
+                session._baseline_pcm_samples = 0
+                try:session.analyzer.close()
+                except Exception as exc:self.close_errors.append(f"{session_id}: {exc}")
+
+    def _require_session(self, session_id):
+        session = self.sessions.get(session_id)
+        if session is None or session._deletion_requested.is_set():
+            raise APIError(404, "unknown_session", "Session does not exist.")
+        return session
+
+    def delete_session(self, session_id):
+        with self._lifecycle_lock:
+            session = self.sessions.get(session_id)
+            if session is not None:
+                session._deletion_requested.set()
+                with self.live_audio.schedule_lock:
+                    self.live_audio.pending_operations.pop(session_id, None)
+                self.live_audio.cancel(session)
+            try:self._store.delete_session(session_id)
             except Exception as exc:
-                self.close_errors.append(f"{session_id}: {exc}")
+                if session is not None:
+                    session._deletion_requested.clear()
+                    try:session.suspend_for_input("session_delete_failed")
+                    except Exception:pass
+                raise APIError(503, "session_delete_failed", "Session deletion failed; retry the request.") from exc
+            self.sessions.pop(session_id, None)
+            self.handlers.pop(session_id, None)
+            self._failed_analyzers.discard(session_id)
+            if session is not None:
+                self.live_audio.close_analyzer_when_idle(session_id, session=session, deleting=True)
+            response = dict(session_id=session_id, deleted=True)
+            self._validate("DeleteSessionResponse", response)
+            return 200, response
 
     def close(self):
         self._closed = True
@@ -640,11 +700,13 @@ class RuntimeAPI:
                 if session_id not in self.workers and not self.sessions[session_id].live_reference:
                     self._close_session_analyzer(session_id)
 
+    @_session_read
     def get_session(self, session_id: str) -> tuple[int, dict]:
         if session_id not in self.sessions:
             raise APIError(404, "unknown_session", "Session does not exist.")
-        return 200, self.sessions[session_id].snapshot()
+        return 200, self._require_session(session_id).snapshot()
 
+    @_session_operation
     def post_action(self, session_id: str, command: dict) -> tuple[int, dict]:
         if command.get("record_type") != "SessionCommand":
             raise APIError(422, "wrong_endpoint", "Actions require SessionCommand.")
@@ -677,6 +739,7 @@ class RuntimeAPI:
                 self._close_session_analyzer(session_id)
             return response["http_status"], response
 
+    @_session_operation
     def accept_baseline(self, session_id: str, command: dict) -> tuple[int, dict]:
         if command.get("record_type") != "SessionCommand":
             raise APIError(422, "wrong_endpoint", "Baseline requires SessionCommand.")
@@ -687,11 +750,13 @@ class RuntimeAPI:
         response = self.handlers[session_id].handle(command)
         return response["http_status"], response
 
+    @_session_read
     def get_probe(self, session_id):
         if session_id not in self.sessions:
             raise APIError(404, "unknown_session", "Session does not exist.")
-        return 200, self.sessions[session_id].probe_state()
+        return 200, self._require_session(session_id).probe_state()
 
+    @_session_operation
     def post_probe(self, session_id, command):
         if session_id not in self.sessions or command.get("session_id") != session_id:
             raise APIError(422, "session_mismatch", "URL and probe session IDs must match.")
@@ -702,10 +767,11 @@ class RuntimeAPI:
             response = handler.handle(command)
             return response["command"]["http_status"], response
 
+    @_session_read
     def connect_events(self, session_id: str, *, after_sequence: int | None = None) -> tuple[int, dict]:
         if session_id not in self.sessions:
             raise APIError(404, "unknown_session", "Session does not exist.")
-        session = self.sessions[session_id]
+        session = self._require_session(session_id)
         if after_sequence is None:
             snapshot = session.snapshot()
             return 200, {"snapshot": snapshot, "cursor": snapshot["event_sequence"], "events": []}

@@ -78,14 +78,26 @@ class LiveAudioController:
             retained[:]=[w for w in retained if any(t and t.is_alive() for t in (w._producer,w._consumer))]
             if worker not in retained:retained.append(worker)
 
-    def close_analyzer_when_idle(self,sid):
-        if sid in self.closers:return
+    def close_analyzer_when_idle(self,sid,*,session=None,deleting=False):
+        session=session or self.api.sessions.get(sid)
+        if session is None:return
+        previous_closer=self.closers.get(sid)
+        if previous_closer is not None and not deleting:return
         lock=self.analyzer_locks.setdefault(sid,threading.Lock())
         def close():
-            with lock:self.api._close_session_analyzer(sid)
+            if previous_closer is not None:previous_closer.join()
+            with lock:self.api._close_session_analyzer(sid,session=session)
             self.retired.pop(sid,None)
-        if lock.acquire(blocking=False):
-            try:self.api._close_session_analyzer(sid)
+            if deleting:
+                task=self.tasks.get(sid)
+                if task is not None:task.join()
+                for mapping in (self.scheduled_keys,self.diagnostics,self.cancellations,self.analyzer_locks):
+                    mapping.pop(sid,None)
+                self.api._closed_sessions.discard(sid)
+                self.tasks.pop(sid,None)
+                self.closers.pop(sid,None)
+        if not deleting and lock.acquire(blocking=False):
+            try:self.api._close_session_analyzer(sid,session=session)
             finally:lock.release()
         else:
             task=threading.Thread(target=close,name=f"analyzer-reap:{sid}",daemon=True)
@@ -123,7 +135,8 @@ class LiveAudioController:
             self.tasks[sid]=task;task.start()
 
     def current(self,session,token,generation=None):
-        return (not token.is_set() and not self.api._closed and session.song["workflow_state"]!="STOPPED"
+        return (not session._deletion_requested.is_set() and self.api.sessions.get(session.session_id) is session
+                and not token.is_set() and not self.api._closed and session.song["workflow_state"]!="STOPPED"
                 and (generation is None or session.capture["source_generation"]==generation))
 
     def _run(self,session,identity,token,file_source,previous,paused):
@@ -146,6 +159,8 @@ class LiveAudioController:
                         replacement.close();return
                     lock=self.analyzer_locks.setdefault(session.session_id,threading.Lock())
                     with lock:
+                        if not self.current(session,token):
+                            replacement.close();return
                         old_analyzer=session.analyzer;session.analyzer=replacement
                         session._frame_builder.calibration_policy=getattr(replacement,"calibration_policy",None)
                         old_analyzer.close()
@@ -311,7 +326,7 @@ class LiveAudioController:
                 if not worker:continue
                 audio=worker.audio_input
                 with session.command_transaction():
-                    if (session.source["clock_id"]!=getattr(audio,"clock_id",None)
+                    if (session._deletion_requested.is_set() or session.source["clock_id"]!=getattr(audio,"clock_id",None)
                             or session.capture["state"] in ("switching","paused","stopped","unavailable")):continue
                     stamp="sample_count" if isinstance(audio,FileAudioInput) else audio.timestamp_mode
                     changed=session.capture["timestamp_mode"]!=stamp
@@ -328,11 +343,12 @@ class LiveAudioController:
         self._shutdown.set()
         for token in self.cancellations.values():token.set()
         for sid,worker in list(self.api.workers.items()):
-            if not self.api.sessions[sid].live_reference:continue
+            session=self.api.sessions.get(sid)
+            if session is not None and not session.live_reference:continue
             self.api.workers.pop(sid,None)
             try:self.retire(sid,worker)
             except Exception as exc:self.api.close_errors.append(str(exc))
-        for task in self.tasks.values():task.join(.2)
+        for task in list(self.tasks.values()):task.join(.2)
         self._monitor.join(2)
-        for sid,session in self.api.sessions.items():
+        for sid,session in list(self.api.sessions.items()):
             if session.live_reference:self.close_analyzer_when_idle(sid)

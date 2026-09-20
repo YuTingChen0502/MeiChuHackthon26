@@ -18,6 +18,10 @@ def _decode(value: str | None):
     return None if value is None else json.loads(value)
 
 
+class DeletedSessionError(RuntimeError):
+    """A durable deletion fence rejected a delayed session writer."""
+
+
 class SQLiteRuntimeStore:
     def __init__(self, path: str | Path) -> None:
         self.path = Path(path)
@@ -49,6 +53,9 @@ class SQLiteRuntimeStore:
                     payload TEXT NOT NULL,
                     PRIMARY KEY (session_id, audit_index)
                 );
+                CREATE TABLE IF NOT EXISTS deleted_sessions (
+                    session_id TEXT PRIMARY KEY
+                );
                 CREATE TABLE IF NOT EXISTS baselines (
                     baseline_id TEXT NOT NULL,
                     version INTEGER NOT NULL,
@@ -62,6 +69,23 @@ class SQLiteRuntimeStore:
         connection = sqlite3.connect(self.path, timeout=10)
         connection.execute("PRAGMA foreign_keys=ON")
         return connection
+
+    @staticmethod
+    def _require_writable(connection, session_id):
+        if connection.execute("SELECT 1 FROM deleted_sessions WHERE session_id=?", (session_id,)).fetchone():
+            raise DeletedSessionError("session_deleted")
+
+    def is_deleted(self, session_id):
+        with self.lock, closing(self._connect()) as connection:
+            return connection.execute("SELECT 1 FROM deleted_sessions WHERE session_id=?", (session_id,)).fetchone() is not None
+
+    def delete_session(self, session_id):
+        with self.lock, closing(self._connect()) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute("INSERT OR IGNORE INTO deleted_sessions VALUES(?)", (session_id,))
+            for table in ("commands", "session_audit", "sessions"):
+                connection.execute(f"DELETE FROM {table} WHERE session_id=?", (session_id,))
+            connection.commit()
 
     @staticmethod
     def _persist_baseline(connection, session_state: dict) -> None:
@@ -120,6 +144,7 @@ class SQLiteRuntimeStore:
     def save_runtime_and_session(self, runtime_state: dict, session_state: dict) -> None:
         with self.lock, closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_writable(connection, session_state["session_id"])
             connection.execute(
                 "INSERT INTO runtime_state(singleton,payload) VALUES(1,?) "
                 "ON CONFLICT(singleton) DO UPDATE SET payload=excluded.payload",
@@ -137,6 +162,7 @@ class SQLiteRuntimeStore:
     def save_session(self, state: dict) -> None:
         with self.lock, closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_writable(connection, state["session_id"])
             connection.execute(
                 "INSERT INTO sessions(session_id,payload) VALUES(?,?) "
                 "ON CONFLICT(session_id) DO UPDATE SET payload=excluded.payload",
@@ -172,6 +198,7 @@ class SQLiteRuntimeStore:
     ) -> None:
         with self.lock, closing(self._connect()) as connection:
             connection.execute("BEGIN IMMEDIATE")
+            self._require_writable(connection, session_id)
             existing = connection.execute(
                 "SELECT command_text,response FROM commands WHERE session_id=? AND idempotency_key=?",
                 (session_id, idempotency_key),
