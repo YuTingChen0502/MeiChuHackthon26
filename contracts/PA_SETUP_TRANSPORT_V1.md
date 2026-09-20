@@ -128,3 +128,31 @@ listener or PN54 deployment.
 
 Version/capability sources checked 2026-09-19: [Starlette](https://pypi.org/project/starlette/),
 [Uvicorn](https://pypi.org/project/uvicorn/) and [websockets](https://pypi.org/project/websockets/).
+
+## Explicit session deletion (user-approved 2026-09-20)
+
+`DELETE /v1/sessions/{id}` has no body and uses the existing mutation Origin/Host
+protections. Success is HTTP 200 `DeleteSessionResponse`:
+`{"session_id":"session-1","deleted":true}`. Repeating deletion of an absent ID
+returns the same success; IDs are never reused. Existing GET/actions for a deleted
+ID return 404. An already-connected event socket closes with 4404/unknown_session.
+This is an additive setup/application endpoint, not an analyzer/session-command change.
+
+The UI must obtain explicit confirmation naming the session and explaining that
+active listening stops and session history is deleted, while song/reference assets
+are retained. Runtime fences the session, stops/cancels acquisition and pending
+source opens, and safely retires in-flight inference before it can publish or
+persist new state. It must not close a model while inference is using it. In one
+durable operation remove the session snapshot, its command ledger and session audit
+records. Do not delete songs, projects, references, uploaded audio, shared baseline
+profiles or model bundles. Session deletion is the explicit exception to retaining
+that session's audit history; other audit immutability remains unchanged.
+
+Deletion must survive process restart and late inference/callback/command races;
+late writes must not resurrect the session. Preserve monotonic identity counters.
+Failure uses existing SetupError; do not acknowledge success before durable deletion.
+Other sessions must remain unaffected. UI removes its recent-session entry only on
+confirmed HTTP success, disconnects a deleted current subscription and clears its
+current snapshot. Canceled confirmation and failed requests leave the entry intact;
+delayed snapshots/reconnect cannot re-add it. Offline examples never issue deletion.
+No automatic retention purge, bulk delete, reference deletion or model change.

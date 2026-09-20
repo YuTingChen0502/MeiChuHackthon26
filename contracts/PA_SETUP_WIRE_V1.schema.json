@@ -36,6 +36,9 @@
     },
     {
       "$ref": "#/$defs/AudioDevicesResponse"
+    },
+    {
+      "$ref": "#/$defs/DeleteSessionResponse"
     }
   ],
   "$defs": {
@@ -440,6 +443,23 @@
         "discovery_status",
         "microphones",
         "default_microphone_id"
+      ],
+      "additionalProperties": false
+    },
+    "DeleteSessionResponse": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "deleted": {
+          "const": true
+        }
+      },
+      "required": [
+        "session_id",
+        "deleted"
       ],
       "additionalProperties": false
     }

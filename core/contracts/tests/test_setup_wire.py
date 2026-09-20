@@ -13,6 +13,7 @@ from core.contracts.validation import SETUP, validate_record
 class SetupWireTests(unittest.TestCase):
     def test_setup_payload_examples_and_invalid_instrument_types(self):
         examples = {
+            "DeleteSessionResponse": {"session_id": "session-1", "deleted": True},
             "CreateProjectRequest": {"name": "Demo"},
             "ProjectResponse": {"project_id": "project-1", "name": "Demo"},
             "CreateSongRequest": {"project_id": "project-1", "name": "Song",
@@ -30,6 +31,10 @@ class SetupWireTests(unittest.TestCase):
         malformed["instruments"][0]["family"] = ["guitar"]
         with self.assertRaises(ValidationError):
             validate_record(malformed, SETUP, "CreateSongRequest")
+
+    def test_delete_acknowledgement_requires_actual_success(self):
+        with self.assertRaises(ValidationError):
+            validate_record({"session_id": "session-1", "deleted": False}, SETUP, "DeleteSessionResponse")
 
     def test_session_requires_selected_reference_and_server_owns_clock(self):
         fixtures = json.loads((Path(__file__).resolve().parents[3] /
