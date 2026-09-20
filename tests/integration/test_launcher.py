@@ -56,6 +56,7 @@ class CandidateLauncherTests(unittest.TestCase):
             self.assertEqual(["44100","176400","44100"],[os.environ[k] for k in
                 ("PA_ANALYSIS_RATE_HZ","PA_WINDOW_SIZE_SAMPLES","PA_HOP_SIZE_SAMPLES")])
             self.assertEqual("bundle",os.environ["PA_ANALYZER_MODE"])
+            self.assertEqual("candidate_delayed_v1",os.environ["PA_ANALYSIS_TIMING_PROFILE"])
             self.assertNotIn("PA_HOST_REVIEW",os.environ)
 
     def test_candidate_rejects_wrong_geometry_or_production_review(self):

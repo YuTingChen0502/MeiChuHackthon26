@@ -12,12 +12,21 @@ from core.runtime.quality import pcm_clipped_fraction, quality_state
 
 class AudioWorker:
     def __init__(self, *, audio_input, pipeline, session_id, on_window, on_end,
-                 clock=time.monotonic, queue_capacity=2, max_age_s=2.0, pace_file=False, clock_tolerance_s=0.05, analysis_run_id=None):
-        if queue_capacity < 1 or min(max_age_s, clock_tolerance_s) <= 0:
+                 clock=time.monotonic, queue_capacity=2, max_age_s=None,
+                 queue_max_age_s=2.0, result_max_age_s=2.0, on_analysis_gap=None,
+                 pace_file=False, clock_tolerance_s=0.05, analysis_run_id=None):
+        if max_age_s is not None:
+            queue_max_age_s = result_max_age_s = max_age_s
+        if queue_capacity < 1 or min(queue_max_age_s, result_max_age_s, clock_tolerance_s) <= 0:
             raise ValueError('positive worker limits required')
         self.audio_input, self.pipeline = audio_input, pipeline
         self.session_id, self.on_window, self.on_end = session_id, on_window, on_end
-        self.clock, self.max_age_s, self.pace_file = clock, max_age_s, pace_file
+        self.clock, self.pace_file = clock, pace_file
+        self.queue_max_age_s, self.result_max_age_s = queue_max_age_s, result_max_age_s
+        # Compatibility for monitoring code and older test probes: this is the
+        # completed-result lifetime, never the queue admission lifetime.
+        self.max_age_s = result_max_age_s
+        self.on_analysis_gap = on_analysis_gap
         self.clock_tolerance_s = clock_tolerance_s
         self.analysis_run_id = analysis_run_id
         self._queue = queue.Queue(maxsize=queue_capacity)
@@ -26,9 +35,15 @@ class AudioWorker:
         self._producer = self._consumer = None
         self.error = None
         self.dropped_windows = self.stale_windows = self.processed_windows = 0
+        self.analysis_skips = 0
         self.max_queue_depth = self.discontinuities = 0
         self.processing_ms = deque(maxlen=2048)
         self.publication_age_s = deque(maxlen=2048)
+        self._reported_fault_epoch = self.physical_fault_epoch()
+
+    def physical_fault_epoch(self):
+        return (self.discontinuities, getattr(self.audio_input, "discontinuities", 0),
+                getattr(self.audio_input, "dropped_packets", 0))
 
     def start(self):
         if self._producer is not None:
@@ -77,14 +92,15 @@ class AudioWorker:
                         break
                     if self.pace_file and self._stop.wait(max(0, window.capture_end_monotonic_s - self.clock())):
                         break
-                    # Oldest queued work is discarded; the consumer detects a skipped
-                    # hop/run and explicitly gates the next publication as dropout.
+                    # Acquisition never waits for inference. Discard the oldest
+                    # analysis work while preserving the complete PCM window itself.
                     try:
                         self._queue.put_nowait(window)
                     except queue.Full:
                         try:
                             self._queue.get_nowait()
                             self.dropped_windows += 1
+                            self.analysis_skips += 1
                         except queue.Empty:
                             pass
                         self._queue.put_nowait(window)
@@ -97,7 +113,7 @@ class AudioWorker:
 
     def _analyze(self):
         previous = None
-        gap = False
+        analysis_gap = False
         dropped_seen = 0
         discontinuities_seen = 0
         input_faults_seen = 0
@@ -111,33 +127,48 @@ class AudioWorker:
                     continue
                 if self.error:
                     break
+                # Prefer the newest complete queued window before inference. This
+                # prevents slow models from accumulating latency behind old work.
+                while True:
+                    try:
+                        window = self._queue.get_nowait()
+                        self.dropped_windows += 1
+                        self.analysis_skips += 1
+                        analysis_gap = True
+                    except queue.Empty:
+                        break
                 age = self.clock() - window.capture_end_monotonic_s
-                if age > self.max_age_s or age < -self.clock_tolerance_s:
+                if age > self.queue_max_age_s or age < -self.clock_tolerance_s:
                     self.stale_windows += 1
-                    gap = True
+                    self.analysis_skips += 1
+                    analysis_gap = True
                     continue
                 input_faults = getattr(self.audio_input, "discontinuities", 0) + getattr(self.audio_input, "dropped_packets", 0)
-                gap |= self.discontinuities != discontinuities_seen or input_faults != input_faults_seen
-                discontinuities_seen, input_faults_seen = self.discontinuities, input_faults
-                gap |= self.dropped_windows != dropped_seen
+                physical_gap = self.discontinuities != discontinuities_seen or input_faults != input_faults_seen
+                analysis_gap |= self.dropped_windows != dropped_seen
                 dropped_seen = self.dropped_windows
                 if previous is not None:
-                    gap |= (window.analysis_run_id != previous.analysis_run_id or
-                            window.sample_start != previous.sample_start + self.pipeline.hop_size_samples)
+                    physical_gap |= window.analysis_run_id != previous.analysis_run_id
+                    analysis_gap |= (window.analysis_run_id == previous.analysis_run_id and
+                                     window.sample_start != previous.sample_start + self.pipeline.hop_size_samples)
+                if analysis_gap:
+                    if self.on_analysis_gap is not None and self.on_analysis_gap(window) is False:
+                        continue
                 quality = quality_state(
                     clipped_fraction=max(window.input_clipped_fraction, pcm_clipped_fraction(window.samples)),
-                    dropout=gap,
+                    dropout=physical_gap,
                     comparability='weak' if not any(window.samples) else 'comparable')
                 begin = self.clock()
-                if self.on_window(window, quality, self.max_age_s) is False:
+                if self.on_window(window, quality, self.result_max_age_s) is False:
                     self.stale_windows += 1
-                    gap = True
+                    analysis_gap = True
                     continue
                 end = self.clock()
                 self.processing_ms.append(max(0, (end - begin) * 1000))
                 self.publication_age_s.append(max(0, end - window.capture_end_monotonic_s))
                 self.processed_windows += 1
-                previous, gap = window, False
+                discontinuities_seen, input_faults_seen = self.discontinuities, input_faults
+                previous, analysis_gap = window, False
         except Exception as exc:
             self.error = str(exc)
             self._stop.set()
@@ -171,7 +202,8 @@ class AudioWorker:
             ordered = sorted(values)
             return ordered[min(len(ordered) - 1, int((len(ordered) - 1) * fraction))] if ordered else None
         return dict(processed_windows=self.processed_windows, dropped_windows=self.dropped_windows,
-                    stale_windows=self.stale_windows, discontinuities=self.discontinuities,
+                    stale_windows=self.stale_windows, analysis_skips=self.analysis_skips,
+                    discontinuities=self.discontinuities,
                     queue_depth=self._queue.qsize(), max_queue_depth=self.max_queue_depth,
                     processing_p50_ms=percentile(self.processing_ms, .5),
                     processing_p95_ms=percentile(self.processing_ms, .95),

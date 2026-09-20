@@ -41,7 +41,8 @@ def main():
             parser.error("duplicate adapter ID")
         registry[identity] = getattr(importlib.import_module(module), name)
     os.environ.update(PA_ANALYZER_MODE="bundle" if args.mode == "candidate-p1" else args.mode, PA_RUNTIME_STORAGE_DIR=args.storage,
-        PA_ANALYSIS_RATE_HZ=str(args.rate), PA_WINDOW_SIZE_SAMPLES=str(args.window), PA_HOP_SIZE_SAMPLES=str(args.hop))
+        PA_ANALYSIS_RATE_HZ=str(args.rate), PA_WINDOW_SIZE_SAMPLES=str(args.window), PA_HOP_SIZE_SAMPLES=str(args.hop),
+        PA_ANALYSIS_TIMING_PROFILE="candidate_delayed_v1" if args.mode == "candidate-p1" else "strict_v1")
     for key, value in (("PA_MODEL_BUNDLE", args.bundle), ("PA_HOST_REVIEW", args.host_review)):
         if value:
             os.environ[key] = value

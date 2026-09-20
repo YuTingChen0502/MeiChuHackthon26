@@ -8,6 +8,7 @@ from websockets.sync.client import connect
 from apps.api.service import RuntimeAPI
 from core.audio import SharedAudioPipeline
 from core.runtime.fake_analyzer import ContinuousFakeInstrumentAnalyzer,FakeEvidenceSpec
+from core.runtime.timing import analysis_timing_profile
 import test_transport as transport
 from test_api_service import wav_bytes,command
 from test_live_reference_runtime import Backend
@@ -51,6 +52,7 @@ class AttemptedFixture(ContinuousFakeInstrumentAnalyzer):
 class PerceptionHintTransportTests(unittest.TestCase):
     def setUp(self):
         self.fixture=transport.TransportTests();self.fixture.setUp();self.addCleanup(self.fixture.tearDown);self.api=self.fixture.runtime
+        self.api.analysis_timing=analysis_timing_profile("candidate_delayed_v1")
         self.api.max_upload_bytes=4096
         self.api.analyzer_factory=AttemptedFixture;self.api._capabilities=None
         self.api.native_backend=TinyBackend()
@@ -81,6 +83,9 @@ class PerceptionHintTransportTests(unittest.TestCase):
     def hinted(self):return self.wait(lambda s:s["perception"][0].get("adjustment_hint") is not None)
     def test_attempted_unvalidated_hint_and_partial_family_over_actual_http_ws(self):
         snapshot=self.hinted()
+        self.assertEqual(dict(profile_id="candidate_delayed_v1",queue_max_age_s=2.0,
+            result_max_age_s=20.0,hint_hold_s=10.0,receipt_max_age_s=12.0),
+            {key:value for key,value in snapshot["analysis_timing"].items() if key!="snapshot_monotonic_s"})
         self.assertEqual(["bass"],self.song["supported_families"])
         self.assertEqual([],self.song["unsupported_families"])
         self.assertEqual([],snapshot["song"]["unsupported_families"])
@@ -88,16 +93,21 @@ class PerceptionHintTransportTests(unittest.TestCase):
         self.assertEqual("uncertain",guitar["state"]);self.assertEqual("detected",bass["state"])
         self.assertEqual("uncertain",keys["state"]);self.assertIsNone(keys["adjustment_hint"])
         self.assertEqual("reduce_level",guitar["adjustment_hint"]["direction"])
+        expiry=guitar["adjustment_hint"]["expires_monotonic_s"]
+        self.assertLessEqual(expiry,min(snapshot["latest_frame"]["published_monotonic_s"]+10,
+            snapshot["latest_frame"]["capture_end_monotonic_s"]+20))
         self.assertTrue(guitar["action_abstained"]);self.assertFalse(guitar["numerical_advice_allowed"])
         self.assertIsNone(snapshot["incident"]);self.assertEqual([],snapshot["recommendations"])
         self.assertIsNone(snapshot["latest_verification"])
         for state in snapshot["latest_frame"]["instruments"]:
             self.assertIsNone(state["confidence"]["probability"]);self.assertIsNone(state["balance_deviation_db"])
+        self.api.workers[self.sid].stop()
         for _ in range(2):
             with connect(f"ws://127.0.0.1:{self.fixture.port}"+self.path+"/events?after_sequence=0",
                          origin=self.fixture.origin,close_timeout=1) as socket:
                 event=json.loads(socket.recv(timeout=2));self.assertEqual(self.sid,event["session_id"])
-            self.assertIsNotNone(self.hinted()["perception"][0]["adjustment_hint"])
+            refreshed=self.hinted()["perception"][0]["adjustment_hint"]
+            self.assertIsNotNone(refreshed);self.assertEqual(expiry,refreshed["expires_monotonic_s"])
     def test_pause_resume_switch_and_stop_clear_hints(self):
         snapshot=self.hinted()
         _,result=self.request("POST",self.path+"/actions",json_body=command(snapshot,"hint-pause","pause"))
@@ -114,7 +124,9 @@ class PerceptionHintTransportTests(unittest.TestCase):
         _,result=self.request("POST",self.path+"/actions",json_body=command(snapshot,"hint-stop","stop"))
         self.assertTrue(all(p["adjustment_hint"] is None for p in result["snapshot"]["perception"]))
     def test_stale_frame_and_restart_never_restore_hint(self):
-        self.hinted();self.api.workers[self.sid].stop()
+        self.hinted();session=self.api.runtime_session(self.sid)
+        session._analysis_timing=analysis_timing_profile("strict_v1");session._current_hints={};session._hint_expires_monotonic_s=None
+        self.api.workers[self.sid].stop()
         snapshot=self.wait(lambda s:s["latest_frame"] is None)
         self.assertTrue(all(p["adjustment_hint"] is None for p in snapshot["perception"]))
         self.api.close()

@@ -15,7 +15,7 @@ from test_api_service import wav_bytes,command
 
 class Backend:
     def __init__(self):
-        self.fail=set();self.silent=set();self.streams=[];self.opens=[]
+        self.fail=set();self.silent=set();self.streams=[];self.opens=[];self.alternate_timing=False;self.status=False
     def discover(self):
         return [NativeDevice("mic-a",0,"Desk microphone","Test",1,48000,True),
                 NativeDevice("mic-b",1,"USB microphone","Test",1,48000,False)]
@@ -28,10 +28,12 @@ class Backend:
             def __init__(self):self.stop=threading.Event();self.thread=None;self.closed=False
             def start(self):
                 def emit():
+                    packet=0
                     while not self.stop.wait(1024/48000):
                         if kw["device_id"] not in backend.silent:
+                            packet+=1;adc=(1+packet*1024/48000) if backend.alternate_timing and packet%2 else 0
                             kw["callback"](struct.pack("=1024f",*([.1]*1024)),1024,
-                                SimpleNamespace(inputBufferAdcTime=0,currentTime=0),False)
+                                SimpleNamespace(inputBufferAdcTime=adc,currentTime=adc+.01 if adc else 0),backend.status)
                 self.thread=threading.Thread(target=emit,daemon=True);self.thread.start()
             def abort(self):self.stop.set()
             def close(self):
@@ -70,6 +72,8 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         return body,self.api.post_action(snapshot["session_id"],body)
     def test_default_live_reference_no_baseline_and_exact_perception(self):
         snapshot=self.start();sid=snapshot["session_id"]
+        self.assertEqual(("strict_v1",2.0,2.0,10.0,5.0),tuple(snapshot["analysis_timing"][key]
+            for key in ("profile_id","queue_max_age_s","result_max_age_s","hint_hold_s","receipt_max_age_s")))
         self.assertEqual("live",snapshot["session_mode"])
         self.assertEqual("LIVE_MONITORING",snapshot["song"]["workflow_state"])
         self.assertIsNone(snapshot["active_baseline"])
@@ -201,6 +205,63 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         self.api.live_audio.closers[sid].join(2)
         self.assertTrue(analyzer.closed)
         self.assertIsNone(self.api.get_session(sid)[1]["latest_frame"])
+
+    def test_alternating_timestamp_diagnostics_do_not_starve_bound_controls(self):
+        self.backend.alternate_timing=True;entered=threading.Event();release=threading.Event()
+        original_factory=self.api._new_analyzer
+        def factory():
+            analyzer=original_factory();original=analyzer.analyze
+            def blocked(window,context):
+                entered.set();release.wait(5);return original(window,context)
+            analyzer.analyze=blocked;return analyzer
+        self.api._new_analyzer=factory
+        _,snapshot=self.api.create_session(self.request);sid=snapshot["session_id"]
+        try:
+            self.assertTrue(entered.wait(2))
+            snapshot=self.wait(sid,lambda s:s["capture"]["state"]=="listening" and not self.api.live_audio.tasks[sid].is_alive())
+            version=snapshot["state_version"];time.sleep(.2)
+            snapshot=self.api.get_session(sid)[1]
+            self.assertEqual(version,snapshot["state_version"])
+            status,result=self.api.post_action(sid,command(snapshot,"flap-pause","pause"))
+            self.assertEqual(200,status);snapshot=result["snapshot"]
+            self.switch(snapshot,"mic-b","flap-switch")
+            snapshot=self.wait(sid,lambda s:s["capture"]["state"]=="paused" and s["capture"]["switch_result"]=="applied")
+            status,result=self.api.post_action(sid,command(snapshot,"flap-resume","resume"))
+            self.assertEqual(200,status)
+            snapshot=self.wait(sid,lambda s:s["capture"]["state"]=="listening" and not self.api.live_audio.tasks[sid].is_alive())
+            version=snapshot["state_version"];time.sleep(.2);snapshot=self.api.get_session(sid)[1]
+            self.assertEqual(version,snapshot["state_version"])
+            status,_=self.api.post_action(sid,command(snapshot,"flap-stop","stop"))
+            self.assertEqual(200,status)
+        finally:
+            release.set()
+
+    def test_physical_fault_during_inference_fences_completed_old_window(self):
+        entered=threading.Event();release=threading.Event();calls=[]
+        original_factory=self.api._new_analyzer
+        def factory():
+            analyzer=original_factory();original=analyzer.analyze
+            def blocked(window,context):
+                calls.append(window.sample_start)
+                if len(calls)==2:entered.set();release.wait(3)
+                return original(window,context)
+            analyzer.analyze=blocked;return analyzer
+        self.api._new_analyzer=factory
+        _,snapshot=self.api.create_session(self.request);sid=snapshot["session_id"]
+        try:
+            snapshot=self.wait(sid,lambda s:s["capture"]["state"]=="active")
+            self.assertIsNotNone(snapshot["latest_frame"]);self.assertTrue(entered.wait(2))
+            self.backend.status=True;time.sleep(.08);self.backend.status=False
+            self.assertGreater(self.api.workers[sid].audio_input.discontinuities,0)
+            suppressed=self.wait(sid,lambda s:not s["capture"]["frame_fresh"] and s["latest_frame"] is None)
+            self.assertEqual(["capture_dropout"],suppressed["capture"]["reason_codes"])
+            release.set()
+            self.wait(sid,lambda s:any(frame["quality"]["dropout"] for frame in self.api.runtime_session(sid)._frames))
+            frames=self.api.runtime_session(sid)._frames
+            self.assertNotIn(calls[1],[frame["sample_start"] for frame in frames])
+            self.assertTrue(any(frame["quality"]["dropout"] for frame in frames))
+            self.assertTrue(all(p.get("adjustment_hint") is None for p in self.api.get_session(sid)[1]["perception"]))
+        finally:release.set()
 
     def test_raw_detection_remains_separate_from_advice_and_staleness(self):
         snapshot=self.start();sid=snapshot["session_id"];session=self.api.runtime_session(sid)

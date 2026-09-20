@@ -18,13 +18,14 @@ class LiveReferencePolicy:
         self._switch_previous=None
         self._switch_paused=False
 
-    def _perception(self):
+    def _perception(self, now=None, force_stale=False):
         capabilities=self.analyzer.capabilities()
         supported=capabilities.get("supported_families")
         attempted=capabilities.get("attempted_families")
         rows=[]
         frame=self.latest_frame
-        fresh=bool(frame and self.capture["frame_fresh"] and not frame["quality"]["stale"] and not frame["quality"]["dropout"])
+        fresh=bool(not force_stale and frame and self.capture["frame_fresh"]
+            and not frame["quality"]["stale"] and not frame["quality"]["dropout"])
         states={s["instrument_id"]:s for s in frame["instruments"]} if frame else {}
         for configured in self.instrument_config["instruments"]:
             identity=configured["instrument_id"]
@@ -32,6 +33,7 @@ class LiveReferencePolicy:
             state=states.get(identity,{})
             confidence=state.get("confidence",{})
             reasons=list(confidence.get("reasons",[])) if fresh else list(self.capture["reason_codes"])
+            if force_stale and "stale_evidence" not in reasons:reasons.append("stale_evidence")
             activity=raw.get("activity","unknown") if fresh else "unknown"
             observability=raw.get("observability","unknown") if fresh else "unknown"
             validity=raw.get("validity","invalid") if fresh else "invalid"
@@ -50,7 +52,7 @@ class LiveReferencePolicy:
             else:value="uncertain"
             hint=self._current_hints.get(identity) if fresh and value in ("detected","uncertain") else None
             if hint and (hint["evidence_frame_id"] != frame["frame_id"] or self._hint_expires_monotonic_s is None
-                    or self.monotonic_clock() > self._hint_expires_monotonic_s):hint=None
+                    or (self.monotonic_clock() if now is None else now) >= self._hint_expires_monotonic_s):hint=None
             rows.append(dict(**configured,adjustment_hint=copy.deepcopy(hint),state=value,frame_id=frame["frame_id"] if fresh else None,
                 activity=activity,observability=observability,validity=validity,calibration_status=calibration,
                 action_abstained=abstained,numerical_advice_allowed=bool(value=="detected" and calibration=="calibrated" and not abstained),
