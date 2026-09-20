@@ -1,5 +1,15 @@
 # PA shared interfaces V1
 
+## Dataset-family attempt and non-numeric hint amendment — 2026-09-20
+
+[Dataset perception and hint freeze](../docs/implementation/DATASET_PERCEPTION_HINT_FREEZE.md)
+separates attempted model-source measurement from historically validated support.
+Non-bass dataset families are no longer excluded by empirical allowlist. Optional
+`InstrumentPerception.adjustment_hint` carries only a current-frame experimental
+direction for a human listening trial; it does not relax numerical-confidence,
+quality, incident or verification gates. Existing AnalyzerEvidence numerical masks
+and historical benchmark results remain unchanged.
+
 ## Approved product-policy amendment — 2026-09-20
 
 [Live reference and microphone freeze](../docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md)

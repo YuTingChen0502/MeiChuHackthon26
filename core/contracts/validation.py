@@ -189,6 +189,24 @@ def validate_snapshot(snapshot):
                         "Numerical advice requires calibrated actionable confidence")
             if item["frame_id"] is not None:
                 require(frame is not None and item["frame_id"] == frame["frame_id"], "Old perception frame")
+            hint = item.get("adjustment_hint")
+            if hint is not None:
+                require(frame is not None and capture["frame_fresh"]
+                        and hint["evidence_frame_id"] == item["frame_id"] == frame["frame_id"],
+                        "Direction hint requires current fresh evidence")
+                quality = frame["quality"]
+                require(not quality["stale"] and not quality["dropout"]
+                        and quality["clipped_fraction"] == 0 and quality["capture_compatible"]
+                        and quality["comparability"] == "comparable",
+                        "Unusable audio cannot support a direction hint")
+                require(item["state"] in ("detected", "uncertain")
+                        and item["activity"] == "active" and item["observability"] == "observable"
+                        and item["validity"] == "valid", "Direction hint requires usable source measurement")
+                require(frame["identifiability_assumption"] == "majority_active_sources_unchanged",
+                        "Direction hint requires identifiable relative balance")
+                require(item["instrument_id"] in states
+                        and states[item["instrument_id"]]["family"] == item["family"],
+                        "Direction hint instrument mismatch")
             if item["state"] in ("detected", "not_heard"):
                 require(capture["frame_fresh"] and item["frame_id"] is not None, "Perception requires fresh evidence")
                 require(not frame["quality"]["stale"] and not frame["quality"]["dropout"],
