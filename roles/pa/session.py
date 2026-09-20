@@ -11,7 +11,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from functools import wraps
-from threading import RLock
+from threading import Event, RLock
 
 from core.contracts.validation import (
     PUBLIC,
@@ -43,9 +43,13 @@ def _persisted(method):
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         with self._lock:
+            if self._deletion_requested.is_set():
+                raise SessionCommandError("unknown_session", "Session was deleted.", http_status=404)
             pre_state = self.export_state()
             try:
                 result = method(self, *args, **kwargs)
+                if self._deletion_requested.is_set():
+                    raise SessionCommandError("unknown_session", "Session was deleted.", http_status=404)
                 if self._persistence_callback is not None:
                     self._persistence_callback(self.export_state())
                 return result
@@ -112,6 +116,7 @@ class PASession(LiveReferencePolicy):
             raise ValueError("frame_retention must be positive")
         self.frame_retention = frame_retention
         self._lock = RLock()
+        self._deletion_requested = Event()
         self._persistence_callback = None
         model = analyzer.capabilities()["model"]
         self._model_identity = copy.deepcopy(model)
