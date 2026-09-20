@@ -144,11 +144,17 @@ async def get_session(request: Request):
     )
 
 
+async def delete_session(request: Request):
+    async def operation():
+        async for chunk in request.stream():
+            if chunk:raise APIError(422, "unexpected_body", "Session deletion has no request body.")
+        return await asyncio.to_thread(_api(request).delete_session, request.path_params["session_id"])
+    return await _call(request, operation)
+
+
 async def post_action(request: Request):
     async def operation():
         body = await _json_body(request)
-        if body.get("action") == "accept_baseline":
-            raise APIError(422, "wrong_endpoint", "accept_baseline must use the baseline endpoint.")
         return await asyncio.to_thread(
             _api(request).post_action, request.path_params["session_id"], body
         )
@@ -199,6 +205,8 @@ async def session_events(websocket: WebSocket):
                 continue
             if message["type"] == "websocket.disconnect":
                 return
+    except APIError as exc:
+        await websocket.close(code=4404 if exc.status == 404 else 1011, reason=exc.code)
     except WebSocketDisconnect:
         return
 
@@ -224,6 +232,7 @@ ROUTES = [
     Route("/v1/jobs/{job_id:str}", get_job, methods=["GET"]),
     Route("/v1/sessions", create_session, methods=["POST"]),
     Route("/v1/sessions/{session_id:str}", get_session, methods=["GET"]),
+    Route("/v1/sessions/{session_id:str}", delete_session, methods=["DELETE"]),
     Route("/v1/sessions/{session_id:str}/actions", post_action, methods=["POST"]),
     Route("/v1/sessions/{session_id:str}/baseline", accept_baseline, methods=["POST"]),
     WebSocketRoute("/v1/sessions/{session_id:str}/events", session_events),
