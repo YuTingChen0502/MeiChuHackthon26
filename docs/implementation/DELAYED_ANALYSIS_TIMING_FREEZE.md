@@ -72,6 +72,28 @@ section jumps and looping are not solved. Absent matching reference coverage mea
 comparison unavailable while inference can still run; do not label it aligned.
 No DTW/beat tracking/music-position research or reference retarget action is added.
 
+## Semantic audit follow-up
+
+The user supplied the read-only semantic-gate audit of `d267da4` (MIC-004/005/007/008).
+Its prohibition on widening freshness is superseded only by the explicit delayed
+candidate policy above; this does not claim one-second CPU inference throughput.
+MIC-007 is a comparison-cache migration defect: after existing cache hash, model,
+configuration and target binding checks pass, a genuine older compatible cache may
+prevent comparison but must not suppress otherwise compatible source separation.
+Keep migration reasons and comparison values invalid/null; never invent v2 levels
+or bypass corrupt/incompatible identity, clipping or geometry checks.
+
+MIC-005 does not authorize weakening command binding or automatic stale command
+replay. Per-packet ADC/fallback timestamp-mode alternation is diagnostic metadata,
+not a session lifecycle transition. Keep raw diagnostics internally; sample that
+metadata when publishing a genuine capture lifecycle/result update, instead of
+creating standalone durable transitions for every fluctuation. Actual source,
+generation, quality and error changes must still publish. State-version,
+idempotency, reference and generation checks remain unchanged. Add flapping-clock
+and concurrent lifecycle regression coverage. MIC-008 presentation should explain
+active capture awaiting a completed result and measured processing delay without
+claiming an in-flight model call unless authoritative evidence supports that claim.
+
 ## Ownership and acceptance
 
 Lead freezes wire/documentation/tests. Existing Runtime owner implements timing,
