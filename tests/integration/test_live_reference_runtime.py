@@ -214,7 +214,7 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         self.assertTrue(bass["action_abstained"])
         self.assertFalse(bass["numerical_advice_allowed"])
         self.assertEqual("not_heard",guitar["state"])
-        self.assertEqual("uncertain",drums["state"])
+        self.assertEqual("unsupported",drums["state"])
         self.assertIsNone(snapshot["latest_frame"]["instruments"][0]["confidence"]["probability"])
         # Raw evidence cannot survive publication freshness expiry.
         worker=self.api.workers[sid];worker.stop();worker.max_age_s=.001

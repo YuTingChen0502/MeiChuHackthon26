@@ -10,6 +10,18 @@ from core.contracts.validation import PUBLIC, validate_analyzer_pair, validate_r
 from .quality import hard_gate_reasons
 
 
+def measurement_deltas(evidence):
+    """Relative source changes from already validated backend-neutral evidence."""
+    return {row["instrument_id"]: float(row["source_level_db"] - row["target_source_level_db"]
+            if evidence["evidence_mode"] == "source_levels" else row["source_level_delta_db"])
+            for row in evidence["measurements"] if row["validity"] == "valid"}
+
+
+def median_common_mode(deltas):
+    """V1 majority-unchanged centering requires at least three source anchors."""
+    return statistics.median(deltas.values()) if len(deltas) >= 3 else None
+
+
 class FrameBuilder:
     def __init__(self, *, anomaly_threshold_db: float = 3.0, calibration_policy=None) -> None:
         self.anomaly_threshold_db = anomaly_threshold_db
@@ -51,23 +63,9 @@ class FrameBuilder:
         inference_wall_ms: float = 0.0,
     ) -> dict:
         validate_analyzer_pair(context, evidence)
-        deltas: dict[str, float] = {}
-        valid_ids: list[str] = []
-        for measurement in evidence["measurements"]:
-            if measurement["validity"] != "valid":
-                continue
-            instrument_id = measurement["instrument_id"]
-            if evidence["evidence_mode"] == "source_levels":
-                delta = measurement["source_level_db"] - measurement["target_source_level_db"]
-            else:
-                delta = measurement["source_level_delta_db"]
-            deltas[instrument_id] = float(delta)
-            valid_ids.append(instrument_id)
-
-        # V1 only claims an absolute centered balance when the documented majority
-        # assumption has at least three reliable active anchors.
-        identifiable = len(valid_ids) >= 3
-        common_mode = statistics.median(deltas.values()) if identifiable else None
+        deltas = measurement_deltas(evidence)
+        common_mode = median_common_mode(deltas)
+        identifiable = common_mode is not None
         gate_reasons = hard_gate_reasons(quality)
         instruments = []
         for measurement in evidence["measurements"]:

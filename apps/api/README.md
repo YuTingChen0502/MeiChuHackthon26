@@ -168,3 +168,33 @@ binding require reanalysis. Baseline acceptance and Start Live also reject model
 identity drift; baselines remain explicit human actions and immutable in Live.
 
 Current validation is recorded in `MVP_NATIVE_RUNTIME_CHECKPOINT.md`.
+
+
+## Experimental perception hints and reference re-preparation
+
+Attempt-capable analyzers separate executable family mappings from historical
+validation. Missing empirical support is uncertain, not an automatic Unsupported
+mask. `family_attribution_unvalidated` remains Uncertain even when comparative
+source levels are usable; partial or ambiguous source mappings remain invalid.
+
+Live-reference perception may include a nullable `adjustment_hint`. Runtime derives
+only an experimental increase/reduce direction from three independent usable source
+anchors, median common-mode subtraction and the existing 3 dB threshold. It requires
+uncalibrated, abstained confidence and every capture/quality/freshness gate. It never
+publishes a numerical correction/probability or creates an incident or recovery.
+Calibrated Fake recommendations retain their existing behavior without this hint.
+
+For `reference_context_reprepare_required`, use the existing reference route with
+`POST /v1/songs/{song_id}/reference` and `{"reference_id":"old-reference-id"}`.
+This is mutually exclusive with the existing `{"asset_id":"asset-id"}` request.
+Poll the returned job, then explicitly create a new session using its new immutable
+reference ID. The old session/reference remain available and are never retargeted.
+Ordinary microphone switches retain a compatible session/reference.
+
+Original upload bytes are retained privately in the existing SQLite asset storage
+and verified against the exact uploaded content hash before reference analysis.
+Historical storage retained only decoded mono PCM. A canonical mono PCM16 WAV may
+be reconstructed only when its complete WAV hash exactly matches the original.
+Discarded stereo channels or custom RIFF metadata cannot be invented. Missing or
+mismatched original bytes return `reference_audio_unavailable`; select the original
+WAV again in that case. `reference_song_mismatch` rejects cross-song migration.
