@@ -270,12 +270,6 @@
           },
           "then": {
             "properties": {
-              "source_level_delta_db": {
-                "type": "null"
-              },
-              "balance_deviation_db": {
-                "type": "null"
-              },
               "status": {
                 "enum": [
                   "unknown",

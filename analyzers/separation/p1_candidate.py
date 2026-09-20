@@ -246,8 +246,6 @@ class P1CandidateAnalyzer:
                 row["reason_codes"] = [reason]
             elif source_counts[source] != 1:
                 row["reason_codes"] = ["ambiguous_same_family_sources"]
-            elif family == "keys":
-                row["reason_codes"] = ["partial_source_representation"]
             elif matched["source_levels_dbfs"][source] is None or observation_levels[source] is None:
                 row["reason_codes"] = ["source_below_activity_floor"]
                 row["observability"] = "not_observable"
@@ -257,6 +255,7 @@ class P1CandidateAnalyzer:
                            target_source_level_db=matched["source_levels_dbfs"][source],
                            reason_codes=["uncalibrated_candidate"]
                            + (["family_attribution_unvalidated"] if family != "bass" else [])
+                           + (["partial_source_representation"] if family == "keys" else [])
                            + (["real_room_not_validated"] if window.input_kind == "live_microphone" else []))
             rows.append(row)
         evidence = {

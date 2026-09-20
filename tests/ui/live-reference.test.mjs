@@ -102,7 +102,7 @@ test('timed snapshots fail closed without authoritative expiry while legacy snap
 
 test('experimental direction comes only from the current Runtime hint and stays nonnumeric',()=>{
  const s=hintSession(),p=s.perception[0];
- assert.match(adjustmentHintPresentation(s,p).text,/lowering.*experimental, uncalibrated/);
+ assert.match(adjustmentHintPresentation(s,p).text,/Try lowering/);assert.match(adjustmentHintPresentation(s,p).detail,/Uncalibrated estimate/);
  p.adjustment_hint.direction='increase_level';assert.match(adjustmentHintPresentation(s,p).text,/raising/);
  assert.equal(perceptionPresentation(s,p).state,'uncertain');assert.equal(perceptionPresentation(s,p).numeric,false);
  assert.equal(liveReferenceView(s),'LISTENING');assert.doesNotMatch(JSON.stringify(adjustmentHintPresentation(s,p)),/dB|%|probability/);
@@ -142,10 +142,10 @@ test('malformed hint cannot become an instruction and null never gains a fallbac
 test('unvalidated dataset families stay uncertain and partial keys never acquire whole-family advice',()=>{
  for(const family of ['bass','drums','guitar','keys','vocals']){
   const s=hintSession(),p=s.perception[0];p.family=family;s.song.unsupported_families=[];
-  const view=perceptionPresentation(s,p);assert.equal(view.state,'uncertain');assert.match(view.detail,/not yet validated/);assert.equal(view.numeric,false);
+  const view=perceptionPresentation(s,p);assert.equal(view.state,'uncertain');assert.match(view.detail,/uncalibrated listening estimate/);assert.equal(view.numeric,false);
  }
  const s=hintSession(),p=s.perception[0];p.family='keys';p.reason_codes=['partial_source_representation'];p.validity='invalid';p.adjustment_hint=null;
- assert.match(perceptionPresentation(s,p).detail,/Only part/);assert.equal(adjustmentHintPresentation(s,p),null);
+ assert.match(perceptionPresentation(s,p).detail,/represented model source/);assert.equal(adjustmentHintPresentation(s,p),null);
 });
 
 test('UI hint wiring is display-only and setup does not equate lack of validation with unsupported',async()=>{
@@ -226,7 +226,7 @@ test('detected uncalibrated perception survives downstream unknown/abstention wi
  Object.assign(i,{status:'unknown',balance_deviation_db:null,source_level_delta_db:null,presence_probability:null});
  Object.assign(i.confidence,{calibration_status:'uncalibrated',abstained:true,probability:null});
  s.latest_frame.quality.capture_compatible=false;
- const result=perceptionPresentation(s,p);assert.equal(result.state,'detected');assert.equal(result.label,'Detected · uncalibrated');assert.equal(result.advice,'Advice withheld');assert.equal(result.numeric,false);
+ const result=perceptionPresentation(s,p);assert.equal(result.state,'detected');assert.equal(result.label,'Detected · uncalibrated');assert.equal(result.advice,'Experimental estimate');assert.equal(result.numeric,false);
  assert.equal(result.probability,undefined);assert.equal(currentSourceFrame(s),true);
 });
 
@@ -269,10 +269,10 @@ test('initial listening, stale or alignment uncertainty and unavailable input ar
  s.latest_frame=null;s.capture.state='listening';s.capture.frame_fresh=false;
  assert.equal(perceptionPresentation(s,p).label,'Listening');
  for(const reason of ['stale_evidence','alignment_unavailable']){
-  const result=perceptionPresentation(s,{...p,state:'uncertain',reason_codes:[reason]});assert.equal(result.label,'Uncertain');assert.equal(result.numeric,false);
+  const result=perceptionPresentation(s,{...p,state:'uncertain',reason_codes:[reason]});assert.equal(result.label,'Experimental estimate');assert.equal(result.numeric,false);
  }
  s.capture.state='unavailable';assert.equal(perceptionPresentation(s,p).label,'Input unavailable');
- const stale=session();stale.latest_frame.quality.stale=true;assert.equal(perceptionPresentation(stale,stale.perception[0]).label,'Uncertain');
+ const stale=session();stale.latest_frame.quality.stale=true;assert.equal(perceptionPresentation(stale,stale.perception[0]).label,'Experimental estimate');
  assert.equal(perceptionPresentation(session(),session().perception[0],{fresh:false}).state,'uncertain');
 });
 
@@ -330,7 +330,7 @@ test('setup uploads and prepares once then creates reference-target Live even wi
 });
 
 test('stale capture and disconnected perception never present positive current evidence',()=>{
- const s=session(),copy=capturePresentation(s,{}, {fresh:false});assert.match(copy.title,/Capturing audio/);assert.match(copy.detail,/completed observation.*no longer current/i);
+ const s=session(),copy=capturePresentation(s,{}, {fresh:false});assert.match(copy.title,/Capturing audio/);assert.match(copy.detail,/Analyzing the latest complete window/i);
  assert.equal(perceptionPresentation(s,s.perception[0],{fresh:false}).numeric,false);
  assert.equal(perceptionPresentation(s,s.perception[0],{connected:false}).state,'unavailable');
  assert.equal(liveReferenceView(s,{fresh:false,recoveredKey:'old-result'}),'LISTENING');

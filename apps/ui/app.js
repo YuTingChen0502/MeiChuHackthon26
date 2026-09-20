@@ -241,8 +241,8 @@ function renderInstrumentGrid(){
     const options={connected,fresh,switchPending:Boolean(sourceSwitchPending)},value=perceptionPresentation(snapshot,p,options),hint=adjustmentHintPresentation(snapshot,p,{...options,hintDeadlineMs:hintDeadlines.deadline(snapshot,p),now});
     const i=snapshot.latest_frame?.instruments?.find(i=>i.instrument_id===p.instrument_id),c=node('article','',`instrument-card ${value.state}`);
     c.append(node('h3',p.family,'instrument-name'),node('p',value.label,'instrument-status'),
-      node('strong',value.numeric?balanceText(i):hint?'No numerical advice':'Advice withheld','instrument-value'),
-      node('p',value.numeric?'Relative to reference':value.state==='listening'?'Waiting for a complete audio observation':p.calibration_status==='uncalibrated'&&value.state!=='unavailable'?'Uncalibrated — no numerical advice':'No reliable level advice available','confidence'));
+      node('strong',value.numeric?balanceText(i):hint&&typeof i?.balance_deviation_db==='number'?`${i.balance_deviation_db>0?'+':''}${i.balance_deviation_db.toFixed(1)} dB est.`:hint?'Directional estimate':'Monitoring','instrument-value'),
+      node('p',value.numeric?'Relative to reference':hint?'Model estimate relative to the uploaded full-mix reference':value.state==='listening'?'Analyzing a complete audio window':'Monitoring model output','confidence'));
     if(value.detail)c.append(node('p',value.detail,'muted'));
     if(hint)c.append(node('h4',hint.title,'section-title'),node('p',hint.text,'listening-note'),node('p',hint.detail,'muted'));
     grid.append(c);
@@ -253,7 +253,7 @@ function renderInstrumentGrid(){
 function renderLive(root){
   const changing=Boolean(sourceSwitchPending)||snapshot.capture?.switch_result==='pending',current=currentSourceFrame(snapshot)&&(viewMode==='fixture'||currentReceiptFresh()),hero=node('section','','quiet-monitor');
   const capturing=!current&&['listening','active'].includes(snapshot.capture?.state);
-  hero.append(node('p','CURRENT STATE','eyebrow'),node('h2',changing?'Changing the listening input…':current?'Listening against your reference.':capturing?'Capturing audio. Waiting for a completed analysis…':'Waiting for current audio…','panel-title'),node('p',changing?'Previous-source advice is cleared. Your reference and song remain unchanged.':current?(viewMode==='fixture'?'Illustrative states only; no audio analysis or Runtime commands.':'Instrument recognition and any advice below come from the listening service.'):'Capture activity is not a completed model result. No missing observation is treated as normal.','hero-copy'));
+  hero.append(node('p','CURRENT STATE','eyebrow'),node('h2',changing?'Changing the listening input…':current?'Listening against your reference.':capturing?'Analyzing captured audio…':'Preparing audio analysis…','panel-title'),node('p',changing?'Previous-source advice is cleared. Your reference and song remain unchanged.':current?(viewMode==='fixture'?'Illustrative states only; no audio analysis or Runtime commands.':'Instrument recognition and experimental directions below come from the listening service.'):'Complete model results will appear here as they finish.','hero-copy'));
   root.append(hero,renderInstrumentGrid());
 }
 function renderActionState(root,state){

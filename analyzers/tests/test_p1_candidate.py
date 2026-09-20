@@ -127,12 +127,16 @@ class P1ContractTests(unittest.TestCase):
             self.assertEqual([], row["uncertainty_features"])
             self.assertIn("uncalibrated_candidate", row["reason_codes"])
             self.assertEqual(family != "bass", "family_attribution_unvalidated" in row["reason_codes"])
-        for row in evidence["measurements"][4:]:
+        keys=evidence["measurements"][4]
+        self.assertEqual("valid",keys["validity"])
+        self.assertEqual(observed["piano"],keys["source_level_db"])
+        self.assertEqual(targets["piano"],keys["target_source_level_db"])
+        self.assertIn("partial_source_representation",keys["reason_codes"])
+        for row in evidence["measurements"][5:]:
             self.assertIsNone(row["source_level_db"])
             self.assertIsNone(row["target_source_level_db"])
             self.assertEqual("invalid", row["validity"])
             self.assertEqual("unknown", row["activity"])
-        self.assertEqual(["partial_source_representation"], evidence["measurements"][4]["reason_codes"])
         self.assertEqual(["INSUFFICIENT_EVIDENCE"], evidence["measurements"][5]["reason_codes"])
         caps = self.analyzer.capabilities()
         self.assertEqual(["bass", "drums", "guitar", "keys", "vocals"], caps["attempted_families"])
@@ -521,7 +525,7 @@ class P1ActualCPUSmokeTests(unittest.TestCase):
                 self.assertEqual(ref_levels[family], row["target_source_level_db"])
                 self.assertEqual(file_diagnostics["last_inference"]["source_levels_dbfs"][family], row["source_level_db"])
                 self.assertEqual(family != "bass", "family_attribution_unvalidated" in row["reason_codes"])
-            self.assertEqual(["partial_source_representation"], first["measurements"][4]["reason_codes"])
+            self.assertEqual(["source_below_activity_floor"], first["measurements"][4]["reason_codes"])
             self.assertIsNone(first["measurements"][4]["source_level_db"])
             second = a.analyze(obs, ctx)
             self.assertEqual(first, second)

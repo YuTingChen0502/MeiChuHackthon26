@@ -139,13 +139,13 @@ export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPend
   const reasons=[...(p?.reason_codes??[]),...(s?.capture?.reason_codes??[]),...(s?.latest_frame?.quality?.reason_codes??[])];
   if (p?.state==='uncertain' || s?.latest_frame?.quality?.stale ||
       reasons.some(reason=>['stale_evidence','alignment_unavailable'].includes(reason)))
-    return {state:'uncertain',label:'Uncertain',numeric:false,advice:'Advice withheld',
-      detail:p?.reason_codes?.includes('partial_source_representation')?'Only part of this instrument family can be assessed.':
-        p?.reason_codes?.includes('family_attribution_unvalidated')?'Instrument identification is not yet validated.':undefined};
+    return {state:'uncertain',label:p?.reason_codes?.includes('partial_source_representation')?'Partial estimate':'Experimental estimate',numeric:false,advice:'Monitoring',
+      detail:p?.reason_codes?.includes('partial_source_representation')?'Direction uses the represented model source only.':
+        p?.reason_codes?.includes('family_attribution_unvalidated')?'Direction is an uncalibrated listening estimate.':undefined};
   if (p?.state==='listening' && p.frame_id===null && s?.capture?.state==='listening')
     return {state:'listening',label:'Listening',numeric:false};
   if (!current || !p?.frame_id || p.frame_id!==s.latest_frame?.frame_id)
-    return {state:'uncertain',label:'Uncertain · waiting for current audio',numeric:false,advice:'Advice withheld'};
+    return {state:'uncertain',label:'Analyzing current audio',numeric:false,advice:'Monitoring'};
   const stateLabel={detected:'Detected',not_heard:'Not heard',uncertain:'Uncertain',listening:'Listening'}[p.state]??'Uncertain';
   const label=p.state==='detected'&&p.calibration_status==='uncalibrated'?`${stateLabel} · uncalibrated`:stateLabel;
   const i=s.latest_frame.instruments?.find(i=>i.instrument_id===p.instrument_id);
@@ -157,7 +157,7 @@ export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPend
     !i.confidence?.abstained&&typeof i.balance_deviation_db==='number'&&
     s.latest_frame.quality?.capture_compatible!==false&&
     !['unsupported','not_comparable'].includes(s.latest_frame.quality?.comparability);
-  return {state:p.state,label,numeric:Boolean(numeric),advice:numeric?'Relative to reference':'Advice withheld'};
+  return {state:p.state,label,numeric:Boolean(numeric),advice:numeric?'Relative to reference':'Experimental estimate'};
 }
 
 // Display only an explicit current Runtime hint. Never calculate a direction or
@@ -171,15 +171,16 @@ export function adjustmentHintPresentation(s,p,{connected=true,fresh=true,switch
      p.observability!=='observable'||p.validity!=='valid'||
      p.frame_id!==s.latest_frame.frame_id||hint.evidence_frame_id!==p.frame_id||
      q?.capture_compatible!==true||q.comparability!=='comparable'||q.clipped_fraction!==0||
-     s.latest_frame.identifiability_assumption!=='majority_active_sources_unchanged'||
+     (s.latest_frame.identifiability_assumption!=='majority_active_sources_unchanged'&&!hint.reason_codes.includes('reference_delta_without_common_mode'))||
      !s.latest_frame.instruments?.some(i=>i.instrument_id===p.instrument_id&&i.family===p.family)||
      hint.status!=='experimental'||hint.basis!=='relative_balance'||hint.automatic_execution!==false||
      !Array.isArray(hint.reason_codes)||!hint.reason_codes.length) return null;
   const direction={increase_level:'raising',reduce_level:'lowering'}[hint.direction];
   if(!direction)return null;
-  return {title:'Experimental listening trial',
-    text:`May try ${direction} this instrument, then listen again — experimental, uncalibrated.`,
-    detail:'Assumes most other instruments are unchanged. Not a verified correction.'};
+  const single=hint.reason_codes.includes('reference_delta_without_common_mode');
+  return {title:'Experimental direction',
+    text:`Try ${direction} this instrument, then listen again.`,
+    detail:single?'Uncalibrated estimate against the reference; overall mix gain may contribute.':'Uncalibrated estimate assuming most other instruments are unchanged.'};
 }
 
 export function referenceReprepareRequired(s) {
@@ -201,8 +202,8 @@ export function capturePresentation(s,discovery,{connected=true,fresh=true,switc
     const waiting=c.state==='listening'||!fresh||!c.frame_fresh;
     return {title:`${name} · Restored · ${waiting?'Capturing audio':'Active'}`,detail:`Couldn't use ${requested}. The previous input was restored. ${waiting?'Capture is active while we wait for a completed analysis; previous advice is withheld.':'Only fresh audio can be used.'}`};
   }
-  if(c.state==='active'&&!fresh)return {title:`${name} · Capturing audio`,detail:'Waiting for a completed analysis. The last completed observation is no longer current, so previous advice is withheld.'};
-  return {title:`${name} · ${{starting:'Connecting',listening:'Capturing audio',active:'Active',paused:'Paused',stopped:'Stopped'}[c.state]??'Unavailable'}`,detail:c.state==='paused'?'Resume listening when you are ready.':c.state==='active'?'Listening against the uploaded reference.':c.state==='listening'?'Audio capture is active. Waiting for the listening service to publish a completed analysis.':'Waiting for current audio. Recognition may remain uncertain.'};
+  if(c.state==='active'&&!fresh)return {title:`${name} · Capturing audio`,detail:'Analyzing the latest complete window. Results may arrive after model processing.'};
+  return {title:`${name} · ${{starting:'Connecting',listening:'Capturing audio',active:'Active',paused:'Paused',stopped:'Stopped'}[c.state]??'Unavailable'}`,detail:c.state==='paused'?'Resume listening when you are ready.':c.state==='active'?'Listening against the uploaded reference.':c.state==='listening'?'Audio capture is active and the model is analyzing complete windows.':'Preparing current audio analysis.'};
 }
 
 export function liveReferenceView(s,{connected=true,fresh=true,switchPending=false,acknowledgedRecovery=null,recoveredKey=null}={}) {

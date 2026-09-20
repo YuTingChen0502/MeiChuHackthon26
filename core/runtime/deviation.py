@@ -107,7 +107,8 @@ class FrameBuilder:
                     if balance <= -self.anomaly_threshold_db
                     else "normal"
                 )
-            balance = None if abstained else deltas[instrument_id] - common_mode
+            estimate = deltas.get(instrument_id) if measurement["validity"] == "valid" else None
+            balance = estimate - common_mode if estimate is not None and common_mode is not None else estimate
             state = {
                 "record_type": "InstrumentState",
                 "schema_version": "1.0",
@@ -115,7 +116,7 @@ class FrameBuilder:
                 "family": measurement["family"],
                 "activity": activity,
                 "presence_probability": None,
-                "source_level_delta_db": None if abstained else deltas[instrument_id],
+                "source_level_delta_db": estimate,
                 "balance_deviation_db": balance,
                 "status": status,
                 "confidence": approved_confidence or self._confidence(

@@ -223,8 +223,9 @@ def validate_snapshot(snapshot):
                 require(item["state"] in ("detected", "uncertain")
                         and item["activity"] == "active" and item["observability"] == "observable"
                         and item["validity"] == "valid", "Direction hint requires usable source measurement")
-                require(frame["identifiability_assumption"] == "majority_active_sources_unchanged",
-                        "Direction hint requires identifiable relative balance")
+                require(frame["identifiability_assumption"] == "majority_active_sources_unchanged"
+                        or "reference_delta_without_common_mode" in hint["reason_codes"],
+                        "Direction hint requires an explicit estimate basis")
                 require(item["instrument_id"] in states
                         and states[item["instrument_id"]]["family"] == item["family"],
                         "Direction hint instrument mismatch")

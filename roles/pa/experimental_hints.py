@@ -9,7 +9,8 @@ from core.runtime.quality import hard_gate_reasons
 # These documented candidate/calibration limitations may coexist with a trial
 # direction. Unknown reasons fail closed; no quality or ambiguity gate is waived.
 SOFT_REASONS = frozenset({"uncalibrated_candidate", "family_attribution_unvalidated",
-    "real_room_not_validated", "empirical_calibration_unavailable", "uncalibrated_uncertainty"})
+    "partial_source_representation", "real_room_not_validated", "empirical_calibration_unavailable",
+    "uncalibrated_uncertainty", "insufficient_stable_anchors"})
 
 
 def adjustment_hints(*, context, evidence, frame, anomaly_threshold_db):
@@ -37,13 +38,18 @@ def adjustment_hints(*, context, evidence, frame, anomaly_threshold_db):
     # ML invalidates all rows mapping to a shared model source, including aliases.
     # Runtime neither guesses a model taxonomy nor duplicates an ambiguous anchor.
     common=median_common_mode(eligible)
-    if common is None:return {}
+    # With fewer than three observable anchors, a global-gain correction cannot
+    # be identified. Still provide a clearly experimental direction from the
+    # matched reference delta; never turn it into an incident or numeric advice.
+    estimated_without_common_mode=common is None
+    if not eligible:return {}
     result={}
     for identity,delta in eligible.items():
-        balance=delta-common
+        balance=delta if estimated_without_common_mode else delta-common
         if abs(balance) < anomaly_threshold_db:continue
         result[identity]=dict(direction="reduce_level" if balance > 0 else "increase_level",
             status="experimental",basis="relative_balance",evidence_frame_id=frame["frame_id"],
-            reason_codes=["experimental_uncalibrated_direction", "majority_active_sources_unchanged"],
+            reason_codes=["experimental_uncalibrated_direction",
+                "reference_delta_without_common_mode" if estimated_without_common_mode else "majority_active_sources_unchanged"],
             automatic_execution=False)
     return result
