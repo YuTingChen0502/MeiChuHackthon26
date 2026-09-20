@@ -12,8 +12,11 @@ withheld. Humans adjust the sound; Harmonix never controls a mixer.
 **Windows real microphone execution verified; full physical acceptance remains open.**
 The [actual acceptance record](docs/implementation/REALTIME_MIC_ACCEPTANCE.md)
 contains ten minutes of candidate capture, switching, restart and browser evidence.
-The tested CPU does not meet freshness latency; Linux/PN54 and a second physical
-microphone are not validated. The user-approved
+The tested CPU does not sustain the one-second offered inference hop. The
+[delayed-analysis policy](docs/implementation/DELAYED_ANALYSIS_TIMING_FREEZE.md)
+keeps queue admission at two seconds while allowing candidate results up to twenty
+seconds from capture end; this is explicitly delayed analysis, not faster inference.
+Linux/PN54 and distinct physical-device acceptance remain separate. The user-approved
 [Live-reference contract](docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md) supersedes
 the historical rehearsal/baseline product flow. Existing baseline sessions remain
 explicitly legacy; the new console does not expose rehearsal or acceptance controls.
@@ -100,8 +103,13 @@ or unreliable attribution stays uncertain. An experimental raise/lower listening
 hint may be shown when current comparative evidence supports it, without a dB amount
 or calibrated probability. These attempts do not expand historical accuracy claims. Public numerical
 actions remain disabled. Prior CPU observation time was 7.929 seconds per four-second
-window; this does not meet the one-second offered hop. Slow results remain stale and
-uncertain, with bounded old-window dropping rather than an accumulating backlog.
+window; this does not meet the one-second offered hop. Candidate mode drops old
+queued windows and permits completed results within twenty seconds of capture end.
+Experimental directions last at most ten seconds after their original publication,
+clamped to that result deadline; new evidence and source/quality failures supersede
+them immediately. The UI shows processing delay and evidence age. Strict
+Fake/production defaults retain the two-second result budget. Unverified native
+capture still withholds advice even when model perception results are fresh.
 Install the optional tested model packages listed in
 [the candidate runbook](models/P1_CANDIDATE_INTEGRATION.md), then run:
 
