@@ -128,6 +128,10 @@ Unscripted Fake capture abstains: it does not invent instrument measurements fro
 microphone audio. Use the scripted Fake end-to-end test to exercise deterministic
 recommendations and recovery; fixture UI is labeled and isolated from real commands.
 
+Use **Delete session** beside an entry in **Recent songs** to remove its saved
+session history. Confirming also stops that session if it is running. The song,
+uploaded reference and model files are retained; canceling leaves the session intact.
+
 See [Runtime deployment and host review](apps/api/RUNTIME_PRE_MODEL_READY.md) for
 model selection, cache, approved capture profiles, native probes and PN54 procedure.
 The default `--mode bundle` requires a validated local bundle and host registration;
