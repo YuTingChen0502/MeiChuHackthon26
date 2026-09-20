@@ -84,7 +84,7 @@ python scripts/validate.py
 
 The validation runner executes shared, Runtime, integration, UI, selected ML suites,
 the unchanged legacy Fake correction-loop smoke, the Live-reference HTTP/WS smoke,
-and the source release audit.
+the experimental hint/reference-recovery smoke, and the source release audit.
 
 ## Frozen candidate integration
 
