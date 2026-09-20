@@ -167,6 +167,9 @@ def validate_snapshot(snapshot):
         require(frame["session_id"] == snapshot["session_id"], "Frame session mismatch")
     if live_reference:
         capture = snapshot["capture"]
+        timing = snapshot.get("analysis_timing")
+        if timing is not None:
+            require(math.isfinite(timing["snapshot_monotonic_s"]), "Finite snapshot clock required")
         require(capture["clock_id"] == snapshot["source"]["clock_id"], "Capture clock mismatch")
         if capture["state"] in ("switching", "starting", "paused", "stopped", "unavailable"):
             require(not capture["frame_fresh"], "Inactive capture cannot claim a fresh frame")
@@ -191,6 +194,16 @@ def validate_snapshot(snapshot):
                 require(frame is not None and item["frame_id"] == frame["frame_id"], "Old perception frame")
             hint = item.get("adjustment_hint")
             if hint is not None:
+                if timing is not None or "expires_monotonic_s" in hint:
+                    require(timing is not None and "expires_monotonic_s" in hint,
+                            "Hint expiry requires authoritative timing")
+                    deadline = hint["expires_monotonic_s"]
+                    require(math.isfinite(deadline) and deadline > timing["snapshot_monotonic_s"],
+                            "Expired hint cannot be current")
+                    require(frame is not None and deadline <= min(
+                        frame["published_monotonic_s"] + timing["hint_hold_s"],
+                        frame["capture_end_monotonic_s"] + timing["result_max_age_s"]),
+                        "Hint lifetime exceeds its original evidence budget")
                 require(item["calibration_status"] == "uncalibrated" and item["action_abstained"]
                         and not item["numerical_advice_allowed"],
                         "Experimental hint bypasses only uncalibrated abstention")

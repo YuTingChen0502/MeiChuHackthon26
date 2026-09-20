@@ -125,6 +125,26 @@ class LiveReferenceContracts(unittest.TestCase):
             evidence_frame_id=frame['frame_id'], reason_codes=['uncalibrated_estimate'],
             automatic_execution=False)
         validate_snapshot(hinted)  # Direction does not authorize numerical advice.
+        timed = copy.deepcopy(hinted)
+        timed['analysis_timing'] = dict(profile_id='candidate_delayed_v1', queue_max_age_s=2,
+            result_max_age_s=20, hint_hold_s=10, receipt_max_age_s=12, snapshot_monotonic_s=106)
+        timed['latest_frame']['published_monotonic_s'] = 106
+        timed['perception'][0]['adjustment_hint']['expires_monotonic_s'] = 116
+        validate_snapshot(timed)
+        for deadline in (106, 121, float('inf')):
+            bad = copy.deepcopy(timed)
+            bad['perception'][0]['adjustment_hint']['expires_monotonic_s'] = deadline
+            with self.subTest(deadline=deadline), self.assertRaises(ValueError):
+                validate_snapshot(bad)
+        bad = copy.deepcopy(timed)
+        del bad['perception'][0]['adjustment_hint']['expires_monotonic_s']
+        with self.assertRaises(ValueError): validate_snapshot(bad)
+        bad = copy.deepcopy(timed)
+        bad['analysis_timing']['queue_max_age_s'] = 20
+        with self.assertRaises(ValidationError): validate_snapshot(bad)
+        bad = copy.deepcopy(timed)
+        bad['analysis_timing']['profile_id'] = 'strict_v1'
+        with self.assertRaises(ValidationError): validate_snapshot(bad)
         for key, value in (('calibration_status', 'calibrated'),
                            ('calibration_status', 'out_of_envelope'),
                            ('action_abstained', False), ('numerical_advice_allowed', True)):

@@ -309,6 +309,9 @@
           "items": {
             "$ref": "urn:pa-controller:session-wire:1.0#/$defs/InstrumentPerception"
           }
+        },
+        "analysis_timing": {
+          "$ref": "urn:pa-controller:session-wire:1.0#/$defs/AnalysisTiming"
         }
       },
       "required": [
@@ -993,6 +996,24 @@
       ],
       "additionalProperties": false
     },
+    "AnalysisTiming": {
+      "type": "object",
+      "properties": {
+        "profile_id": { "enum": ["strict_v1", "candidate_delayed_v1"] },
+        "queue_max_age_s": { "const": 2 },
+        "result_max_age_s": { "enum": [2, 20] },
+        "hint_hold_s": { "const": 10 },
+        "receipt_max_age_s": { "enum": [5, 12] },
+        "snapshot_monotonic_s": { "type": "number", "minimum": 0 }
+      },
+      "required": ["profile_id", "queue_max_age_s", "result_max_age_s", "hint_hold_s", "receipt_max_age_s", "snapshot_monotonic_s"],
+      "additionalProperties": false,
+      "allOf": [{
+        "if": { "properties": { "profile_id": { "const": "strict_v1" } } },
+        "then": { "properties": { "result_max_age_s": { "const": 2 }, "receipt_max_age_s": { "const": 5 } } },
+        "else": { "properties": { "result_max_age_s": { "const": 20 }, "receipt_max_age_s": { "const": 12 } } }
+      }]
+    },
     "InstrumentPerception": {
       "type": "object",
       "properties": {
@@ -1072,6 +1093,7 @@
                 "status": { "const": "experimental" },
                 "basis": { "const": "relative_balance" },
                 "evidence_frame_id": { "type": "string", "minLength": 1 },
+                "expires_monotonic_s": { "type": "number", "minimum": 0 },
                 "reason_codes": {
                   "type": "array", "minItems": 1, "uniqueItems": true,
                   "items": { "type": "string", "minLength": 1 }

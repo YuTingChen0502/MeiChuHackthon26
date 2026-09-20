@@ -1,5 +1,13 @@
 # PA shared interfaces V1
 
+## Bounded delayed candidate timing amendment — 2026-09-20
+
+[Delayed analysis timing freeze](../docs/implementation/DELAYED_ANALYSIS_TIMING_FREEZE.md)
+separates queue admission, completed-result validity and fixed hint display expiry.
+It also distinguishes deliberately skipped analysis work from actual missing PCM.
+Optional snapshot timing and hint deadline fields do not authorize uncalibrated
+numerical advice or change reference alignment assumptions.
+
 ## Dataset-family attempt and non-numeric hint amendment — 2026-09-20
 
 [Dataset perception and hint freeze](../docs/implementation/DATASET_PERCEPTION_HINT_FREEZE.md)
