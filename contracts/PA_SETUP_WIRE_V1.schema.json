@@ -210,10 +210,15 @@
         "asset_id": {
           "type": "string",
           "minLength": 1
+        },
+        "reference_id": {
+          "type": "string",
+          "minLength": 1
         }
       },
-      "required": [
-        "asset_id"
+      "oneOf": [
+        { "required": ["asset_id"] },
+        { "required": ["reference_id"] }
       ],
       "additionalProperties": false
     },

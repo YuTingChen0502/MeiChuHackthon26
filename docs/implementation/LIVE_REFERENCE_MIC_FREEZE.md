@@ -1,5 +1,10 @@
 # Live reference and microphone switch freeze
 
+Later user amendment: [dataset-family attempts and experimental direction hints](DATASET_PERCEPTION_HINT_FREEZE.md)
+supersedes the supported-family-complement precedence below. Missing empirical
+validation alone no longer marks a family unsupported. Capture lifecycle, identity,
+quality and numerical-action gates in this freeze remain in effect.
+
 Lead-approved user product correction, 2026-09-20.
 Inspected clean main/origin/main: `95fa5fed576d6e45f608f413bc84167161d34f13`.
 Status: shared contract frozen; Runtime/UI implementation and physical acceptance pending.

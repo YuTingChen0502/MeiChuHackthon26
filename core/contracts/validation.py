@@ -191,6 +191,9 @@ def validate_snapshot(snapshot):
                 require(frame is not None and item["frame_id"] == frame["frame_id"], "Old perception frame")
             hint = item.get("adjustment_hint")
             if hint is not None:
+                require(item["calibration_status"] == "uncalibrated" and item["action_abstained"]
+                        and not item["numerical_advice_allowed"],
+                        "Experimental hint bypasses only uncalibrated abstention")
                 require(frame is not None and capture["frame_fresh"]
                         and hint["evidence_frame_id"] == item["frame_id"] == frame["frame_id"],
                         "Direction hint requires current fresh evidence")

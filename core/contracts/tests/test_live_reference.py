@@ -125,6 +125,13 @@ class LiveReferenceContracts(unittest.TestCase):
             evidence_frame_id=frame['frame_id'], reason_codes=['uncalibrated_estimate'],
             automatic_execution=False)
         validate_snapshot(hinted)  # Direction does not authorize numerical advice.
+        for key, value in (('calibration_status', 'calibrated'),
+                           ('calibration_status', 'out_of_envelope'),
+                           ('action_abstained', False), ('numerical_advice_allowed', True)):
+            bad = copy.deepcopy(hinted)
+            bad['perception'][0][key] = value
+            with self.subTest(hint_confidence=(key, value)), self.assertRaises(ValueError):
+                validate_snapshot(bad)
         for key, value in (('stale', True), ('dropout', True), ('clipped_fraction', .1),
                            ('capture_compatible', False), ('comparability', 'weak')):
             bad = copy.deepcopy(hinted)
