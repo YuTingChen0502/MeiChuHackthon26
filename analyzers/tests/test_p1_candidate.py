@@ -190,7 +190,10 @@ class P1ContractTests(unittest.TestCase):
         ctx = context(self.analyzer, mic, prepared, self.config)
         before = len(self.runner.calls)
         ev = self.analyzer.analyze(mic, ctx)
-        self.assertEqual(before, len(self.runner.calls))
+        self.assertEqual(before + 1, len(self.runner.calls))
+        self.assertIsNone(ev["matched_context_window_id"])
+        self.assertTrue(all(r["source_level_db"] is None and r["target_source_level_db"] is None
+                            for r in ev["measurements"]))
         self.assertEqual(["matched_reference_span_unavailable"], ev["measurements"][0]["reason_codes"])
 
     def test_silent_source_does_not_become_supported_normal(self):
@@ -354,6 +357,20 @@ class P1ActualCPUSmokeTests(unittest.TestCase):
             for left, right in zip(first["measurements"], mic_evidence["measurements"]):
                 self.assertEqual(left["source_level_db"], right["source_level_db"])
                 self.assertEqual(left["validity"], right["validity"])
+            # A dropout-shifted span has no reference match, but still runs all six sources.
+            unmatched = replace(mic, sample_start=123, sample_end=176523)
+            unmatched_ctx = dict(ctx, observation=unmatched.identity())
+            unmatched_evidence = a.analyze(unmatched, unmatched_ctx)
+            validate_analyzer_pair(unmatched_ctx, unmatched_evidence)
+            unmatched_diag = a.execution_diagnostics()
+            self.assertEqual(5, unmatched_diag["model_calls_completed"])
+            self.assertEqual(mic_diagnostics["last_inference"]["source_waveform_sha256"],
+                             unmatched_diag["last_inference"]["source_waveform_sha256"])
+            self.assertIsNone(unmatched_evidence["matched_context_window_id"])
+            self.assertTrue(all(r["source_level_db"] is None and r["target_source_level_db"] is None
+                                for r in unmatched_evidence["measurements"]))
+            self.assertEqual(["matched_reference_span_unavailable"],
+                             unmatched_evidence["measurements"][0]["reason_codes"])
             validate_analyzer_pair(ctx, first)
             bass = first["measurements"][0]
             published = json.loads((CANDIDATE / "runtime_smoke/inference-run-1.json").read_text())
