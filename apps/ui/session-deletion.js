@@ -1,6 +1,6 @@
 // Session history only: Runtime owns acquisition shutdown and durable deletion.
 export function sessionDeletionConfirmation(row) {
-  return `Delete session “${row.song_name}” (${row.session_id})?\n\nActive listening for this session will stop and its session history will be permanently deleted. The song and uploaded reference will be kept.`;
+  return `Delete “${row.song_name}”?\n\nActive listening will stop and this session’s history will be permanently deleted.\n\nYour song and uploaded reference will stay available.`;
 }
 
 export class SessionDeletion {

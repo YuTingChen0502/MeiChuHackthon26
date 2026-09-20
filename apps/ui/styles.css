@@ -443,12 +443,59 @@ input, select {
 .secondary-details > summary:focus-visible { outline: 2px solid var(--stone); outline-offset: 4px; }
 .secondary-details .live-actions { margin-top: 8px; }
 .secondary-details pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
-.saved-sessions .section-title { width: 100%; margin: 0; }
-.saved-session-row { display: flex; align-items: center; gap: var(--space-2, 8px); flex-wrap: wrap; }
-.saved-session-row .delete-session { font-size: 12px; }
-.session-delete-dialog { max-width: 480px; width: calc(100% - 48px); padding: 24px; background: var(--surface, #1A1A1A); color: var(--text, #F7F6F3); border: 1px solid var(--line); border-radius: 6px; }
-.session-delete-dialog::backdrop { background: rgb(0 0 0 / 60%); }
-.session-delete-dialog p { white-space: pre-line; margin: 16px 0 24px; }
+.saved-sessions { display: grid; gap: var(--space-2); }
+.saved-sessions .section-title { width: 100%; margin: 0 0 var(--space-1); }
+.saved-session-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(620px, 100%);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+}
+.saved-session-open {
+  display: grid;
+  justify-items: start;
+  gap: 1px;
+  min-width: 0;
+  padding: var(--space-2) 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.saved-session-open:hover { background: transparent; }
+.saved-session-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: 15px; }
+.saved-session-meta { color: var(--muted); font-size: 11px; font-weight: 500; }
+.delete-session {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-color: transparent;
+  background: transparent;
+  color: var(--danger);
+  font-size: 12px;
+}
+.delete-session:hover { border-color: rgb(200 115 109 / 55%); background: rgb(200 115 109 / 10%); color: #e59a94; }
+.session-controls-actions .delete-session { margin-left: auto; }
+.session-delete-dialog {
+  max-width: 480px;
+  width: calc(100% - 32px);
+  padding: var(--space-8);
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+}
+.session-delete-dialog::backdrop { background: rgb(0 0 0 / 72%); }
+.delete-eyebrow { color: var(--danger); }
+.delete-dialog-title { margin: var(--space-2) 0 var(--space-3); font-size: 25px; line-height: 1.2; letter-spacing: -0.02em; }
+.delete-dialog-copy { margin: 0; color: var(--stone); }
+.delete-dialog-retained { margin: var(--space-4) 0 0; padding: var(--space-3) var(--space-4); border-left: 2px solid var(--verified); background: rgb(110 170 132 / 8%); color: var(--muted); font-size: 12px; }
+.delete-dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+.danger-action { border-color: var(--danger); background: var(--danger); color: #171717; }
+.danger-action:hover { border-color: #dc8a84; background: #dc8a84; }
 .global-status { max-width: 900px; }
 .global-status p { margin: 0; }
 .instrument-card {

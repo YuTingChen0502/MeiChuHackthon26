@@ -11,7 +11,8 @@ const adapter=options=>new RuntimeAdapter({onSnapshot(){},onStatus(){},...option
 
 test('confirmation identifies session, irreversible history, active stop and retained assets',()=>{
  const copy=sessionDeletionConfirmation(row);
- for(const text of [row.song_name,row.session_id,'listening','stop','permanently deleted','song and uploaded reference will be kept'])assert.ok(copy.includes(text));
+ for(const text of [row.song_name,'listening','stop','permanently deleted','song and uploaded reference will stay available'])assert.ok(copy.includes(text));
+ assert.equal(copy.includes(row.session_id),false,'internal session IDs stay out of normal confirmation copy');
 });
 
 test('cancel and offline examples never delete or remove recent entries',async()=>{
@@ -88,11 +89,12 @@ test('delayed open cannot reconnect a deleted session',async()=>{
  await a.deleteSession(s.session_id);late.resolve(s);await assert.rejects(opening,/changed/);assert.equal(a.snapshot,null);
 });
 
-test('recent entry presentation keeps delete secondary and guards catalog resurrection',()=>{
+test('recent entry and active session expose an explicit styled delete action and guard catalog resurrection',()=>{
  const source=readFileSync(new URL('../../apps/ui/app.js',import.meta.url),'utf8');
  assert.match(source,/catalog\.forEach\(x=>list\.append\(recentSessionRow\(x\)\)\)/);
- assert.match(source,/confirm:confirmSessionDeletion/);assert.match(source,/'ghost delete-session'/);
- assert.match(source,/dialog\.showModal\(\);cancel\.focus\(\)/);
+ assert.match(source,/confirm:confirmSessionDeletion/);assert.match(source,/'delete-session'/);
+ assert.match(source,/typeof dialog\.showModal==='function'/);assert.match(source,/'danger-action'/);
+ assert.match(source,/snapshot\.session_id,song_name:snapshot\.song\.name/);
  assert.match(source,/dialog\.addEventListener\('cancel',event=>\{event\.preventDefault\(\);finish\(false\);\}\)/);
  assert.match(source,/aria-labelledby/);assert.match(source,/aria-describedby/);
  assert.match(source,/onDeleted:id=>\{removeCatalog\(id\);clearSessionView\(id\);\}/);

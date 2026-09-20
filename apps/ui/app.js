@@ -76,10 +76,13 @@ function updateSetupProgress(update){setupProgress=update;const box=document.que
 function renderSelection(){page='selection';clearTimer();clearFreshnessTimer();operationStatus=null;technicalDetail=null;if(runtimeAdapter)viewMode='authoritative';const root=app();root.dataset.workflow='HOME';root.replaceChildren(header('LIVE SOUND REFERENCE'));const hero=node('section','','entry-hero');hero.append(node('p','LISTEN · COMPARE · CORRECT · VERIFY','eyebrow'),node('h1','Hear it. Balance it. Play on.','hero-title'),node('p','Your reference. Your room. A balance worth keeping.','hero-copy'),button('Add song',renderSetup,'primary large'));const catalog=getCatalog();if(catalog.length){const list=node('section','','saved-sessions');list.append(node('h2','Recent songs','section-title'));catalog.forEach(x=>list.append(recentSessionRow(x)));hero.append(list);}const form=node('form','','existing-form');form.innerHTML='<label>Session ID<input name="sessionId" required placeholder="session-…"></label><button class="secondary" type="submit">Open session</button>';form.addEventListener('submit',e=>{e.preventDefault();loadSession(new FormData(form).get('sessionId'));});hero.append(disclosure('Connection options','home-connection',form));if(fixtures){const choices=node('div','','live-actions');choices.append(button('Example Live',()=>openFixture(true),'secondary'));hero.append(disclosure('Explore an offline example','home-examples',node('p','Illustrative only. No audio is sent for analysis.','muted'),choices));}root.append(hero,notice());if(runtimeStartupError)showError(runtimeStartupError,'connection');}
 function recentSessionRow(row){
   const box=node('div','','saved-session-row'),pending=sessionDeletion.pending.has(row.session_id);
-  const open=button(row.song_name,()=>loadSession(row.session_id),'secondary');open.disabled=pending;
-  const remove=button(pending?'Deleting…':'Delete session',()=>deleteRecentSession(row),'ghost delete-session');
+  const open=button('',()=>loadSession(row.session_id),'saved-session-open');
+  open.append(node('strong',row.song_name,'saved-session-name'),node('span','Open saved session','saved-session-meta'));open.disabled=pending;
+  const remove=button(pending?'Deleting…':'Delete',()=>deleteRecentSession(row),'delete-session');
   remove.setAttribute('aria-label',`Delete session ${row.song_name} (${row.session_id})`);
-  remove.disabled=pending||!runtimeAdapter||viewMode!=='authoritative';box.append(open,remove);return box;
+  remove.disabled=pending||!runtimeAdapter||viewMode!=='authoritative';
+  if(remove.disabled&&!pending)remove.title='Connect to Runtime to delete this session.';
+  box.append(open,remove);return box;
 }
 function clearSessionView(id){
   if(viewMode!=='authoritative'||snapshot?.session_id!==id)return;
@@ -91,15 +94,18 @@ function clearSessionView(id){
 function confirmSessionDeletion(message){
   return new Promise(resolve=>{
     const previousFocus=document.activeElement,dialog=node('dialog','','session-delete-dialog');
-    const title=node('h2','Delete this session?','section-title');title.id='delete-session-title';
-    const copy=node('p',message);copy.id='delete-session-description';
+    const [heading,...detailParts]=message.split('\n\n');
+    const eyebrow=node('p','REMOVE SESSION','eyebrow delete-eyebrow');
+    const title=node('h2',heading,'delete-dialog-title');title.id='delete-session-title';
+    const details=detailParts.filter(Boolean),copy=node('p',details[0]??'This session’s history will be permanently deleted.','delete-dialog-copy');copy.id='delete-session-description';
+    const retained=node('p',details[1]??'Your song and uploaded reference will stay available.','delete-dialog-retained');
     dialog.setAttribute('aria-labelledby',title.id);dialog.setAttribute('aria-describedby',copy.id);
     let settled=false;
     const finish=confirmed=>{if(settled)return;settled=true;dialog.close();dialog.remove();if(previousFocus?.isConnected)previousFocus.focus();resolve(confirmed);};
-    const actions=node('div','','live-actions'),cancel=button('Cancel',()=>finish(false),'secondary');
-    actions.append(cancel,button('Delete session',()=>finish(true),'secondary'));
-    dialog.append(title,copy,actions);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
-    document.body.append(dialog);dialog.showModal();cancel.focus();
+    const actions=node('div','','delete-dialog-actions'),cancel=button('Keep session',()=>finish(false),'secondary');
+    actions.append(cancel,button('Delete session',()=>finish(true),'danger-action'));
+    dialog.append(eyebrow,title,copy,retained,actions);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
+    document.body.append(dialog);if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');cancel.focus();
   });
 }
 async function deleteRecentSession(row){
@@ -226,7 +232,7 @@ async function startRepreparedSession(){
   }catch(error){showError(error,'reference');}
   finally{pendingCommand=false;if(page==='console')renderConsole();}
 }
-function renderSessionControls(){const actions=node('div','','live-actions');if(viewMode!=='authoritative')return actions;if(!['SUSPENDED','STOPPED'].includes(snapshot.song.workflow_state))actions.append(guardedButton('Pause listening','pause',{},'secondary'));if(snapshot.song.workflow_state!=='STOPPED')actions.append(guardedButton('Stop session','stop',{},'ghost'));return actions;}
+function renderSessionControls(){const actions=node('div','','live-actions session-controls-actions');if(viewMode!=='authoritative')return actions;if(!['SUSPENDED','STOPPED'].includes(snapshot.song.workflow_state))actions.append(guardedButton('Pause listening','pause',{},'secondary'));if(snapshot.song.workflow_state!=='STOPPED')actions.append(guardedButton('Stop session','stop',{},'ghost'));const remove=button('Delete session',()=>deleteRecentSession({session_id:snapshot.session_id,song_name:snapshot.song.name}),'delete-session');remove.disabled=sessionDeletion.pending.has(snapshot.session_id);actions.append(remove);return actions;}
 function renderInterrupted(root){const ended=(snapshot.suspension_reasons??[]).includes('audio_eof'),stopped=snapshot.song.workflow_state==='STOPPED'||snapshot.capture?.state==='stopped',paused=snapshot.capture?.state==='paused',hero=node('section','','task-focus');hero.append(node('p','LISTENING','eyebrow'),node('h2',ended?'Audio finished':stopped?'Session ended':paused?'Listening is paused':'Choose a microphone to continue','panel-title'),node('p',paused?'You paused listening. Resume when the band is ready.':'Your song and uploaded reference are kept. Microphone status is shown above.','hero-copy'));if(paused)hero.append(guardedButton('Resume listening','resume',{},'primary'));else if((ended||stopped)&&!referenceReprepareRequired(snapshot)&&!referencePreparations.has(snapshot.session_id))hero.append(button('Listen with this reference',openReferenceSession,'primary'));root.append(hero);}
 function renderInstrumentGrid(){
   const now=Date.now(),grid=node('section','','instrument-grid live-grid'),connected=viewMode==='fixture'||runtimeConnected,fresh=viewMode==='fixture'||currentReceiptFresh(now);
