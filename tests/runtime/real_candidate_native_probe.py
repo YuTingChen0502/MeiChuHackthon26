@@ -101,12 +101,12 @@ def run(storage,output,segment_seconds=20):
         inventory=api.audio_devices()[1];raw=backend.discover();default=next(d for d in raw if d.is_default)
         group=next(m["microphone_id"] for m in inventory["microphones"] if m["selection_kind"]!="system_default"
             and any(d.device_id==default.device_id for d in api.live_audio.inventory().resolve(m["microphone_id"])))
+        current_model=api.analyzer_capabilities()["model"]
         existing=next((j for j in api.jobs.values() if j["status"]=="completed" and
-            api.songs[j["song_id"]]["name"]=="Generated reference - no acoustic labels"),None)
+            api.songs[j["song_id"]]["name"]=="Generated reference - no acoustic labels" and
+            api.reference_models.get(j["reference_id"])==current_model),None)
         if existing:
             job=existing;song=api.songs[job["song_id"]]
-            if api.reference_models[job["reference_id"]]!=api.analyzer_capabilities()["model"]:
-                raise RuntimeError("persisted reference model/profile incompatible")
             print(json.dumps({"phase":"reuse_exact_compatible_reference","reference_id":job["reference_id"],"git_commit":sha}),flush=True)
         else:
             _,project=api.create_project({"name":"Actual native P1 engineering acceptance"})
