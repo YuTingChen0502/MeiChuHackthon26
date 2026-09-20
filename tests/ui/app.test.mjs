@@ -152,10 +152,20 @@ test('uses friendly microphone labels without exposing stable native IDs', () =>
   assert.doesNotMatch(sourceIdentityText({input_kind:'live_microphone',input_asset_or_device_id:'portaudio:opaque-second'},discovery),/opaque|portaudio/);
   assert.equal(sourceIdentityText({input_kind:'uploaded_file',input_asset_or_device_id:'asset-7'},discovery),'uploaded file · asset-7');
 });
-test('renders authoritative model support without inventing coverage', () => {
+test('labels song configuration without inventing model coverage', () => {
   const snapshot={song:{configured_families:['bass','guitar','drums','vocals','keys'],unsupported_families:['guitar','drums','vocals','keys']}};
-  assert.equal(modelSupportSummary(snapshot),'Declared bundle coverage · supported: bass · unsupported: guitar, drums, vocals, keys');
+  assert.equal(modelSupportSummary(snapshot),'Configured instrument families · bass, guitar, drums, vocals, keys');
   assert.equal(liveEvidenceState({...snapshot,latest_frame:{quality:{stale:false,dropout:false,capture_compatible:true,comparability:'comparable'},instruments:[active('normal',0)]}}),'unsupported');
+});
+
+test('empty song unsupported list never implies candidate support in diagnostics', () => {
+  const snapshot={song:{configured_families:['bass','guitar','drums','vocals','keys'],unsupported_families:[]},perception:[{family:'bass',state:'uncertain'},...['guitar','drums','vocals','keys'].map(family=>({family,state:'unsupported'}))]};
+  const original=structuredClone(snapshot);
+  assert.equal(modelSupportSummary(snapshot),'Configured instrument families · bass, guitar, drums, vocals, keys');
+  assert.doesNotMatch(modelSupportSummary(snapshot),/supported|coverage/i);
+  assert.equal(modelSupportSummary({song:{configured_families:[]}}),'Instrument configuration unavailable');
+  assert.equal(modelSupportSummary(null),'Instrument configuration unavailable');
+  assert.deepEqual(snapshot,original);
 });
 test('source status distinguishes file, microphone, connection, suspension, stale and errors', () => {
   const mic={source:{input_kind:'live_microphone'},song:{workflow_state:'REHEARSAL'},suspension_reasons:[],latest_frame:null};
