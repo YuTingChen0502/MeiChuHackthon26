@@ -16,8 +16,11 @@ P1 uses amplitude-preserving mono 44100 Hz, 176400-sample windows, 44100-sample
 host hop. For synchronized demonstration only, new capture generation starts at
 relative canonical sample zero; match each observation [start,end) to the exact
 same reference span. Stream-native rate conversion must preserve this relative
-sample identity. No matching span means explicit alignment unavailable, never
-an invented match. A gap does not reset the relative song timeline or invent lost
+sample identity. No matching span means explicit comparison alignment unavailable,
+never an invented match. Compatible complete PCM still executes source separation;
+missing span alone must not stop perception. Publish invalid/null comparison evidence
+and retain actual six-source output only in diagnostics until alignment exists.
+A gap does not reset the relative song timeline or invent lost
 duration; if relative alignment is no longer defensible, mark alignment unavailable.
 An explicit source restart/switch starts a new relative-zero demo timeline, so
 playback/performers must restart the reference for comparable results. No automatic
