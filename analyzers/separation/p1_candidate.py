@@ -87,6 +87,37 @@ class P1CandidateAnalyzer:
                     for value in levels.values()), "Invalid P1 source levels")
         return dict(levels)
 
+    @staticmethod
+    def _legacy_reference(record):
+        """Validate the exact cache shape emitted before the v2 attempt policy."""
+        require(set(record) == {"version", "model", "bundle_pin", "instrument_config",
+                                "windows", "context_nonce"}, "Invalid legacy reference context")
+        require(type(record["version"]) is int and record["version"] == 1
+                and isinstance(record["context_nonce"], str)
+                and record["context_nonce"], "Invalid legacy reference context")
+        require(isinstance(record["windows"], list) and record["windows"],
+                "Invalid legacy reference windows")
+        seen = set()
+        for item in record["windows"]:
+            require(set(item) == {"window_id", "sample_start", "sample_end", "pcm_sha256", "bass_dbfs"},
+                    "Invalid legacy reference window")
+            require(isinstance(item["window_id"], str) and item["window_id"],
+                    "Invalid legacy reference window")
+            require(type(item["sample_start"]) is int and type(item["sample_end"]) is int
+                    and item["sample_start"] >= 0
+                    and item["sample_end"] - item["sample_start"] == 176400,
+                    "Invalid legacy reference span")
+            require(item["window_id"] not in seen, "Duplicate legacy reference window")
+            seen.add(item["window_id"])
+            digest = item["pcm_sha256"]
+            require(isinstance(digest, str) and len(digest) == 64
+                    and all(c in "0123456789abcdef" for c in digest),
+                    "Invalid legacy reference PCM identity")
+            level = item["bass_dbfs"]
+            require(level is None or (type(level) in (int, float) and math.isfinite(level)),
+                    "Invalid legacy reference level")
+        return record
+
     def prepare_reference(self, windows, instrument_config):
         require(not self._closed, "Analyzer is closed")
         validate_record(instrument_config, ANALYZER, "InstrumentConfig")
@@ -151,14 +182,24 @@ class P1CandidateAnalyzer:
         require(record["model"] == self._model and record["bundle_pin"] == self.bundle.identity_hash,
                 "Incompatible reference model/profile")
         require(record["instrument_config"] == config, "Incompatible reference instrument configuration")
-        if (type(record.get("version")) is not int or record["version"] != 2
-                or record.get("reference_policy") != self._reference_policy):
-            return None, "reference_context_reprepare_required"
-        require(isinstance(record.get("windows"), list) and record["windows"], "Invalid reference windows")
-        for item in record["windows"]:
-            self._source_levels(item.get("source_levels_dbfs"))
+        legacy = (type(record.get("version")) is int and record["version"] == 1
+                  and "reference_policy" not in record)
+        current = (type(record.get("version")) is int and record["version"] == 2
+                   and record.get("reference_policy") == self._reference_policy)
+        if legacy:
+            self._legacy_reference(record)
+        elif current:
+            require(isinstance(record.get("windows"), list) and record["windows"], "Invalid reference windows")
+            for item in record["windows"]:
+                self._source_levels(item.get("source_levels_dbfs"))
         _, reason = self._bindings.lookup_and_bind(self.bundle.identity_hash, asset, config, target)
-        return (record, None) if reason is None else (None, reason)
+        if reason is not None:
+            return None, reason
+        if not current:
+            # A validated v1 record is returned only to authorize observation-side
+            # separation. It never supplies comparison spans or target levels.
+            return (record if legacy else None), "reference_context_reprepare_required"
+        return record, None
 
     def analyze(self, window, context):
         require(not self._closed, "Analyzer is closed")
@@ -170,12 +211,12 @@ class P1CandidateAnalyzer:
         configured = config["instruments"]
         reference, reason = self._reference(context["model_specific_context_asset"], config, context["target"])
         matched = None
-        if reason is None:
+        if reason in (None, "reference_context_reprepare_required"):
             if context["comparison_regime"] != "matched_excerpt":
                 reason = "comparison_regime_unsupported"
             elif window.input_clipped_fraction or max(abs(x) for x in window.samples) >= 1:
                 reason = "clipping_outside_candidate_envelope"
-            else:
+            elif reason is None:
                 matches = [r for r in reference["windows"] if
                            (r["sample_start"], r["sample_end"]) == (window.sample_start, window.sample_end)]
                 if len(matches) != 1:
@@ -188,7 +229,8 @@ class P1CandidateAnalyzer:
         # compatible inference. All six sources are produced before publication masks.
         # Missing comparison coverage does not prevent source separation.
         # Keep unmatched results diagnostic-only; no fabricated reference values.
-        can_execute = reason in (None, "matched_reference_span_unavailable")
+        can_execute = (reason in (None, "matched_reference_span_unavailable")
+                       or (reason == "reference_context_reprepare_required" and reference is not None))
         observation_levels = self._source_levels(self.runner.levels(window.samples)) if can_execute else None
         if reason is None and not self._candidate_mode:
             reason = "candidate_mode_not_enabled"
