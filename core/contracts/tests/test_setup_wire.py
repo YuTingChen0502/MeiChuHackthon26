@@ -11,6 +11,15 @@ from core.contracts.validation import SETUP, validate_record
 
 
 class SetupWireTests(unittest.TestCase):
+    def test_reference_reprepare_names_exactly_one_existing_source(self):
+        validate_record({'reference_id': 'reference-old'}, SETUP, 'StartReferenceRequest')
+        validate_record({'reference_id': 'reference-old'}, SETUP)
+        for malformed in ({}, {'reference_id': ''},
+                          {'reference_id': 'old', 'asset_id': 'asset-1'},
+                          {'reference_id': 'old', 'retarget_session': True}):
+            with self.subTest(request=malformed), self.assertRaises(ValidationError):
+                validate_record(malformed, SETUP, 'StartReferenceRequest')
+
     def test_setup_payload_examples_and_invalid_instrument_types(self):
         examples = {
             "DeleteSessionResponse": {"session_id": "session-1", "deleted": True},

@@ -45,6 +45,16 @@ Older bass-only caches must not acquire invented values for additional sources;
 re-prepare through the existing reference lifecycle or explicitly report missing
 comparison coverage. Preserve amplitude, timeline, model/profile and target binding.
 
+Explicit cache migration reuses `POST /v1/songs/{song_id}/reference` with additive
+`StartReferenceRequest {reference_id: old_reference_id}`, mutually exclusive with
+the existing `{asset_id}`. Runtime must verify the reference belongs to that song
+and resolve the retained audio by its exact content hash, including a check of
+the retained bytes before analysis. Missing/incompatible assets fail explicitly.
+The response remains ReferenceJob and prepares a new immutable reference ID. UI
+may explicitly start a new session for the same song after completion; it must
+not silently retarget an old session. No re-upload or new song is required. Normal
+microphone switches with a compatible reference retain the same session/reference.
+
 ## Optional non-numeric human suggestion
 
 `InstrumentPerception.adjustment_hint` is optional and nullable. A non-null value is
