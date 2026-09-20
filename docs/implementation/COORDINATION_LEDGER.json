@@ -1,10 +1,10 @@
 {
   "milestone": "DATASET_FAMILY_PERCEPTION_AND_DIRECTION_HINTS",
-  "status": "DATASET_ML_INTEGRATED_RUNTIME_UI_IMPLEMENTING",
+  "status": "DATASET_FAMILY_ATTEMPTS_HINTS_AND_SESSION_DELETION_INTEGRATED_VALIDATED",
   "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "509c8cdbf8885893b7a6d35f60e61986903467e6",
-  "latest_integration_commit": "456a00b",
+  "latest_integration_commit": "24c72baf27c5cb954bdfe0c563212152ee33fb8d",
   "lanes": {
     "ML": {
       "commit": "6b8152a64dac73e29043a8f33dc3b459329c4e75",
@@ -13,18 +13,15 @@
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "39df3a5e24a5ea3b66a7d257a004fc01996296c5",
-      "status": "Accepted/integrated;13 deletion tests independently PASS; worker full284Python/74UI/both smokes PASS"
+      "commit": "9645c7d0bd1a6d719fd507e4bb17708640f89f87",
+      "status": "Accepted/integrated; attempted-family perception, current experimental hints, verified retained-reference reprepare; canonical305Python PASS"
     },
     "UI": {
-      "commit": "3168c1edaba43b7125bf7651528a1c7fff4c8651",
-      "status": "Accepted and cherry-picked456a00b;84UI/actual HTTPWS/browser deletion PASS; next user amendment pending"
+      "commit": "69b23d7760e49eae049008330f102dd6605a76b7",
+      "status": "Accepted/integrated;95UI PASS; actual HTTPWS/browser hints/reprepare, unadopted-session stop, deletion preserved"
     }
   },
-  "pending_reviews": [
-    "Runtime experimental hint and retained-reference reprepare checkpoint",
-    "UI uncertain direction and migration recovery checkpoint"
-  ],
+  "pending_reviews": [],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -87,21 +84,22 @@
     "UI/CHECKPOINT_COMMIT/480138508251ed27e0a8f73fa0ff23436951fd74": "Reviewed and mergedef67ce6;84UI independently PASS; actual HTTP/WS/browser acceptance in progress",
     "UI/CHECKPOINT_COMMIT/3168c1edaba43b7125bf7651528a1c7fff4c8651": "Accepted; browser Cancel/Escape/delete/reload/GET404/reference reuse PASS on isolated temporary test storage; independently84UI and69-eventHTTPWS smoke PASS",
     "LEAD/DATASET_FAMILY_HINT_CONTRACT/d9e231442b9f6b2acb1060f763561b3109c8e90c": "User authorized dataset-family attempted perception and evidence-backed nonnumeric directions despite calibration abstention.34 shared tests PASS; existing ML/Runtime/UI owners dispatched, historical empirical support unchanged.",
-    "CP2-ML/CHECKPOINT_COMMIT/6b8152a64dac73e29043a8f33dc3b459329c4e75": "Accepted/integrated891f749; actual P1 tests independently25PASS; frozen model/evidence archive untouched"
+    "CP2-ML/CHECKPOINT_COMMIT/6b8152a64dac73e29043a8f33dc3b459329c4e75": "Accepted/integrated891f749; actual P1 tests independently25PASS; frozen model/evidence archive untouched",
+    "CP2-RUNTIME/CHECKPOINT_COMMIT/9645c7d0bd1a6d719fd507e4bb17708640f89f87": "Accepted/integratedfc97762; independent16focused tests PASS; complete canonical validation PASS",
+    "CP2-UI/CORRECTION_COMPLETE/69b23d7760e49eae049008330f102dd6605a76b7": "Accepted/integrated;95UI and all3HTTPWSsmokes PASS incl orphan stop; isolatedbrowser hint/reprepare receipt reviewed"
   },
   "integration_validation": {
-    "commit": "1d6536130493a690040815a0f728a2a0367c28fc",
-    "python_tests": 270,
-    "ui_tests": 74,
-    "final_ui_tests": 74,
+    "commit": "24c72baf27c5cb954bdfe0c563212152ee33fb8d",
+    "python_tests": 305,
+    "shared_tests": 35,
+    "ui_tests": 95,
     "legacy_fake_smoke": "PASS",
-    "live_reference_fake_smoke": "PASS 64 snapshot notifications",
-    "release_scan": "PASS clean source; zero findings",
-    "physical_candidate": "PASS 600.476s observed capture/97 actual model calls; docs/implementation/evidence/candidate_native_5ac8a81.json",
-    "native_restart": "PASS actual candidate same-session restart; same reference, new clock/generation, two model calls before/after",
-    "freshness": "NOT PASS on tested CPU: actual model p50 6.012s/p95 6.435s; unchanged2s freshness withholds stale outputs",
-    "browser": "Production candidate observed by existing UI owner, no Fake substitution; details in REALTIME_MIC_ACCEPTANCE.md",
-    "final_canonical_validation": "PASS scripts/validate.py including all shared/Runtime/integration/ML/UI tests and both workflow smokes"
+    "live_reference_fake_smoke": "PASS68notifications",
+    "experimental_hint_reprepare_smoke": "PASS34notifications including unadopted session stop",
+    "actual_frozen_weight_p1_regressions": "PASS; engineering execution only",
+    "release_scan": "PASS clean source zero findings",
+    "browser": "PASS isolated simulated hints/reprepare and deletion; docs/demo/DATASET_HINT_UI.md and SESSION_DELETION_UI.md",
+    "physical_claim": "No new physical, empirical accuracy or calibration claim"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
@@ -110,7 +108,7 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "ef67ce60f7ad5b3641274d2b5dcd83f1dbdd7e6a",
+  "latest_approved_main_implementation": "24c72baf27c5cb954bdfe0c563212152ee33fb8d",
   "remaining": [
     "CPU inference slower than offered1s hop and2s freshness gate; needs measured faster host/provider, no freshness widening",
     "Second distinct physical microphone and Linux/PN54 native acceptance unavailable",
@@ -124,7 +122,15 @@
     "support": "bass matched-digital only",
     "confidence": "UNCALIBRATED",
     "production_authorized": false,
-    "checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229"
+    "checkpoint_sha256": "b8293c362802e863109c9bec82b50c8211b63ad3947a53a12bd5d81eab0a6229",
+    "attempted_dataset_families": [
+      "bass",
+      "drums",
+      "guitar",
+      "keys",
+      "vocals"
+    ],
+    "attempt_policy": "p1-dataset-family-attempt-v1; keys partial piano representation; historical empirical support unchanged"
   },
   "session_deletion_validation": {
     "full_suite_commit": "ef67ce60f7ad5b3641274d2b5dcd83f1dbdd7e6a",
@@ -137,5 +143,19 @@
     "final_live_reference_http_ws_smoke": "PASS69events incl active/other/repeated deletion,WS4404,retained reference",
     "browser": "PASS cancel,Escape,confirm deletion,reload absence,GET404,reference reuse on temporary QA data",
     "real_user_sessions_deleted": false
+  },
+  "prior_realtime_mic_validation": {
+    "commit": "1d6536130493a690040815a0f728a2a0367c28fc",
+    "python_tests": 270,
+    "ui_tests": 74,
+    "final_ui_tests": 74,
+    "legacy_fake_smoke": "PASS",
+    "live_reference_fake_smoke": "PASS 64 snapshot notifications",
+    "release_scan": "PASS clean source; zero findings",
+    "physical_candidate": "PASS 600.476s observed capture/97 actual model calls; docs/implementation/evidence/candidate_native_5ac8a81.json",
+    "native_restart": "PASS actual candidate same-session restart; same reference, new clock/generation, two model calls before/after",
+    "freshness": "NOT PASS on tested CPU: actual model p50 6.012s/p95 6.435s; unchanged2s freshness withholds stale outputs",
+    "browser": "Production candidate observed by existing UI owner, no Fake substitution; details in REALTIME_MIC_ACCEPTANCE.md",
+    "final_canonical_validation": "PASS scripts/validate.py including all shared/Runtime/integration/ML/UI tests and both workflow smokes"
   }
 }
