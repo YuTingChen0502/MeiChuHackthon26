@@ -264,7 +264,10 @@ class LiveAudioController:
                         getattr(audio,"dropped_packets",0)):
                     return False
                 if not file_source and not session.capture_runtime_verified:
-                    quality["capture_compatible"]=False;quality["reason_codes"].append("capture_not_runtime_verified")
+                    # Host review is a deployment claim, not a PCM/model compatibility
+                    # failure. Keep the diagnostic without suppressing experimental
+                    # candidate perception or its explicitly uncalibrated estimate.
+                    quality["reason_codes"].append("capture_not_runtime_verified")
                 session.capture["timestamp_mode"]="sample_count" if file_source else audio.timestamp_mode
                 frame=session.observe_window(window,quality=quality,max_age_s=max_age,clock_uncertainty_s=.05 if not file_source else 0,
                     _prepared_evidence=evidence,_inference_started=begin)

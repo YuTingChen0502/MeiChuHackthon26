@@ -100,7 +100,9 @@ class PerceptionHintTransportTests(unittest.TestCase):
         self.assertIsNone(snapshot["incident"]);self.assertEqual([],snapshot["recommendations"])
         self.assertIsNone(snapshot["latest_verification"])
         for state in snapshot["latest_frame"]["instruments"]:
-            self.assertIsNone(state["confidence"]["probability"]);self.assertIsNone(state["balance_deviation_db"])
+            self.assertIsNone(state["confidence"]["probability"])
+            if state["activity"] == "active":self.assertIsInstance(state["balance_deviation_db"],float)
+            else:self.assertIsNone(state["balance_deviation_db"])
         self.api.workers[self.sid].stop()
         for _ in range(2):
             with connect(f"ws://127.0.0.1:{self.fixture.port}"+self.path+"/events?after_sequence=0",
@@ -119,9 +121,18 @@ class PerceptionHintTransportTests(unittest.TestCase):
             dict(microphone_id="mic-a",expected_source_generation=snapshot["capture"]["source_generation"])))
         self.assertTrue(all(p["adjustment_hint"] is None for p in result["snapshot"]["perception"]))
         snapshot=self.wait(lambda s:s["capture"]["state"]=="active")
-        self.assertFalse(snapshot["latest_frame"]["quality"]["capture_compatible"])
-        self.assertTrue(all(p["adjustment_hint"] is None for p in snapshot["perception"]))
-        _,result=self.request("POST",self.path+"/actions",json_body=command(snapshot,"hint-stop","stop"))
+        self.assertTrue(snapshot["latest_frame"]["quality"]["capture_compatible"])
+        self.assertIn("capture_not_runtime_verified",snapshot["latest_frame"]["quality"]["reason_codes"])
+        self.assertTrue(all(p["adjustment_hint"] is None or
+            p["adjustment_hint"]["evidence_frame_id"]==snapshot["latest_frame"]["frame_id"]
+            for p in snapshot["perception"]))
+        for attempt in range(5):
+            snapshot=self.api.get_session(self.sid)[1]
+            status,result=self.request("POST",self.path+"/actions",
+                json_body=command(snapshot,f"hint-stop-{attempt}","stop"))
+            if status==200:break
+            self.assertEqual("state_version_conflict",result["error"]["code"])
+        self.assertEqual(200,status)
         self.assertTrue(all(p["adjustment_hint"] is None for p in result["snapshot"]["perception"]))
     def test_stale_frame_and_restart_never_restore_hint(self):
         self.hinted();session=self.api.runtime_session(self.sid)

@@ -82,7 +82,7 @@ class StreamingTests(unittest.TestCase):
             self.assertTrue(state['confidence']['abstained'])
             self.assertIsNone(state['confidence']['probability'])
             self.assertIsNone(state['confidence']['prediction_interval_db'])
-            self.assertIsNone(state['balance_deviation_db'])
+            self.assertIsInstance(state['balance_deviation_db'],float)
 
     def test_overlapping_windows_do_not_count_as_independent_support(self):
         policy=PersistentAnomalyPolicy(required_frames=2)

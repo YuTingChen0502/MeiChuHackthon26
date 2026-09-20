@@ -1,6 +1,6 @@
 import { RuntimeAdapter } from './runtime-adapter.js';
 import { productError, recoveryKey, conciseConfidence, verificationCopy } from './workflow.js';
-import { isLiveReference, logicalMicrophones, sourceIdentity, currentSourceFrame, perceptionPresentation, adjustmentHintPresentation, referenceReprepareRequired, capturePresentation, liveReferenceView, LEGACY_RECEIPT_MAX_AGE_MS, receiptMaxAgeMs, analysisTimingPresentation, referenceComparisonPresentation, HintDeadlineTracker, SnapshotClockTracker, FrameResultDeadlineTracker } from './live-reference.js';
+import { isLiveReference, logicalMicrophones, sourceIdentity, currentSourceFrame, perceptionPresentation, experimentalEstimate, adjustmentHintPresentation, referenceReprepareRequired, capturePresentation, liveReferenceView, LEGACY_RECEIPT_MAX_AGE_MS, receiptMaxAgeMs, analysisTimingPresentation, referenceComparisonPresentation, HintDeadlineTracker, SnapshotClockTracker, FrameResultDeadlineTracker } from './live-reference.js';
 import { SessionDeletion } from './session-deletion.js';
 
 const FIXTURE_PATH = '../../contracts/examples/pa_shared_v1.json';
@@ -239,10 +239,10 @@ function renderInstrumentGrid(){
   const now=Date.now(),grid=node('section','','instrument-grid live-grid'),connected=viewMode==='fixture'||runtimeConnected,fresh=viewMode==='fixture'||currentReceiptFresh(now);
   for(const p of snapshot.perception??[]){
     const options={connected,fresh,switchPending:Boolean(sourceSwitchPending)},value=perceptionPresentation(snapshot,p,options),hint=adjustmentHintPresentation(snapshot,p,{...options,hintDeadlineMs:hintDeadlines.deadline(snapshot,p),now});
-    const i=snapshot.latest_frame?.instruments?.find(i=>i.instrument_id===p.instrument_id),c=node('article','',`instrument-card ${value.state}`);
+    const i=snapshot.latest_frame?.instruments?.find(i=>i.instrument_id===p.instrument_id),estimate=experimentalEstimate(snapshot,p,options),c=node('article','',`instrument-card ${value.state}`);
     c.append(node('h3',p.family,'instrument-name'),node('p',value.label,'instrument-status'),
-      node('strong',value.numeric?balanceText(i):hint&&typeof i?.balance_deviation_db==='number'?`${i.balance_deviation_db>0?'+':''}${i.balance_deviation_db.toFixed(1)} dB est.`:hint?'Directional estimate':'Monitoring','instrument-value'),
-      node('p',value.numeric?'Relative to reference':hint?'Model estimate relative to the uploaded full-mix reference':value.state==='listening'?'Analyzing a complete audio window':'Monitoring model output','confidence'));
+      node('strong',value.numeric?balanceText(i):estimate!==null?`${estimate>0?'+':''}${estimate.toFixed(1)} dB est.`:hint?'Directional estimate':'Monitoring','instrument-value'),
+      node('p',value.numeric?'Relative to reference':estimate!==null||hint?'Uncalibrated model estimate relative to the uploaded full-mix reference':value.state==='listening'?'Analyzing a complete audio window':'Monitoring model output','confidence'));
     if(value.detail)c.append(node('p',value.detail,'muted'));
     if(hint)c.append(node('h4',hint.title,'section-title'),node('p',hint.text,'listening-note'),node('p',hint.detail,'muted'));
     grid.append(c);

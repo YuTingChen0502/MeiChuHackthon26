@@ -160,6 +160,18 @@ export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPend
   return {state:p.state,label,numeric:Boolean(numeric),advice:numeric?'Relative to reference':'Experimental estimate'};
 }
 
+// Surface an authoritative Runtime estimate without promoting it to calibrated
+// confidence or an actionable PA recommendation.
+export function experimentalEstimate(s,p,{connected=true,fresh=true,switchPending=false}={}) {
+  const q=s?.latest_frame?.quality;
+  if(!connected||!fresh||switchPending||!currentSourceFrame(s)||q?.stale||q?.dropout||
+     !p?.frame_id||p.frame_id!==s.latest_frame?.frame_id||p.activity!=='active'||
+     p.observability!=='observable'||p.validity!=='valid') return null;
+  const i=s.latest_frame.instruments?.find(item=>item.instrument_id===p.instrument_id);
+  return typeof i?.balance_deviation_db==='number'&&Number.isFinite(i.balance_deviation_db)
+    ? i.balance_deviation_db:null;
+}
+
 // Display only an explicit current Runtime hint. Never calculate a direction or
 // reinterpret this listening trial as calibrated advice, an incident or recovery.
 export function adjustmentHintPresentation(s,p,{connected=true,fresh=true,switchPending=false,hintDeadlineMs=null,now=Date.now()}={}) {

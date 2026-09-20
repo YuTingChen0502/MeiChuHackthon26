@@ -18,7 +18,8 @@ class CandidateGateTests(unittest.TestCase):
         frame=FrameBuilder().build(context=ctx,evidence=evidence,quality=quality_state(),frame_id="fixture",sequence=1)
         for state in frame["instruments"]:
             self.assertNotEqual("normal",state["status"])
-            self.assertIsNone(state["balance_deviation_db"])
+            if state["family"] == "bass":self.assertEqual(4.0,state["balance_deviation_db"])
+            else:self.assertIsNone(state["balance_deviation_db"])
             self.assertIsNone(state["confidence"]["probability"])
             self.assertIsNone(state["confidence"]["prediction_interval_db"])
             self.assertTrue(state["confidence"]["abstained"])

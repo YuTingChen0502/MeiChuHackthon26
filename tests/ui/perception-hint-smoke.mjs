@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {RuntimeAdapter} from '../../apps/ui/runtime-adapter.js';
 import {commandFor} from '../../apps/ui/app.js';
-import {adjustmentHintPresentation,perceptionPresentation,referenceReprepareRequired,currentSourceFrame,HintDeadlineTracker} from '../../apps/ui/live-reference.js';
+import {adjustmentHintPresentation,experimentalEstimate,perceptionPresentation,referenceReprepareRequired,currentSourceFrame,HintDeadlineTracker} from '../../apps/ui/live-reference.js';
 const base=process.env.SMOKE_BASE;assert.ok(base);globalThis.location=new URL(base);
 const nativeFetch=globalThis.fetch;globalThis.fetch=(url,options)=>nativeFetch(new URL(url,base),options);
 let events=0,connected=false,key=0;
@@ -25,7 +25,11 @@ try{
  assert.equal(p.state,'uncertain');assert.equal(p.calibration_status,'uncalibrated');assert.equal(p.action_abstained,true);assert.equal(p.numerical_advice_allowed,false);
  assert.equal(perceptionPresentation(s,p).numeric,false);assert.match(hintView(s,p).text,/lowering/);
  assert.equal(s.incident,null);assert.deepEqual(s.recommendations,[]);
- for(const i of s.latest_frame.instruments){assert.equal(i.balance_deviation_db,null);assert.equal(i.confidence.probability,null);}
+ for(const i of s.latest_frame.instruments){
+  if(i.activity==='active')assert.equal(typeof i.balance_deviation_db,'number');else assert.equal(i.balance_deviation_db,null);
+  assert.equal(i.confidence.probability,null);
+ }
+ assert.equal(experimentalEstimate(s,p),4);
  await phase({guitar:-4});await wait(s=>guitar(s)?.adjustment_hint?.direction==='increase_level','Runtime raising hint');
  assert.match(hintView(adapter.snapshot,guitar(adapter.snapshot)).text,/raising/);
  await phase({guitar:0,global:6});await wait(s=>s.perception?.every(p=>p.adjustment_hint==null),'global gain no hint');

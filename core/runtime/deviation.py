@@ -80,6 +80,10 @@ class FrameBuilder:
             if measurement["validity"] == "valid" and not measurement["uncertainty_features"]:
                 reasons.append("uncalibrated_uncertainty")
             reasons.extend(reason for reason in gate_reasons if reason not in reasons)
+            # A missing host review withholds calibrated/actionable confidence, but
+            # does not erase a valid experimental model estimate.
+            if "capture_not_runtime_verified" in quality["reason_codes"]:
+                reasons.append("capture_not_runtime_verified")
             if measurement["validity"] == "valid" and not identifiable:
                 reasons.append("insufficient_stable_anchors")
             if not reasons and not evidence["example_only"] and self.calibration_policy is not None:

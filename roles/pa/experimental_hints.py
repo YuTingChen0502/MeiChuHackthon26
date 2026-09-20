@@ -10,7 +10,7 @@ from core.runtime.quality import hard_gate_reasons
 # direction. Unknown reasons fail closed; no quality or ambiguity gate is waived.
 SOFT_REASONS = frozenset({"uncalibrated_candidate", "family_attribution_unvalidated",
     "partial_source_representation", "real_room_not_validated", "empirical_calibration_unavailable",
-    "uncalibrated_uncertainty", "insufficient_stable_anchors"})
+    "uncalibrated_uncertainty", "insufficient_stable_anchors", "capture_not_runtime_verified"})
 
 
 def adjustment_hints(*, context, evidence, frame, anomaly_threshold_db):

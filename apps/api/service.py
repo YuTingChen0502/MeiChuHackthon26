@@ -670,7 +670,6 @@ class RuntimeAPI:
                         return
                     native = source["input_kind"] == "live_microphone"
                     if native and not session.capture_runtime_verified:
-                        quality["capture_compatible"] = False
                         quality["reason_codes"].append("capture_not_runtime_verified")
                     try:
                         frame=session.observe_window(window, quality=quality, max_age_s=max_age,

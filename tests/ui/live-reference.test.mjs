@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {RuntimeAdapter} from '../../apps/ui/runtime-adapter.js';
 import {commandFor,commandGuard,fixtureScenario} from '../../apps/ui/app.js';
-import {logicalMicrophones,currentSourceFrame,perceptionPresentation,adjustmentHintPresentation,referenceReprepareRequired,capturePresentation,liveReferenceView,receiptMaxAgeMs,analysisTimingPresentation,referenceComparisonPresentation,HintDeadlineTracker,SnapshotClockTracker,FrameResultDeadlineTracker} from '../../apps/ui/live-reference.js';
+import {logicalMicrophones,currentSourceFrame,perceptionPresentation,experimentalEstimate,adjustmentHintPresentation,referenceReprepareRequired,capturePresentation,liveReferenceView,receiptMaxAgeMs,analysisTimingPresentation,referenceComparisonPresentation,HintDeadlineTracker,SnapshotClockTracker,FrameResultDeadlineTracker} from '../../apps/ui/live-reference.js';
 const base=JSON.parse(await readFile(new URL('../../contracts/examples/pa_shared_v1.json',import.meta.url),'utf8'));
 function session(){
  const s=fixtureScenario(base);s.workflow_policy='live_reference_v1';s.active_baseline=null;s.song.baseline_id=null;s.incident=null;s.incident_state='none';s.adjustment=null;s.latest_verification=null;
@@ -110,6 +110,18 @@ test('experimental direction comes only from the current Runtime hint and stays 
  s.latest_frame.instruments[0].balance_deviation_db=99;assert.match(adjustmentHintPresentation(s,p).text,/raising/);
  delete p.adjustment_hint;assert.equal(adjustmentHintPresentation(s,p),null);
  p.adjustment_hint=null;assert.equal(adjustmentHintPresentation(s,p),null);
+});
+
+test('valid current uncalibrated Runtime delta remains visible as an experimental estimate',()=>{
+ const s=hintSession(),p=s.perception[0],i=s.latest_frame.instruments[0];
+ i.balance_deviation_db=2.25;
+ assert.equal(experimentalEstimate(s,p),2.25);
+ s.latest_frame.quality.capture_compatible=false;
+ assert.equal(experimentalEstimate(s,p),2.25,'deployment review must not erase a real model estimate');
+ for(const mutate of [x=>x.latest_frame.quality.stale=true,x=>x.latest_frame.quality.dropout=true,x=>x.perception[0].validity='invalid',x=>x.perception[0].frame_id='old']){
+  const blocked=hintSession();blocked.latest_frame.instruments[0].balance_deviation_db=2.25;mutate(blocked);
+  assert.equal(experimentalEstimate(blocked,blocked.perception[0]),null);
+ }
 });
 
 test('hint clears on stale, disconnected, switched, mismatched and unavailable audio',()=>{
