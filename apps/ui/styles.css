@@ -444,6 +444,8 @@ input, select {
 .secondary-details .live-actions { margin-top: 8px; }
 .secondary-details pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 260px; overflow: auto; }
 .saved-sessions .section-title { width: 100%; margin: 0; }
+.saved-session-row { display: flex; align-items: center; gap: var(--space-2, 8px); flex-wrap: wrap; }
+.saved-session-row .delete-session { font-size: 12px; }
 .global-status { max-width: 900px; }
 .global-status p { margin: 0; }
 .instrument-card {
