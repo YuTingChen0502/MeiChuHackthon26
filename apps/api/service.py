@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import wraps
 
 import copy
+import base64
 import hashlib
 import io
 import wave
@@ -343,14 +344,16 @@ class RuntimeAPI:
         if len(families) != len(set(families)):
             raise APIError(422, "duplicate_family", "V1 SongState requires unique configured families.")
         song_id = self._id("song")
-        supported_set = set(self.analyzer_capabilities().get("supported_families", ()))
+        capabilities = self.analyzer_capabilities()
+        supported_set = set(capabilities.get("supported_families", ()))
         record = {
             "song_id": song_id,
             "project_id": project_id,
             "name": name.strip(),
             "instrument_config": {"instrument_config_version": 1, "instruments": normalized},
             "supported_families": [family for family in families if family in supported_set],
-            "unsupported_families": [family for family in families if family not in supported_set],
+            "unsupported_families": ([] if "attempted_families" in capabilities else
+                [family for family in families if family not in supported_set]),
             "reference_id": None,
             "pending_reference_job_id": None,
         }
@@ -379,6 +382,7 @@ class RuntimeAPI:
             "channels": channels,
             "samples": samples,
             "clipping_blocks": clipping_blocks,
+            "encoded_audio": base64.b64encode(content).decode("ascii"),
         }
         self._save_state()
         response = {
@@ -391,14 +395,58 @@ class RuntimeAPI:
         self._validate("AudioAssetResponse", response)
         return 201, response
 
+    def _verified_reference_audio(self, asset):
+        """Verify exact uploaded bytes, never hash a lossy reconstructed mix."""
+        encoded = asset.get("encoded_audio")
+        try:
+            if encoded is not None:
+                if len(encoded) > 4*((self.max_upload_bytes+2)//3):raise ValueError("retained audio exceeds limit")
+                content = base64.b64decode(encoded, validate=True)
+            elif asset["channels"] == 1:
+                # Older storage retained lossless mono samples but not WAV bytes.
+                # A canonical candidate is usable ONLY if its full original hash matches.
+                output = io.BytesIO()
+                with wave.open(output, "wb") as writer:
+                    writer.setnchannels(1);writer.setsampwidth(2);writer.setframerate(asset["sample_rate_hz"])
+                    if len(asset["samples"])*2+44 > self.max_upload_bytes:raise ValueError("retained audio exceeds limit")
+                    for start in range(0,len(asset["samples"]),4096):
+                        integers=[sample*32768 for sample in asset["samples"][start:start+4096]]
+                        if any(int(value) != value for value in integers):raise ValueError("lossy PCM")
+                        writer.writeframesraw(b"".join(int(value).to_bytes(2,"little",signed=True) for value in integers))
+                content = output.getvalue()
+            else:
+                raise ValueError("original bytes not retained")
+            if "sha256:" + hashlib.sha256(content).hexdigest() != asset["content_hash"]:
+                raise ValueError("retained byte hash mismatch")
+            decoded = _decode_pcm16_wav(content)
+            if len(decoded[1])/decoded[0] > self.max_audio_duration_s:raise ValueError("retained audio exceeds duration limit")
+        except (ValueError,TypeError,KeyError,OverflowError,APIError,wave.Error) as exc:
+            raise APIError(409,"reference_audio_unavailable",
+                "Exact original reference audio is unavailable or incompatible; select the original WAV again.") from exc
+        if encoded is None:asset["encoded_audio"] = base64.b64encode(content).decode("ascii")
+        return decoded
+
     def start_reference_job(self, song_id: str, request: dict) -> tuple[int, dict]:
         self._validate("StartReferenceRequest", request)
         song = self.songs.get(song_id)
-        asset = self.assets.get(request.get("asset_id"))
         if song is None:
             raise APIError(404, "unknown_song", "Song does not exist.")
-        if asset is None:
-            raise APIError(404, "unknown_audio_asset", "Audio asset does not exist.")
+        if "reference_id" in request:
+            reference = self.references.get(request["reference_id"])
+            if reference is None:raise APIError(404,"unknown_reference","Reference does not exist.")
+            if reference["song_id"] != song_id:
+                raise APIError(409,"reference_song_mismatch","Reference belongs to a different song.")
+            matches = [item for item in self.assets.values() if item["content_hash"] == reference["source_asset_hash"]]
+            if not matches:raise APIError(409,"reference_audio_unavailable","Original reference audio is no longer retained.")
+            asset = None
+            for candidate in matches:
+                try:self._verified_reference_audio(candidate)
+                except APIError:continue
+                asset = candidate;break
+            if asset is None:raise APIError(409,"reference_audio_unavailable","Exact original reference bytes could not be verified.")
+        else:
+            asset = self.assets.get(request.get("asset_id"))
+            if asset is None:raise APIError(404,"unknown_audio_asset","Audio asset does not exist.")
         job_id = self._id("job")
         reference_id = self._id("reference")
         job = {
@@ -437,12 +485,13 @@ class RuntimeAPI:
                     yield chunk
 
         try:
+            verified_rate, verified_samples, _, verified_clipping = self._verified_reference_audio(asset)
             audio_input = ReferenceJobInput(
                 input_asset_or_device_id=asset["asset_id"],
                 clock_id=f"job-clock:{job_id}",
-                sample_rate_hz=asset["sample_rate_hz"],
-                samples=asset["samples"],
-                clipping_blocks=asset.get("clipping_blocks"),
+                sample_rate_hz=verified_rate,
+                samples=verified_samples,
+                clipping_blocks=verified_clipping,
                 origin_monotonic_s=0.0,
             )
             with self._temporary_analyzer() as analyzer:
