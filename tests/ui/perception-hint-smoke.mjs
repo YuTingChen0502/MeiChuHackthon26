@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict';
 import {RuntimeAdapter} from '../../apps/ui/runtime-adapter.js';
 import {commandFor} from '../../apps/ui/app.js';
-import {adjustmentHintPresentation,perceptionPresentation,referenceReprepareRequired,currentSourceFrame} from '../../apps/ui/live-reference.js';
+import {adjustmentHintPresentation,perceptionPresentation,referenceReprepareRequired,currentSourceFrame,HintDeadlineTracker} from '../../apps/ui/live-reference.js';
 const base=process.env.SMOKE_BASE;assert.ok(base);globalThis.location=new URL(base);
 const nativeFetch=globalThis.fetch;globalThis.fetch=(url,options)=>nativeFetch(new URL(url,base),options);
 let events=0,connected=false,key=0;
 const adapter=new RuntimeAdapter({onSnapshot(){events++;},onStatus(){},onConnection:value=>connected=value});
+const hintDeadlines=new HintDeadlineTracker();
 async function wait(predicate,label){const end=Date.now()+6000;while(Date.now()<end){if(predicate(adapter.snapshot))return adapter.snapshot;await new Promise(r=>setTimeout(r,30));}throw Error(`${label}: ${JSON.stringify(adapter.snapshot)}`);}
 async function phase(value){const r=await fetch('/__ui_test/scenario',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)});assert.ok(r.ok);}
 async function action(name){await adapter.refresh(adapter.activeSessionId);return adapter.command(commandFor(adapter.snapshot,name,{},`hint-smoke-${++key}`));}
 const guitar=s=>s.perception?.find(p=>p.family==='guitar');
+function hintView(s,p,now=Date.now()){
+ hintDeadlines.update(s,now,now);
+ return adjustmentHintPresentation(s,p,{hintDeadlineMs:hintDeadlines.deadline(s,p),now});
+}
 try{
  const reference=new File([await (await fetch('/__ui_test/reference.wav')).arrayBuffer()],'synthetic-reference.wav',{type:'audio/wav'});
  const initial=await adapter.setupLiveReference({project:'Isolated simulated hints',song:'Simulated listening trial',families:['guitar','bass','drums'],reference,source:'uploaded_file',sourceId:'reference-asset'});
@@ -18,15 +23,15 @@ try{
  await wait(s=>guitar(s)?.adjustment_hint?.direction==='reduce_level','Runtime lowering hint');
  let s=adapter.snapshot,p=guitar(s);assert.equal(s.latest_frame.example_only,true);
  assert.equal(p.state,'uncertain');assert.equal(p.calibration_status,'uncalibrated');assert.equal(p.action_abstained,true);assert.equal(p.numerical_advice_allowed,false);
- assert.equal(perceptionPresentation(s,p).numeric,false);assert.match(adjustmentHintPresentation(s,p).text,/lowering/);
+ assert.equal(perceptionPresentation(s,p).numeric,false);assert.match(hintView(s,p).text,/lowering/);
  assert.equal(s.incident,null);assert.deepEqual(s.recommendations,[]);
  for(const i of s.latest_frame.instruments){assert.equal(i.balance_deviation_db,null);assert.equal(i.confidence.probability,null);}
  await phase({guitar:-4});await wait(s=>guitar(s)?.adjustment_hint?.direction==='increase_level','Runtime raising hint');
- assert.match(adjustmentHintPresentation(adapter.snapshot,guitar(adapter.snapshot)).text,/raising/);
+ assert.match(hintView(adapter.snapshot,guitar(adapter.snapshot)).text,/raising/);
  await phase({guitar:0,global:6});await wait(s=>s.perception?.every(p=>p.adjustment_hint==null),'global gain no hint');
  await phase({guitar:4,global:0});await wait(s=>guitar(s)?.adjustment_hint,'hint again');
  const socket=adapter.socket;socket.close();await wait(s=>connected&&adapter.socket!==socket&&currentSourceFrame(s),'reconnect');
- await action('pause');assert.equal(adjustmentHintPresentation(adapter.snapshot,guitar(adapter.snapshot)),null);
+ await action('pause');assert.equal(hintView(adapter.snapshot,guitar(adapter.snapshot)),null);
  await action('resume');await wait(s=>guitar(s)?.adjustment_hint,'resumed current hint');
  await phase({reprepare:true});await wait(s=>referenceReprepareRequired(s),'old context reason');
  assert.equal(guitar(adapter.snapshot).adjustment_hint,null);
