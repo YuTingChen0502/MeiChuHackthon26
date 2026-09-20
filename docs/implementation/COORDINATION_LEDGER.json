@@ -4,11 +4,11 @@
   "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "8d5607d573e5f7cbee50ce26571c62fbf10b06c3",
-  "latest_integration_commit": "24c72baf27c5cb954bdfe0c563212152ee33fb8d",
+  "latest_integration_commit": "0d28ff960f56e773e07311a7b1357e3a117977f7",
   "lanes": {
     "ML": {
-      "commit": "6b8152a64dac73e29043a8f33dc3b459329c4e75",
-      "status": "Accepted/integrated891f749;25 P1 tests independently PASS incl actual frozen weights; five dataset families attempted, uncertainty/partial-keys preserved",
+      "commit": "4bfdd532ee8b8bb9bfacc0880b84b0699065bca2",
+      "status": "Accepted/integrated0d28ff9;23 P1 contract tests independently PASS; genuine v1 cache executes six-source diagnostics while comparison stays invalid/null; actual-weight regression passed in lane",
       "go_no_go": "NARROW matched-digital bass engineering candidate only; production NO_GO",
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
@@ -17,8 +17,8 @@
       "status": "Accepted/integrated; attempted-family perception, current experimental hints, verified retained-reference reprepare; canonical305Python PASS"
     },
     "UI": {
-      "commit": "69b23d7760e49eae049008330f102dd6605a76b7",
-      "status": "Accepted/integrated;95UI PASS; actual HTTPWS/browser hints/reprepare, unadopted-session stop, deletion preserved"
+      "commit": "ffd82e1575ad727e2e6fa78d703b9bbf8c078dbc",
+      "status": "Accepted pending Runtime integration;102UI independently PASS; read-only deadline/clock/lifecycle review no blockers"
     }
   },
   "pending_reviews": [],
@@ -40,6 +40,8 @@
     }
   ],
   "events": {
+    "CP2-UI/CHECKPOINT_COMMIT/ffd82e1575ad727e2e6fa78d703b9bbf8c078dbc": "Accepted for integration;102UI independently PASS and86targeted reviewer PASS; bounded deadline, separate receipt/server clocks, assumed reference interval",
+    "CP2-ML/CORRECTION_COMPLETE/4bfdd532ee8b8bb9bfacc0880b84b0699065bca2": "Accepted/integrated0d28ff9 after exact-integer version review correction; no source/target/hash integrity bypass;23focused independently PASS",
     "LEAD/DELAYED_TIMING_FREEZE/ae43785ae039523e4b34b06ee9bb2ec8d3582ac5": "Published candidate2s queue/20s result/10s fixed hint/12s UI receipt; strict unchanged;35sharedPASS",
     "LEAD/TIMING_REVIEW/44afb1c": "Read-only reviewer finding fixed: fresh frame must satisfy authoritative result age even without hint; strict/candidate boundary tests PASS",
     "LEAD/SEMANTIC_AUDIT_FOLLOWUP/8d5607d573e5f7cbee50ce26571c62fbf10b06c3": "User-provided audit ofd267da4 routed MIC007 to existing ML, MIC005 diagnostic-churn fix to Runtime, MIC008 waiting explanation to UI. No weakened commandbinding or model integrity.",
