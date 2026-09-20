@@ -141,8 +141,10 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         self.assertIsNone(snapshot["latest_frame"])
         self.assertEqual(accepted,self.api.post_action(sid,body)[1])
         _,(status,result)=self.switch(snapshot,"mic-a","after-restart")
-        self.assertEqual(409,status)
-        self.assertEqual("new_session_required",result["error"]["code"])
+        self.assertEqual(200,status)
+        recovered=self.wait(sid,lambda s:s["capture"]["state"]=="active")
+        self.assertEqual(old["active_reference"],recovered["active_reference"])
+        self.assertNotEqual(old["source"]["clock_id"],recovered["source"]["clock_id"])
 
     def test_switch_acceptance_does_not_wait_for_old_inference(self):
         snapshot=self.start();sid=snapshot["session_id"]
@@ -266,3 +268,45 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         snapshot=self.wait(sid,lambda s:s["capture"]["frame_fresh"])
         self.assertEqual(snapshot["source"]["clock_id"],snapshot["latest_frame"]["clock_id"])
         self.assertNotEqual(calls[0],calls[-1])
+
+    def test_restart_resume_reconstructs_analyzer_and_mismatch_stays_suspended(self):
+        old=self.start();sid=old["session_id"]
+        self.api.close()
+        self.api=RuntimeAPI(storage_dir=self.temp.name,window_size_samples=1024,hop_size_samples=1024,
+            analysis_sample_rate_hz=48000,native_backend=self.backend,managed_audio=True)
+        snapshot=self.api.get_session(sid)[1]
+        original_factory=self.api._new_analyzer
+        def incompatible():
+            analyzer=original_factory();analyzer.MODEL=dict(analyzer.MODEL,model_bundle_id="different-bundle")
+            return analyzer
+        self.api._new_analyzer=incompatible
+        count=len(self.backend.opens)
+        self.api.post_action(sid,command(snapshot,"resume-after-restart","resume"))
+        failed=self.wait(sid,lambda s:s["capture"]["state"]=="unavailable")
+        self.assertIn("incompatible_reference_model_profile",str(failed["capture"]["reason_codes"]))
+        self.assertEqual(count,len(self.backend.opens))
+        self.assertIsNone(failed["latest_frame"])
+        self.api._new_analyzer=original_factory
+        self.switch(failed,"mic-b","correct-model")
+        current=self.wait(sid,lambda s:s["capture"]["state"]=="active")
+        self.assertEqual(old["active_reference"],current["active_reference"])
+
+    def test_pending_native_open_coalesces_repeated_pause_resume(self):
+        entered=threading.Event();release=threading.Event();original=self.backend.open
+        def blocked(**kwargs):
+            entered.set();release.wait(4);return original(**kwargs)
+        self.backend.open=blocked
+        _,snapshot=self.api.create_session(self.request);sid=snapshot["session_id"]
+        try:
+            self.assertTrue(entered.wait(2));runner=self.api.live_audio.tasks[sid]
+            for i in range(4):
+                snapshot=self.api.get_session(sid)[1]
+                self.api.post_action(sid,command(snapshot,f"pending-pause-{i}","pause"))
+                snapshot=self.api.get_session(sid)[1]
+                self.api.post_action(sid,command(snapshot,f"pending-resume-{i}","resume"))
+                self.assertIs(runner,self.api.live_audio.tasks[sid])
+                self.assertEqual(1,len(self.api.live_audio.pending_operations))
+            self.assertIsNone(self.api.get_session(sid)[1]["latest_frame"])
+        finally:release.set()
+        self.wait(sid,lambda s:s["capture"]["state"]=="active")
+        self.assertTrue(all(s.closed for s in self.backend.streams[:-1]))

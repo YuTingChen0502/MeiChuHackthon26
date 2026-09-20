@@ -8,6 +8,7 @@ from core.audio import FileAudioInput
 from core.audio.logical import MicrophoneInventory
 from core.audio.native import NativeMicAudioInput
 from core.runtime.worker import AudioWorker
+from core.runtime.analyzer_lifecycle import HistoricalAnalyzer
 from roles.pa import PASession
 from .commands import CommandHandler
 from .persistence import SQLiteCommandLedger
@@ -17,7 +18,8 @@ class LiveAudioController:
     def __init__(self,api):
         self.api=api
         self.scheduled_keys={}
-        self.tasks={};self.cancellations={};self.operation_locks={}
+        self.tasks={};self.cancellations={}
+        self.pending_operations={};self.active_operations=set();self.schedule_lock=threading.Lock()
         self.diagnostics={}
         self.analyzer_locks={};self.retired={};self.closers={}
         self.startup_timeout_s=max(5,api.pipeline.window_size_samples/(api.pipeline.frontend.sample_rate_hz or 48000)+3)
@@ -97,31 +99,61 @@ class LiveAudioController:
 
     def schedule(self,session,identity,*,file_source=False,previous=None,paused=False):
         sid=session.session_id
-        old=self.cancellations.get(sid)
-        if old:old.set()
-        token=threading.Event();self.cancellations[sid]=token
-        lock=self.operation_locks.setdefault(sid,threading.Lock())
-        def run():
-            with lock:
-                if token.is_set() or self.api._closed:return
-                self._run(session,identity,token,file_source,previous,paused)
-        task=threading.Thread(target=run,name=f"source-open:{sid}",daemon=True)
-        self.tasks[sid]=task;task.start()
+        with self.schedule_lock:
+            old=self.cancellations.get(sid)
+            if old:old.set()
+            token=threading.Event();self.cancellations[sid]=token
+            # A driver open may take time. Keep one runner and only the latest
+            # requested operation, even across repeated pause/resume commands.
+            self.pending_operations[sid]=(identity,token,file_source,previous,paused)
+            if sid in self.active_operations:return
+            self.active_operations.add(sid)
+            def run():
+                while True:
+                    with self.schedule_lock:
+                        operation=self.pending_operations.pop(sid,None)
+                        if operation is None or self.api._closed:
+                            self.active_operations.discard(sid);return
+                    identity,token,file_source,previous,paused=operation
+                    if token.is_set():continue
+                    try:self._run(session,identity,token,file_source,previous,paused)
+                    except Exception as exc:
+                        self.diagnostics[sid]=[str(exc)]
+            task=threading.Thread(target=run,name=f"source-open:{sid}",daemon=True)
+            self.tasks[sid]=task;task.start()
 
     def current(self,session,token,generation=None):
         return (not token.is_set() and not self.api._closed and session.song["workflow_state"]!="STOPPED"
                 and (generation is None or session.capture["source_generation"]==generation))
 
     def _run(self,session,identity,token,file_source,previous,paused):
-        failures=[]
+        failures=[];failure_reason="microphone_unavailable"
         try:
             old=self.api.workers.pop(session.session_id,None)
             if old:self.retire(session.session_id,old)
             if not self.current(session,token):return
-            if session.session_id in self.api._failed_analyzers:
-                replacement=self.api._new_analyzer();old_analyzer=session.analyzer;session.analyzer=replacement
-                session._frame_builder.calibration_policy=getattr(replacement,"calibration_policy",None)
-                old_analyzer.close();self.api._failed_analyzers.discard(session.session_id)
+            if isinstance(session.analyzer,HistoricalAnalyzer) or session.session_id in self.api._failed_analyzers:
+                failure_reason="model_unavailable"
+                replacement=self.api._new_analyzer()
+                try:
+                    model_identity=replacement.capabilities()["model"]
+                    expected=self.api.reference_models.get(session.reference["reference_id"])
+                    if model_identity!=session._model_identity or model_identity!=expected:
+                        raise RuntimeError("incompatible_reference_model_profile")
+                    if not session.reference.get("model_specific_context_asset"):
+                        raise RuntimeError("reference_context_unavailable")
+                    if not self.current(session,token):
+                        replacement.close();return
+                    lock=self.analyzer_locks.setdefault(session.session_id,threading.Lock())
+                    with lock:
+                        old_analyzer=session.analyzer;session.analyzer=replacement
+                        session._frame_builder.calibration_policy=getattr(replacement,"calibration_policy",None)
+                        old_analyzer.close()
+                    self.api._failed_analyzers.discard(session.session_id)
+                except Exception:
+                    if session.analyzer is not replacement:replacement.close()
+                    raise
+                failure_reason="microphone_unavailable"
             inventory=None if file_source else self.inventory()
             candidates=[None] if file_source else inventory.resolve(identity)
             if not candidates:failures.append("microphone_unavailable")
@@ -145,7 +177,7 @@ class LiveAudioController:
         self.diagnostics[session.session_id]=failures[-16:]
         with session.command_transaction():
             if self.current(session,token):
-                session.suspend_for_input("microphone_unavailable")
+                session.suspend_for_input(failure_reason)
                 session.capture.update(switch_result="failed" if session.capture["operation_id"] else "none",
                     reason_codes=list(dict.fromkeys(failures or ["microphone_unavailable"]))[-16:])
                 self.persist(session)

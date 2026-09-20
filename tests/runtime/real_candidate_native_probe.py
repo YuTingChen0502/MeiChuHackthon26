@@ -1,7 +1,8 @@
 """Actual Windows native capture through the injected frozen P1 candidate.
 
 Generated reference is transport material, not acoustic ground truth. No mic PCM is saved.
-Each measured source run stays inside the 32-second matched reference timeline.
+The first 32 seconds have reference coverage; later PCM must still run separation.
+Missing comparison coverage remains invalid/null, never wrapped to the reference.
 """
 import argparse
 from collections import deque
@@ -30,7 +31,7 @@ def run(storage,output,segment_seconds=20):
     root=Path(storage);root.mkdir(parents=True,exist_ok=True)
     sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
     if subprocess.check_output(["git","status","--porcelain"],text=True).strip():raise RuntimeError("clean source required")
-    if not 12<=segment_seconds<=24:raise ValueError("segment must fit bounded reference spans")
+    if not 12<=segment_seconds<=900:raise ValueError("segment must be 12..900 seconds")
     calls=deque(maxlen=256);workers=[];snapshots=[];operations=[];segments=[];models=[]
     options=runtime_options(environment={"PA_MODEL_BUNDLE":"models/candidates/nano4-p1-adapted-mvp-v1"},
         loader=make_p1_candidate_loader(cache_dir=root/"context-cache",candidate_mode=True,device="cpu"))
@@ -86,8 +87,11 @@ def run(storage,output,segment_seconds=20):
                     diagnostics=session.analyzer.analyzer.execution_diagnostics()))
                 next_sample=elapsed+2
             if snapshot["capture"]["state"]=="unavailable":raise RuntimeError(str(snapshot["capture"]))
-            if elapsed>=segment_seconds and matching:break
-            if elapsed>28:raise RuntimeError("no completed current-generation model call within matched reference span")
+            if elapsed>=segment_seconds and matching:
+                if time.monotonic()-matching[-1]["completed_monotonic_s"]>30:
+                    raise RuntimeError("current-source real model execution stopped")
+                break
+            if elapsed>max(30,segment_seconds+30):raise RuntimeError("no completed current-generation model call")
             time.sleep(.1)
         segments.append(dict(label=label,clock_id=clock,duration_s=elapsed,completed_native_model_calls=len(matching)))
         print(json.dumps({"phase":"segment_complete",**segments[-1]}),flush=True)

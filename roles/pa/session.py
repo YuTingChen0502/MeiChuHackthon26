@@ -435,12 +435,13 @@ class PASession(LiveReferencePolicy):
     def suspend_for_runtime_restart(self) -> None:
         if self.song["workflow_state"] == "STOPPED":
             return
+        reason="runtime_restart_requires_reopen" if self.live_reference else "runtime_restart_requires_new_session"
         if self.live_reference:
             self.capture["source_generation"]+=1
-            self._clear_source_evidence("runtime_restart_requires_new_session")
-            self.capture.update(state="unavailable",frame_fresh=False,switch_result="failed" if self.capture["switch_result"]=="pending" else self.capture["switch_result"],reason_codes=["runtime_restart_requires_new_session"])
+            self._clear_source_evidence(reason)
+            self.capture.update(state="unavailable",frame_fresh=False,switch_result="failed" if self.capture["switch_result"]=="pending" else self.capture["switch_result"],reason_codes=[reason])
         self.song["workflow_state"] = "SUSPENDED"
-        self.suspension_reasons = ["runtime_restart_requires_new_session"]
+        self.suspension_reasons = [reason]
         self.recommendations = []
         self._verification_armed = False
         self._detector.reset()
