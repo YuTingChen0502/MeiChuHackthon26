@@ -66,8 +66,11 @@ export function capturePresentation(s,discovery,{connected=true,fresh=true,switc
   if(c.state==='stopped')return {title:`${name} · Stopped`,detail:'Listening has stopped. Your song and reference are kept.'};
   if(c.state==='paused')return {title:`${name} · Paused`,detail:'Resume listening when you are ready.'};
   if(switchPending||c.state==='switching'||c.switch_result==='pending')return {title:'Changing microphone…',detail:`Waiting for ${requested}. Acknowledgement does not mean audio is ready.`};
+  if(c.switch_result==='rolled_back'&&['listening','active'].includes(c.state)){
+    const waiting=c.state==='listening'||!fresh||!c.frame_fresh;
+    return {title:`${name} · Restored · ${waiting?'Listening — waiting for fresh audio':'Active'}`,detail:`Couldn't use ${requested}. The previous input was restored. ${waiting?'Recognition may remain uncertain; previous advice is withheld.':'Only fresh audio can be used.'}`};
+  }
   if(c.state==='active'&&!fresh)return {title:`${name} · Waiting for fresh audio`,detail:'The last observation is no longer current. Previous advice is withheld.'};
-  if(c.switch_result==='rolled_back'&&c.state==='active')return {title:`${name} · Restored`,detail:`Couldn't use ${requested}. The previous input was restored; only fresh audio can be used.`};
   return {title:`${name} · ${{starting:'Connecting',listening:'Listening',active:'Active',paused:'Paused',stopped:'Stopped'}[c.state]??'Unavailable'}`,detail:c.state==='paused'?'Resume listening when you are ready.':c.state==='active'?'Listening against the uploaded reference.':'Waiting for current audio. Recognition may remain uncertain.'};
 }
 

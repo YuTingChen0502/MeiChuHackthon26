@@ -99,6 +99,21 @@ test('bound switch preserves session/reference and exact source generation',asyn
  a.request=async(path,options)=>{requests.push([path,JSON.parse(options.body)]);return {outcome:'applied',snapshot:{...s,state_version:s.state_version+1,capture:{...s.capture,state:'switching',switch_result:'pending',operation_id:'same-key'}}};};
  await a.command(c);assert.equal(requests.length,1);assert.match(requests[0][0],/\/actions$/);assert.deepEqual(requests[0][1],c);assert.equal(a.snapshot.capture.state,'switching');assert.equal(a.snapshot.active_reference.reference_id,s.active_reference.reference_id);
 });
+test('rollback acknowledgement survives listening without promoting stale evidence',()=>{
+ const s=session();s.capture.switch_result='rolled_back';s.capture.state='listening';s.capture.frame_fresh=false;s.latest_frame=null;
+ for(const state of ['listening','active']){
+  s.capture.state=state;const copy=capturePresentation(s,{}, {fresh:false});
+  assert.match(copy.title,/Restored.*Listening.*fresh audio/);assert.match(copy.detail,/Couldn't use.*previous input was restored.*uncertain.*withheld/);
+  assert.equal(perceptionPresentation(s,s.perception[0],{fresh:false}).numeric,false);
+  assert.equal(liveReferenceView(s,{fresh:false}),'LISTENING');
+ }
+ assert.match(capturePresentation(s,{}, {connected:false}).title,/disconnected/);
+ s.capture.state='switching';assert.match(capturePresentation(s,{}).title,/Changing microphone/);
+ for(const state of ['unavailable','paused','stopped']){
+  s.capture.state=state;assert.doesNotMatch(capturePresentation(s,{}).title,/Restored/);
+ }
+});
+
 test('same-session delayed snapshots cannot restore a fenced source generation',()=>{
  const s=session(),a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession(s.session_id);a.acceptSnapshot(s);
  const next={...s,event_sequence:s.event_sequence+1,capture:{...s.capture,source_generation:2,state:'switching'},latest_frame:null};assert.equal(a.acceptSnapshot(next),true);
