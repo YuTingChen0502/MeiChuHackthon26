@@ -1,5 +1,6 @@
 // Presentation only. No audio inference, baseline mutation, or command authorization.
 export function productError(error, context = 'action') {
+  if(error?.unadoptedSessionId)return `A new listening session could not be confirmed stopped. Open session ${error.unadoptedSessionId} from Home → Connection options to stop it. Your selected session was not changed.`;
   const raw = String(error?.payload?.error?.code ?? error?.payload?.command?.error?.code ?? error?.message ?? error ?? '');
   const detail = `${raw} ${error?.message ?? ''} ${error?.status ?? ''}`.toLowerCase();
   if (context === 'connection') return 'The listening service is unavailable. Check the connection, or explore an offline example.';

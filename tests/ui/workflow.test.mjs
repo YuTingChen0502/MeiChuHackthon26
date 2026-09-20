@@ -41,6 +41,7 @@ test('implementation failures become useful product messages without raw identif
   assert.match(productError('PortAudio error'),/microphone connection/);
   assert.match(productError('model_unavailable'),/analyze this reference/);
   assert.match(productError({payload:{error:{code:'reference_audio_unavailable'}}},'reference'),/original WAV again.*existing session is kept/);
+  assert.match(productError({unadoptedSessionId:'created-qa'},'reference'),/Open session created-qa.*stop it.*selected session was not changed/);
 });
 test('uncalibrated and abstained summaries never manufacture confidence',()=>{
   assert.equal(conciseConfidence({calibration_status:'uncalibrated',probability:.92}),'Uncalibrated');

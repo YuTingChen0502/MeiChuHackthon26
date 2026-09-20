@@ -39,5 +39,17 @@ try{
  assert.notEqual(fresh.session_id,oldId);assert.equal(fresh.song.song_id,initial.song.song_id);
  const retained=await adapter.request(`/sessions/${oldId}`);assert.equal(retained.active_reference.reference_id,oldReference);assert.equal(retained.capture.state,'stopped');
  await wait(s=>currentSourceFrame(s),'new reference session');await action('stop');
- console.log(JSON.stringify({result:'PASS',events,scope:'Isolated simulated uncalibrated evidence through real Runtime HTTP/WS; no model or physical claim',flow:'lower/raise/global-null/public numeric-null/reconnect/pause/resume/reprepare reason/retained audio/new reference/explicit new session/old history retained'}));
+ // Delay adoption until after deliberate navigation; cleanup must stop only the
+ // newly created session and leave the now-selected old session bound.
+ const request=adapter.request.bind(adapter);let unadoptedId;
+ adapter.request=async(path,options)=>{
+  const result=await request(path,options);
+  if(path==='/sessions'){
+   unadoptedId=result.session_id;await adapter.openSession(oldId);
+  }
+  return result;
+ };
+ await assert.rejects(adapter.createLiveReferenceSession({song_id:initial.song.song_id,reference_id:job.reference_id,source,expectedSessionId:fresh.session_id}),/unused new session was stopped/);
+ assert.equal(adapter.activeSessionId,oldId);assert.equal((await request(`/sessions/${unadoptedId}`)).capture.state,'stopped');
+ console.log(JSON.stringify({result:'PASS',events,scope:'Isolated simulated uncalibrated evidence through real Runtime HTTP/WS; no model or physical claim',flow:'lower/raise/global-null/public numeric-null/reconnect/pause/resume/reprepare reason/retained audio/new reference/explicit new session/old history retained/unadopted creation stopped'}));
 }finally{adapter.stopEvents();}

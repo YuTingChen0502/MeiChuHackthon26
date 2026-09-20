@@ -106,11 +106,20 @@ test('failed reprepare retains active reference and does not start new listening
 });
 
 test('new re-prepared session cannot replace a deliberately switched session',async()=>{
- const s=session(),a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession(s.session_id);a.acceptSnapshot(s);
- let resolve;a.request=()=>new Promise(r=>resolve=r);a.connect=()=>assert.fail('late create cannot connect');
+  const s=session(),a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession(s.session_id);a.acceptSnapshot(s);
+ let resolve,stopped;a.request=async(path,options)=>{if(path==='/sessions')return new Promise(r=>resolve=r);stopped=JSON.parse(options.body);return {snapshot:{session_id:'newly-created',capture:{state:'stopped'}}};};a.connect=()=>assert.fail('late create cannot connect');
  const pending=a.createLiveReferenceSession({song_id:s.song.song_id,reference_id:'new-reference',expectedSessionId:s.session_id});
  a.activateSession('another');resolve({...s,session_id:'newly-created'});
- await assert.rejects(pending,/Session changed/);assert.equal(a.activeSessionId,'another');
+ await assert.rejects(pending,/Session changed/);assert.equal(a.activeSessionId,'another');assert.equal(stopped.session_id,'newly-created');assert.equal(stopped.action,'stop');
+});
+
+test('unadopted creation retries exact-session conflict and surfaces ID if cleanup fails',async()=>{
+ const s=session(),created={...s,session_id:'unadopted'},a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession('selected');
+ const commands=[];a.request=async(path,options)=>{commands.push(JSON.parse(options.body));if(commands.length===1)throw Object.assign(new Error('conflict'),{status:409,payload:{snapshot:{...created,state_version:created.state_version+1}}});return {snapshot:{...created,capture:{state:'stopped'}}};};
+ await a.stopUnadoptedSession(created);assert.equal(commands.length,2);assert.equal(commands[1].expected_state_version,commands[0].expected_state_version+1);assert.ok(commands.every(c=>c.session_id==='unadopted'));assert.equal(a.activeSessionId,'selected');
+ a.activateSession(s.session_id);let resolve;a.request=async path=>{if(path==='/sessions')return new Promise(r=>resolve=r);throw new Error('connection lost');};
+ const pending=a.createLiveReferenceSession({song_id:s.song.song_id,reference_id:'new-ref',expectedSessionId:s.session_id});a.activateSession('selected');resolve(created);
+ await assert.rejects(pending,error=>error.unadoptedSessionId==='unadopted');assert.equal(a.activeSessionId,'selected');
 });
 
 test('migration UI has separate explicit prepare and new-session actions, never silent retarget',async()=>{
