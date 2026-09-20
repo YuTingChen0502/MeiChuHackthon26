@@ -38,7 +38,7 @@ class LiveReferencePolicy:
             elif supported is None:
                 value="uncertain";reasons=["capabilities_unavailable"]
             elif not fresh:
-                value="listening" if self.capture["state"]=="listening" and "stale_evidence" not in reasons else "uncertain"
+                value="listening" if self.capture["state"]=="listening" and frame is None and "stale_evidence" not in reasons else "uncertain"
             elif activity=="inactive":value="not_heard"
             elif activity=="active" and observability=="observable" and validity=="valid":value="detected"
             else:value="uncertain"
@@ -62,6 +62,8 @@ class LiveReferencePolicy:
     def _accept_source_switch(self,command):
         from .session import SessionCommandError
         if not self.live_reference:raise SessionCommandError("legacy_source_fixed","Create a live-reference session.")
+        if "runtime_restart_requires_new_session" in self.suspension_reasons:
+            raise SessionCommandError("new_session_required","Application restart requires a new session using the retained reference.")
         if self.capture["switch_result"]=="pending":raise SessionCommandError("switch_in_progress","A microphone switch is pending.")
         if self.song["workflow_state"]=="STOPPED":raise SessionCommandError("session_stopped","Stopped sessions cannot switch.")
         self._switch_previous=dict(source=copy.deepcopy(self.source),capture=copy.deepcopy(self.capture),

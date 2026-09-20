@@ -1,0 +1,1897 @@
+{
+  "status": "passed",
+  "git_commit": "46b890044d7bb26e53a7ef990139c8251759ccf4",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "sounddevice": "0.5.6",
+  "duration_s": 611.6410000000033,
+  "captured_seconds": 604.267375,
+  "inventory": {
+    "devices": [
+      {
+        "device_id": "portaudio:8503f7bde8d9bb32ae10",
+        "name": "Microsoft \u97f3\u6548\u5c0d\u61c9\u8868 - Input",
+        "host_api": "MME",
+        "is_default": false
+      },
+      {
+        "device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "host_api": "MME",
+        "is_default": true
+      },
+      {
+        "device_id": "portaudio:3e1023386c407f4013a1",
+        "name": "\u4e3b\u8981\u97f3\u6548\u64f7\u53d6\u9a45\u52d5\u7a0b\u5f0f",
+        "host_api": "Windows DirectSound",
+        "is_default": false
+      },
+      {
+        "device_id": "portaudio:f37605fbb72310a0a093",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "host_api": "Windows DirectSound",
+        "is_default": false
+      },
+      {
+        "device_id": "portaudio:b0f45d7b7c5f04d95e39",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "host_api": "Windows WASAPI",
+        "is_default": false
+      },
+      {
+        "device_id": "portaudio:1484114031835578c47c",
+        "name": "\u9ea5\u514b\u98a8\u6392\u5217 (Realtek HD Audio Mic Array input)",
+        "host_api": "Windows WDM-KS",
+        "is_default": false
+      },
+      {
+        "device_id": "portaudio:841f955f8e9eea28747b",
+        "name": "\u9ea5\u514b\u98a8 (Realtek HD Audio Mic input)",
+        "host_api": "Windows WDM-KS",
+        "is_default": false
+      }
+    ],
+    "microphones": [
+      {
+        "microphone_id": "system-default",
+        "name": "Default microphone",
+        "is_default": true,
+        "selection_kind": "system_default",
+        "grouping": "system_route"
+      },
+      {
+        "microphone_id": "mic:8bd88c35478aa95009e9",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "is_default": true,
+        "selection_kind": "logical_group",
+        "grouping": "name_heuristic"
+      },
+      {
+        "microphone_id": "mic:3da0467b766a1b80091c",
+        "name": "\u9ea5\u514b\u98a8\u6392\u5217 (Realtek HD Audio Mic Array input)",
+        "is_default": true,
+        "selection_kind": "endpoint",
+        "grouping": "none"
+      },
+      {
+        "microphone_id": "mic:3ad792de11f3ad3f4123",
+        "name": "\u9ea5\u514b\u98a8 (Realtek HD Audio Mic input)",
+        "is_default": null,
+        "selection_kind": "endpoint",
+        "grouping": "none"
+      }
+    ],
+    "default_microphone_id": "system-default",
+    "discovery_status": "available"
+  },
+  "operations": [
+    {
+      "action": "switch_microphone",
+      "key": "physical-switch-0",
+      "accepted_capture": {
+        "state": "switching",
+        "source_generation": 4,
+        "requested_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "logical_microphone_id": "system-default",
+        "name": "Default microphone",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:78e18062110e4319b0070aa20586bf5b",
+        "analysis_run_id": "run:a1dc26e787d54d91b30fefb8f3fba931",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": "physical-switch-0",
+        "switch_result": "pending",
+        "reason_codes": []
+      },
+      "elapsed_s": 17.422000000005937,
+      "terminal_capture": {
+        "state": "active",
+        "source_generation": 5,
+        "requested_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:9b18011b348e4a61b4389efce5ceafcd",
+        "analysis_run_id": "run:81a6a137c62e44d59c1b6a5bfa99591d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": "physical-switch-0",
+        "switch_result": "applied",
+        "reason_codes": []
+      }
+    },
+    {
+      "action": "switch_microphone",
+      "key": "physical-switch-1",
+      "accepted_capture": {
+        "state": "switching",
+        "source_generation": 6,
+        "requested_microphone_id": "mic:8bd88c35478aa95009e9",
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:9b18011b348e4a61b4389efce5ceafcd",
+        "analysis_run_id": "run:81a6a137c62e44d59c1b6a5bfa99591d",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": "physical-switch-1",
+        "switch_result": "pending",
+        "reason_codes": []
+      },
+      "elapsed_s": 26.218999999997322,
+      "terminal_capture": {
+        "state": "active",
+        "source_generation": 8,
+        "requested_microphone_id": "mic:8bd88c35478aa95009e9",
+        "logical_microphone_id": "mic:8bd88c35478aa95009e9",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "native_device_id": "portaudio:f37605fbb72310a0a093",
+        "clock_id": "clock:3808ec2b24b6449888d6bb695cd56bb6",
+        "analysis_run_id": "run:41822f7160c144b188ae2ab228d5fec5",
+        "frame_fresh": true,
+        "timestamp_mode": "adc_sample_count",
+        "operation_id": "physical-switch-1",
+        "switch_result": "applied",
+        "reason_codes": []
+      }
+    },
+    {
+      "action": "switch_microphone",
+      "key": "physical-switch-2",
+      "accepted_capture": {
+        "state": "switching",
+        "source_generation": 9,
+        "requested_microphone_id": "unavailable-acceptance-input",
+        "logical_microphone_id": "mic:8bd88c35478aa95009e9",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "native_device_id": "portaudio:f37605fbb72310a0a093",
+        "clock_id": "clock:3808ec2b24b6449888d6bb695cd56bb6",
+        "analysis_run_id": "run:41822f7160c144b188ae2ab228d5fec5",
+        "frame_fresh": false,
+        "timestamp_mode": "adc_sample_count",
+        "operation_id": "physical-switch-2",
+        "switch_result": "pending",
+        "reason_codes": []
+      },
+      "elapsed_s": 35.51600000000326,
+      "terminal_capture": {
+        "state": "active",
+        "source_generation": 10,
+        "requested_microphone_id": "unavailable-acceptance-input",
+        "logical_microphone_id": "mic:8bd88c35478aa95009e9",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "native_device_id": "portaudio:f37605fbb72310a0a093",
+        "clock_id": "clock:17fbc1dc4bbd4d0a9e14c99f73436df3",
+        "analysis_run_id": "run:a26daed2905148399cc9c049a44ffe21",
+        "frame_fresh": true,
+        "timestamp_mode": "adc_sample_count",
+        "operation_id": "physical-switch-2",
+        "switch_result": "rolled_back",
+        "reason_codes": [
+          "microphone_unavailable"
+        ]
+      }
+    },
+    {
+      "action": "pause",
+      "key": "physical-pause",
+      "accepted_capture": {
+        "state": "paused",
+        "source_generation": 11,
+        "requested_microphone_id": "unavailable-acceptance-input",
+        "logical_microphone_id": "mic:8bd88c35478aa95009e9",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "native_device_id": "portaudio:f37605fbb72310a0a093",
+        "clock_id": "clock:17fbc1dc4bbd4d0a9e14c99f73436df3",
+        "analysis_run_id": "run:a26daed2905148399cc9c049a44ffe21",
+        "frame_fresh": false,
+        "timestamp_mode": "adc_sample_count",
+        "operation_id": "physical-switch-2",
+        "switch_result": "rolled_back",
+        "reason_codes": []
+      },
+      "elapsed_s": 40.45299999999406
+    },
+    {
+      "action": "switch_microphone",
+      "key": "paused-selection",
+      "accepted_capture": {
+        "state": "switching",
+        "source_generation": 12,
+        "requested_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "logical_microphone_id": "mic:8bd88c35478aa95009e9",
+        "name": "Microphone Array (Realtek(R) Audio)",
+        "native_device_id": "portaudio:f37605fbb72310a0a093",
+        "clock_id": "clock:17fbc1dc4bbd4d0a9e14c99f73436df3",
+        "analysis_run_id": "run:a26daed2905148399cc9c049a44ffe21",
+        "frame_fresh": false,
+        "timestamp_mode": "adc_sample_count",
+        "operation_id": "paused-selection",
+        "switch_result": "pending",
+        "reason_codes": []
+      },
+      "elapsed_s": 40.48500000000058
+    },
+    {
+      "action": "resume",
+      "key": "physical-resume",
+      "accepted_capture": {
+        "state": "starting",
+        "source_generation": 13,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:3361cd3165c54d1e9268a5807fb51088",
+        "analysis_run_id": "run:d0a710dcdd114b0cb198971faf018450",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      },
+      "elapsed_s": 41.125
+    },
+    {
+      "action": "stop",
+      "key": "physical-stop",
+      "accepted_capture": {
+        "state": "stopped",
+        "source_generation": 15,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:8694120da1134052a7df1b22c228b55c",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      },
+      "elapsed_s": 606.2660000000033
+    },
+    {
+      "action": "stop",
+      "key": "reopened-stop",
+      "accepted_capture": {
+        "state": "stopped",
+        "source_generation": 3,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "system-default",
+        "name": "Default microphone",
+        "native_device_id": "portaudio:3e1023386c407f4013a1",
+        "clock_id": "clock:ed0f3328c37a472d9324c2124c750def",
+        "analysis_run_id": "run:bec1810c58954420bb61f33431b4901c",
+        "frame_fresh": false,
+        "timestamp_mode": "adc_sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      },
+      "elapsed_s": 611.5629999999946
+    }
+  ],
+  "memory": [
+    {
+      "elapsed_s": 45.625,
+      "rss_bytes": 68460544,
+      "frames": 1,
+      "hashes": 1,
+      "events": 43,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 55.76600000000326,
+      "rss_bytes": 67616768,
+      "frames": 11,
+      "hashes": 11,
+      "events": 53,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 66.0,
+      "rss_bytes": 67747840,
+      "frames": 21,
+      "hashes": 21,
+      "events": 63,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 76.21899999999732,
+      "rss_bytes": 67964928,
+      "frames": 31,
+      "hashes": 31,
+      "events": 73,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 86.43799999999464,
+      "rss_bytes": 68362240,
+      "frames": 41,
+      "hashes": 41,
+      "events": 83,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 96.67200000000594,
+      "rss_bytes": 68497408,
+      "frames": 52,
+      "hashes": 52,
+      "events": 94,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 106.90600000000268,
+      "rss_bytes": 68206592,
+      "frames": 61,
+      "hashes": 61,
+      "events": 103,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3f85b70609364348a531915e7c42410d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": []
+      }
+    },
+    {
+      "elapsed_s": 117.04700000000594,
+      "rss_bytes": 73728000,
+      "frames": 69,
+      "hashes": 69,
+      "events": 112,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:b3259da7ec5845ddb99be02c6a97143f",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 127.26600000000326,
+      "rss_bytes": 73768960,
+      "frames": 76,
+      "hashes": 76,
+      "events": 120,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f22df76e8af74ca79b13deaa3abeba44",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 137.48500000000058,
+      "rss_bytes": 74407936,
+      "frames": 86,
+      "hashes": 86,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f22df76e8af74ca79b13deaa3abeba44",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 147.5,
+      "rss_bytes": 74514432,
+      "frames": 96,
+      "hashes": 96,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f22df76e8af74ca79b13deaa3abeba44",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 157.73500000000058,
+      "rss_bytes": 78610432,
+      "frames": 107,
+      "hashes": 107,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f22df76e8af74ca79b13deaa3abeba44",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 167.76600000000326,
+      "rss_bytes": 73801728,
+      "frames": 117,
+      "hashes": 117,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f22df76e8af74ca79b13deaa3abeba44",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 177.78100000000268,
+      "rss_bytes": 76296192,
+      "frames": 123,
+      "hashes": 123,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3de3afd3624f4342a551b5ac77ebf82d",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 187.79700000000594,
+      "rss_bytes": 79708160,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3de3afd3624f4342a551b5ac77ebf82d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 198.03100000000268,
+      "rss_bytes": 81567744,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3de3afd3624f4342a551b5ac77ebf82d",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 208.04700000000594,
+      "rss_bytes": 76156928,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:e43532bd89ef4e99b0949dc59581df0e",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 218.06299999999464,
+      "rss_bytes": 77250560,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:06e3834170d24337829664a3ad94b1d7",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 228.18799999999464,
+      "rss_bytes": 79151104,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "listening",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:cbad898fb1b0445281dfc616abca9e59",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 238.18799999999464,
+      "rss_bytes": 79863808,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3fc623ae8cc34489afc6998fd5fb46ac",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 248.23500000000058,
+      "rss_bytes": 75628544,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "listening",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:3fc623ae8cc34489afc6998fd5fb46ac",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 258.4689999999973,
+      "rss_bytes": 81317888,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:8d7d5bb1d62b4bd0b09dbb3a7ffea7c2",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 268.5939999999973,
+      "rss_bytes": 80728064,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "listening",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:fd854b2fb13440e8864a64770ef90efa",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 278.81299999999464,
+      "rss_bytes": 80293888,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:466207688db44f1a96515b330d8d4d3b",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 288.81299999999464,
+      "rss_bytes": 78004224,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:87dc1898f4324ed29314965696bf09be",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 299.06299999999464,
+      "rss_bytes": 81797120,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:09e3bc36b2a7414a9bcd287a62161641",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 309.29700000000594,
+      "rss_bytes": 77205504,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:1126f342df77404db0c26010055a1cdd",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 319.45299999999406,
+      "rss_bytes": 83091456,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:88173f2e300d4657a0e34a9a2108bc38",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 329.4689999999973,
+      "rss_bytes": 78196736,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "listening",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:88173f2e300d4657a0e34a9a2108bc38",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 339.5,
+      "rss_bytes": 79904768,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:a73119f709e6437cbda4ad9764c611af",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 349.6560000000027,
+      "rss_bytes": 82673664,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "listening",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:0fae5c2f9c0a40308fa8d363bc041050",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 359.8600000000006,
+      "rss_bytes": 83410944,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:0fae5c2f9c0a40308fa8d363bc041050",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 369.92200000000594,
+      "rss_bytes": 82378752,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "listening",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:716de66630c042d988fb18530bf35e2d",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 380.14100000000326,
+      "rss_bytes": 81149952,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:c59f35440f8944ff966ec167da61f2b2",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 390.25,
+      "rss_bytes": 83255296,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:5fde3e6a1c9044f7b3fd29301db8b639",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 400.4850000000006,
+      "rss_bytes": 81166336,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:5fde3e6a1c9044f7b3fd29301db8b639",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 410.70299999999406,
+      "rss_bytes": 83611648,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:715f893991ae4c268db2a9f52e3450d4",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 420.70299999999406,
+      "rss_bytes": 82182144,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:abf3e121318d4400b25e77a457275ce6",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 430.75,
+      "rss_bytes": 82227200,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:abf3e121318d4400b25e77a457275ce6",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 440.9850000000006,
+      "rss_bytes": 82030592,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:abf3e121318d4400b25e77a457275ce6",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 451.0310000000027,
+      "rss_bytes": 79159296,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:abf3e121318d4400b25e77a457275ce6",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 461.26600000000326,
+      "rss_bytes": 82042880,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:bb1db46e71e1420dba7650f559994fd7",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 471.4689999999973,
+      "rss_bytes": 79880192,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:e43c0aeb702a4a84b5d6c690eac54336",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 481.51600000000326,
+      "rss_bytes": 80568320,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:e43c0aeb702a4a84b5d6c690eac54336",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 491.625,
+      "rss_bytes": 81940480,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:836d8d360b434d87af2af8da7279ecb5",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 501.82799999999406,
+      "rss_bytes": 82079744,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": false,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 511.82799999999406,
+      "rss_bytes": 81358848,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 522.0629999999946,
+      "rss_bytes": 81104896,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 532.3129999999946,
+      "rss_bytes": 81141760,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 542.5160000000033,
+      "rss_bytes": 82063360,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 552.6560000000027,
+      "rss_bytes": 80650240,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 562.875,
+      "rss_bytes": 82280448,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 573.0779999999941,
+      "rss_bytes": 78176256,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:f2c6be6446964a5eb764871f170e25db",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 583.3129999999946,
+      "rss_bytes": 81276928,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:8694120da1134052a7df1b22c228b55c",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 593.3129999999946,
+      "rss_bytes": 81002496,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:8694120da1134052a7df1b22c228b55c",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    },
+    {
+      "elapsed_s": 603.3279999999941,
+      "rss_bytes": 81108992,
+      "frames": 128,
+      "hashes": 128,
+      "events": 128,
+      "capture": {
+        "state": "active",
+        "source_generation": 14,
+        "requested_microphone_id": null,
+        "logical_microphone_id": "portaudio:7e9e9dff606f9c65ff87",
+        "name": "Microphone Array (Realtek(R) Au",
+        "native_device_id": "portaudio:7e9e9dff606f9c65ff87",
+        "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+        "analysis_run_id": "run:8694120da1134052a7df1b22c228b55c",
+        "frame_fresh": true,
+        "timestamp_mode": "sample_count",
+        "operation_id": null,
+        "switch_result": "none",
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      }
+    }
+  ],
+  "runs": [
+    {
+      "source_id": "portaudio:b0f45d7b7c5f04d95e39",
+      "clock_id": "clock:c4271f928bb04e1f88df5cd404b399fa",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "unanchored",
+      "adc_packets": 0,
+      "fallback_packets": 0,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 0,
+      "worker": {
+        "processed_windows": 0,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 0,
+        "processing_p50_ms": null,
+        "processing_p95_ms": null,
+        "publication_age_p95_s": null,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:3e1023386c407f4013a1",
+      "clock_id": "clock:8759e1540a7e4dd2974c39963c7aa7f3",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "adc",
+      "adc_packets": 220,
+      "fallback_packets": 105,
+      "callback_drops": 0,
+      "callback_discontinuities": 1,
+      "callback_max_queue": 6,
+      "worker": {
+        "processed_windows": 0,
+        "dropped_windows": 0,
+        "stale_windows": 3,
+        "discontinuities": 1,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": null,
+        "processing_p95_ms": null,
+        "publication_age_p95_s": null,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:7e9e9dff606f9c65ff87",
+      "clock_id": "clock:78e18062110e4319b0070aa20586bf5b",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "monotonic_fallback",
+      "adc_packets": 0,
+      "fallback_packets": 380,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 2,
+      "worker": {
+        "processed_windows": 5,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 47.00000000593718,
+        "processing_p95_ms": 47.00000000593718,
+        "publication_age_p95_s": 0.06833333334361669,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:7e9e9dff606f9c65ff87",
+      "clock_id": "clock:9b18011b348e4a61b4389efce5ceafcd",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "monotonic_fallback",
+      "adc_packets": 0,
+      "fallback_packets": 384,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 2,
+      "worker": {
+        "processed_windows": 5,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 46.999999991385266,
+        "processing_p95_ms": 46.999999991385266,
+        "publication_age_p95_s": 0.06833333332906477,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:b0f45d7b7c5f04d95e39",
+      "clock_id": "clock:e1f0c1961842431b89d68c4b66c83ee1",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "unanchored",
+      "adc_packets": 0,
+      "fallback_packets": 0,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 0,
+      "worker": {
+        "processed_windows": 0,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 0,
+        "processing_p50_ms": null,
+        "processing_p95_ms": null,
+        "publication_age_p95_s": null,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:f37605fbb72310a0a093",
+      "clock_id": "clock:3808ec2b24b6449888d6bb695cd56bb6",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "adc",
+      "adc_packets": 265,
+      "fallback_packets": 117,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 2,
+      "worker": {
+        "processed_windows": 5,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 62.999999994644895,
+        "processing_p95_ms": 62.999999994644895,
+        "publication_age_p95_s": 0.0779999999795109,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:f37605fbb72310a0a093",
+      "clock_id": "clock:17fbc1dc4bbd4d0a9e14c99f73436df3",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "adc",
+      "adc_packets": 134,
+      "fallback_packets": 60,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 2,
+      "worker": {
+        "processed_windows": 1,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 62.000000005355105,
+        "processing_p95_ms": 62.000000005355105,
+        "publication_age_p95_s": 0.04700000000593718,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:7e9e9dff606f9c65ff87",
+      "clock_id": "clock:3361cd3165c54d1e9268a5807fb51088",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "monotonic_fallback",
+      "adc_packets": 0,
+      "fallback_packets": 2,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 2,
+      "worker": {
+        "processed_windows": 0,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 0,
+        "processing_p50_ms": null,
+        "processing_p95_ms": null,
+        "publication_age_p95_s": null,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:7e9e9dff606f9c65ff87",
+      "clock_id": "clock:b1143698108042c5896e44ff46bf3ec0",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "monotonic_fallback",
+      "adc_packets": 0,
+      "fallback_packets": 26466,
+      "callback_drops": 0,
+      "callback_discontinuities": 33,
+      "callback_max_queue": 4,
+      "worker": {
+        "processed_windows": 408,
+        "dropped_windows": 0,
+        "stale_windows": 53,
+        "discontinuities": 33,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 93.99999999732245,
+        "processing_p95_ms": 140.9999999887077,
+        "publication_age_p95_s": 0.13033333333441988,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:b0f45d7b7c5f04d95e39",
+      "clock_id": "clock:6d0cb1118d8a42daa2f118e7b2a680e9",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "unanchored",
+      "adc_packets": 0,
+      "fallback_packets": 0,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 0,
+      "worker": {
+        "processed_windows": 0,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 0,
+        "processing_p50_ms": null,
+        "processing_p95_ms": null,
+        "publication_age_p95_s": null,
+        "error": null
+      }
+    },
+    {
+      "source_id": "portaudio:3e1023386c407f4013a1",
+      "clock_id": "clock:ed0f3328c37a472d9324c2124c750def",
+      "sample_rate_hz": 48000,
+      "channels": 1,
+      "clock_mode": "adc",
+      "adc_packets": 133,
+      "fallback_packets": 59,
+      "callback_drops": 0,
+      "callback_discontinuities": 0,
+      "callback_max_queue": 2,
+      "worker": {
+        "processed_windows": 1,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 62.000000005355105,
+        "processing_p95_ms": 62.000000005355105,
+        "publication_age_p95_s": 0.04700000000593718,
+        "error": null
+      }
+    }
+  ],
+  "recording": "No microphone PCM saved",
+  "model": "ContinuousFakeInstrumentAnalyzer; uncalibrated acoustic claim absent",
+  "hardware_limits": "Windows local only. Host aliases of one physical Realtek array are not two microphones. Linux/PN54 and second physical mic BLOCKED_EXTERNAL_HARDWARE."
+}

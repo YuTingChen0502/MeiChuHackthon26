@@ -58,7 +58,7 @@ def run(seconds,output):
                     expected_source_generation=snapshot["capture"]["source_generation"]))
                 snapshot=wait(sid,lambda s:s["capture"]["switch_result"] in ("applied","rolled_back","failed"))
                 operations[-1]["terminal_capture"]=snapshot["capture"]
-                if snapshot["capture"]["state"]!="active":raise RuntimeError("switch did not retain usable capture")
+                snapshot=wait(sid,lambda s:s["capture"]["state"]=="active")
                 assert snapshot["active_reference"]==initial_reference
             execute(sid,"pause","physical-pause")
             snapshot=api.get_session(sid)[1]

@@ -22,6 +22,7 @@ class AudioWorker:
         self.analysis_run_id = analysis_run_id
         self._queue = queue.Queue(maxsize=queue_capacity)
         self._stop, self._finished = Event(), Event()
+        self.received_pcm = Event()
         self._producer = self._consumer = None
         self.error = None
         self.dropped_windows = self.stale_windows = self.processed_windows = 0
@@ -56,6 +57,7 @@ class AudioWorker:
                 run_id = self.analysis_run_id or f'run:{uuid.uuid4().hex}'
                 self.analysis_run_id = None
                 first, pending = pending, None
+                if first.samples:self.received_pcm.set()
                 def segment():
                     nonlocal pending
                     previous = first

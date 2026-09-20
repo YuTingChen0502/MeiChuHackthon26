@@ -229,11 +229,11 @@ class LiveAudioController:
             deadline=time.monotonic()+self.startup_timeout_s
             while self.current(session,token,generation) and time.monotonic()<deadline:
                 if worker.error:raise RuntimeError(worker.error)
-                if not file_source and getattr(audio,"_next_sample",0)>0:break
+                if worker.received_pcm.is_set():break
                 if first_frame.wait(.025):break
                 if worker._finished.is_set():raise RuntimeError(worker.error or "capture_ended_before_fresh_frame")
             if not self.current(session,token,generation):return False
-            if not first_frame.is_set() and not (not file_source and getattr(audio,"_next_sample",0)>0):
+            if not worker.received_pcm.is_set():
                 raise RuntimeError("capture_startup_timeout")
             if paused:self.retire(sid,worker)
             with session.command_transaction():
@@ -245,7 +245,7 @@ class LiveAudioController:
                     session.capture["state"]="paused"
                 session.capture.update(switch_result=("rolled_back" if rollback else "applied") if session.capture["operation_id"] else "none",
                     reason_codes=list(dict.fromkeys(failures))[-16:] if rollback else [])
-                if session.capture["operation_id"] or paused:self.persist(session)
+                self.persist(session)
             keep=not paused
             self.diagnostics[sid]=list(failures)[-16:]
             return True

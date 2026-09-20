@@ -140,6 +140,9 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         self.assertEqual("unavailable",snapshot["capture"]["state"])
         self.assertIsNone(snapshot["latest_frame"])
         self.assertEqual(accepted,self.api.post_action(sid,body)[1])
+        _,(status,result)=self.switch(snapshot,"mic-a","after-restart")
+        self.assertEqual(409,status)
+        self.assertEqual("new_session_required",result["error"]["code"])
 
     def test_switch_acceptance_does_not_wait_for_old_inference(self):
         snapshot=self.start();sid=snapshot["session_id"]
@@ -216,3 +219,50 @@ class LiveReferenceRuntimeTests(unittest.TestCase):
         snapshot=self.wait(sid,lambda s:s["latest_frame"] is None)
         self.assertFalse(snapshot["capture"]["frame_fresh"])
         self.assertTrue(all(x["state"]=="uncertain" for x in snapshot["perception"]))
+
+    def test_file_acquisition_startup_does_not_wait_for_slow_model(self):
+        entered=threading.Event();release=threading.Event()
+        factory=self.api._new_analyzer
+        def slow_factory():
+            analyzer=factory();original=analyzer.analyze
+            def blocked(window,context):
+                entered.set();release.wait(3);return original(window,context)
+            analyzer.analyze=blocked
+            return analyzer
+        self.api._new_analyzer=slow_factory
+        _,asset=self.api.upload_audio(wav_bytes([.1]*48000,sample_rate=48000),filename="file-live.wav")
+        request=dict(self.request,source=dict(input_kind="uploaded_file",input_asset_or_device_id=asset["asset_id"]))
+        _,snapshot=self.api.create_session(request);sid=snapshot["session_id"]
+        try:
+            self.assertTrue(entered.wait(2));time.sleep(.7)
+            snapshot=self.api.get_session(sid)[1]
+            self.assertEqual("listening",snapshot["capture"]["state"])
+            self.assertFalse(self.api.live_audio.tasks[sid].is_alive())
+            self.assertFalse(snapshot["capture"]["frame_fresh"])
+            self.assertIsNone(snapshot["capture"]["native_device_id"])
+        finally:release.set()
+
+    def test_repeated_switch_keeps_capture_running_with_one_blocked_inference(self):
+        snapshot=self.start();sid=snapshot["session_id"];session=self.api.runtime_session(sid)
+        entered=threading.Event();release=threading.Event();original=session.analyzer.analyze
+        calls=[]
+        def blocked(window,context):
+            calls.append(window.clock_id);entered.set();release.wait(5)
+            return original(window,context)
+        session.analyzer.analyze=blocked
+        try:
+            self.assertTrue(entered.wait(2))
+            for i,identity in enumerate(("mic-b","mic-a","mic-b")):
+                old=self.api.get_session(sid)[1]
+                self.switch(old,identity,f"bounded-switch-{i}")
+                snapshot=self.wait(sid,lambda s:s["capture"]["switch_result"]=="applied")
+                self.assertEqual("listening",snapshot["capture"]["state"])
+                self.assertFalse(snapshot["capture"]["frame_fresh"])
+                self.assertGreater(self.api.workers[sid].audio_input._next_sample,0)
+                self.assertLessEqual(len(self.api.live_audio.retired.get(sid,[])),1)
+            self.assertEqual(1,len(calls))
+            self.assertTrue(all(s.closed for s in self.backend.streams[:-1]))
+        finally:release.set()
+        snapshot=self.wait(sid,lambda s:s["capture"]["frame_fresh"])
+        self.assertEqual(snapshot["source"]["clock_id"],snapshot["latest_frame"]["clock_id"])
+        self.assertNotEqual(calls[0],calls[-1])

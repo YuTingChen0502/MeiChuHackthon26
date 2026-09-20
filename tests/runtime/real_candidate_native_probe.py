@@ -8,6 +8,7 @@ from collections import deque
 import copy
 import json
 import math
+import os
 import platform
 from pathlib import Path
 import socket
@@ -82,7 +83,7 @@ def run(storage,output,segment_seconds=20):
                 snapshots.append(dict(label=label,elapsed_s=elapsed,rss_bytes=memory_bytes(),capture=snapshot["capture"],
                     perception=snapshot["perception"],latest_frame=snapshot["latest_frame"],worker=worker.metrics(),
                     frames=len(session._frames),hashes=len(session._frame_audio_hashes),events=len(session._events),
-                    diagnostics=session.analyzer.execution_diagnostics()))
+                    diagnostics=session.analyzer.analyzer.execution_diagnostics()))
                 next_sample=elapsed+2
             if snapshot["capture"]["state"]=="unavailable":raise RuntimeError(str(snapshot["capture"]))
             if elapsed>=segment_seconds and matching:break
@@ -94,19 +95,28 @@ def run(storage,output,segment_seconds=20):
         inventory=api.audio_devices()[1];raw=backend.discover();default=next(d for d in raw if d.is_default)
         group=next(m["microphone_id"] for m in inventory["microphones"] if m["selection_kind"]!="system_default"
             and any(d.device_id==default.device_id for d in api.live_audio.inventory().resolve(m["microphone_id"])))
-        _,project=api.create_project({"name":"Actual native P1 engineering acceptance"})
-        _,song=api.create_song({"project_id":project["project_id"],"name":"Generated reference - no acoustic labels",
-            "instruments":[dict(instrument_id=x,family=x) for x in ("bass","guitar","drums","vocals","keys")]})
-        samples=[.15*math.sin(2*math.pi*110*i/44100) for i in range(32*44100)]
-        _,asset=api.upload_audio(wav_bytes(samples,sample_rate=44100),filename="generated-reference-32s.wav")
-        del samples
-        _,job=api.start_reference_job(song["song_id"],{"asset_id":asset["asset_id"]})
-        print(json.dumps({"phase":"reference_preparation","git_commit":sha,"seconds":32}),flush=True)
-        result=api.run_reference_job(job["job_id"])[1]
-        if result["status"]!="completed":raise RuntimeError(str(result))
+        existing=next((j for j in api.jobs.values() if j["status"]=="completed" and
+            api.songs[j["song_id"]]["name"]=="Generated reference - no acoustic labels"),None)
+        if existing:
+            job=existing;song=api.songs[job["song_id"]]
+            if api.reference_models[job["reference_id"]]!=api.analyzer_capabilities()["model"]:
+                raise RuntimeError("persisted reference model/profile incompatible")
+            print(json.dumps({"phase":"reuse_exact_compatible_reference","reference_id":job["reference_id"],"git_commit":sha}),flush=True)
+        else:
+            _,project=api.create_project({"name":"Actual native P1 engineering acceptance"})
+            _,song=api.create_song({"project_id":project["project_id"],"name":"Generated reference - no acoustic labels",
+                "instruments":[dict(instrument_id=x,family=x) for x in ("bass","guitar","drums","vocals","keys")]})
+            samples=[.15*math.sin(2*math.pi*110*i/44100) for i in range(32*44100)]
+            _,asset=api.upload_audio(wav_bytes(samples,sample_rate=44100),filename="generated-reference-32s.wav")
+            del samples
+            _,job=api.start_reference_job(song["song_id"],{"asset_id":asset["asset_id"]})
+            print(json.dumps({"phase":"reference_preparation","git_commit":sha,"seconds":32}),flush=True)
+            result=api.run_reference_job(job["job_id"])[1]
+            if result["status"]!="completed":raise RuntimeError(str(result))
         import uvicorn
         from websockets.sync.client import connect
         with socket.socket() as sock:sock.bind(("127.0.0.1",0));port=sock.getsockname()[1]
+        os.environ["PA_ALLOWED_ORIGINS"]=f"http://127.0.0.1:{port}"
         server=uvicorn.Server(uvicorn.Config(create_app(api),host="127.0.0.1",port=port,
             log_level="error",loop="asyncio",http="h11",ws="websockets-sansio"))
         server_thread=threading.Thread(target=server.run,daemon=True);server_thread.start()
@@ -121,7 +131,7 @@ def run(storage,output,segment_seconds=20):
             with urllib.request.urlopen(f"http://127.0.0.1:{port}"+route,timeout=5) as response:
                 wire=json.load(response);assert wire["workflow_policy"]=="live_reference_v1"
             with connect(f"ws://127.0.0.1:{port}"+route+"/events?after_sequence=0",origin=f"http://127.0.0.1:{port}",close_timeout=1) as ws:
-                event=json.loads(ws.recv(timeout=5));transport.append(dict(http=200,event_sequence=event["sequence"]))
+                event=json.loads(ws.recv(timeout=5));transport.append(dict(http=200,event_sequence=event["event_sequence"]))
         for i,identity in enumerate((default.device_id,group,"unavailable-physical-probe")):
             execute(sid,"switch_microphone",f"switch-{i}",dict(microphone_id=identity))
             terminal=wait(sid,lambda s:s["capture"]["switch_result"] in ("applied","rolled_back","failed"))
@@ -147,6 +157,9 @@ def run(storage,output,segment_seconds=20):
         Path(output).write_text(json.dumps(report,indent=2),encoding="utf-8")
         print(json.dumps({k:report[k] for k in ("status","git_commit","elapsed_total_s","measured_native_s","limits")}),flush=True)
     finally:
+        if not Path(output).exists():
+            Path(output).write_text(json.dumps(dict(status="incomplete_failed_attempt",git_commit=sha,
+                segments=segments,operations=operations,calls=list(calls),snapshots=snapshots),indent=2),encoding="utf-8")
         if server:server.should_exit=True
         if server_thread:server_thread.join(5)
         api.close()
