@@ -81,23 +81,39 @@ class P1ContractTests(unittest.TestCase):
         self.analyzer.close()
         self.temp.cleanup()
 
-    def test_one_row_per_instrument_with_unsupported_and_unknown_null(self):
-        evidence = self.analyzer.analyze(self.audio, self.ctx)
-        validate_analyzer_pair(self.ctx, evidence)
+    def test_each_dataset_family_uses_its_own_source_and_target(self):
+        sources = ("drums", "bass", "other", "vocals", "guitar", "piano")
+        targets = {name: -40.0 - i for i, name in enumerate(sources)}
+        observed = {name: -30.0 - 2 * i for i, name in enumerate(sources)}
+        with patch.object(self.runner, "levels", return_value=targets):
+            prepared = self.analyzer.prepare_reference([window(name="ref-levels")], self.config)
+        ctx = context(self.analyzer, self.audio, prepared, self.config)
+        with patch.object(self.runner, "levels", return_value=observed):
+            evidence = self.analyzer.analyze(self.audio, ctx)
+        validate_analyzer_pair(ctx, evidence)
         self.assertEqual(6, len(evidence["measurements"]))
-        bass, *others = evidence["measurements"]
-        self.assertEqual("valid", bass["validity"])
-        self.assertEqual(-40, bass["source_level_db"])
-        self.assertEqual([], bass["uncertainty_features"])
-        for row in others:
+        for row in evidence["measurements"][:4]:
+            family = row["family"]
+            self.assertEqual("valid", row["validity"])
+            self.assertEqual(observed[family], row["source_level_db"])
+            self.assertEqual(targets[family], row["target_source_level_db"])
+            self.assertEqual([], row["uncertainty_features"])
+            self.assertIn("uncalibrated_candidate", row["reason_codes"])
+            self.assertEqual(family != "bass", "family_attribution_unvalidated" in row["reason_codes"])
+        for row in evidence["measurements"][4:]:
             self.assertIsNone(row["source_level_db"])
             self.assertIsNone(row["target_source_level_db"])
             self.assertEqual("invalid", row["validity"])
-            self.assertNotEqual("inactive", row["activity"])
-        self.assertEqual(["INSUFFICIENT_EVIDENCE"], others[-1]["reason_codes"])
+            self.assertEqual("unknown", row["activity"])
+        self.assertEqual(["partial_source_representation"], evidence["measurements"][4]["reason_codes"])
+        self.assertEqual(["INSUFFICIENT_EVIDENCE"], evidence["measurements"][5]["reason_codes"])
+        caps = self.analyzer.capabilities()
+        self.assertEqual(["bass", "drums", "guitar", "keys", "vocals"], caps["attempted_families"])
+        self.assertEqual(["bass"], caps["validated_families"])
+        self.assertEqual(["bass"], caps["supported_families"])
         self.assertIsNone(self.analyzer.calibration_metadata())
         self.assertIsNone(self.analyzer.acceptance_metadata())
-        self.assertFalse(self.analyzer.capabilities()["production_authorized"])
+        self.assertFalse(caps["production_authorized"])
 
     def test_default_unaccepted_never_returns_numerical_evidence(self):
         a = P1CandidateAnalyzer(self.bundle, TestOnlyRunner(), candidate_mode=False)
@@ -109,11 +125,29 @@ class P1ContractTests(unittest.TestCase):
         finally:
             a.close()
 
-    def test_same_family_multiple_instances_are_not_attributed_as_one(self):
-        c = configured(("bass", "bass"))
-        p = self.analyzer.prepare_reference([window(name="ref2")], c)
+    def test_all_colliding_source_rows_are_invalid_not_independent_anchors(self):
+        for family in ("bass", "drums", "guitar", "vocals", "keys"):
+            with self.subTest(family=family):
+                c = configured((family, family))
+                p = self.analyzer.prepare_reference([window(name="ref2")], c)
+                ev = self.analyzer.analyze(self.audio, context(self.analyzer, self.audio, p, c))
+                validate_analyzer_pair(context(self.analyzer, self.audio, p, c), ev)
+                for row in ev["measurements"]:
+                    self.assertEqual(["ambiguous_same_family_sources"], row["reason_codes"])
+                    self.assertEqual("invalid", row["validity"])
+                    self.assertIsNone(row["source_level_db"])
+                    self.assertIsNone(row["target_source_level_db"])
+
+    def test_unknown_labels_do_not_alias_piano_or_residual_to_instruments(self):
+        c = configured(("piano", "other", "synth", "flute"))
+        p = self.analyzer.prepare_reference([window(name="unknown-ref")], c)
+        before = len(self.runner.calls)
         ev = self.analyzer.analyze(self.audio, context(self.analyzer, self.audio, p, c))
-        self.assertTrue(all(x["reason_codes"] == ["ambiguous_same_family_sources"] for x in ev["measurements"]))
+        self.assertEqual(before + 1, len(self.runner.calls))
+        for row in ev["measurements"]:
+            self.assertEqual(["INSUFFICIENT_EVIDENCE"], row["reason_codes"])
+            self.assertEqual("unknown", row["activity"])
+            self.assertIsNone(row["source_level_db"])
 
     def test_no_labels_enter_inference_and_context_rejects_extra_labels(self):
         self.analyzer.analyze(self.audio, self.ctx)
@@ -173,7 +207,10 @@ class P1ContractTests(unittest.TestCase):
             before = len(self.runner.calls)
             evidence = self.analyzer.analyze(mic, ctx)
             self.assertEqual(before + 1, len(self.runner.calls))
-            self.assertTrue(all(r["source_level_db"] is None for r in evidence["measurements"]))
+            for row in evidence["measurements"]:
+                self.assertEqual(ref_level is not None, row["validity"] == "valid")
+                if ref_level is None:
+                    self.assertIsNone(row["source_level_db"])
 
     def test_relative_hop_and_restart_matching_without_alignment_guessing(self):
         refs = [replace(window(name="ref-" + str(i), start=i*44100),
@@ -232,6 +269,65 @@ class P1ContractTests(unittest.TestCase):
         file.unlink()
         self.assertEqual(["reference_context_unavailable"],
                          self.analyzer.analyze(self.audio, self.ctx)["measurements"][0]["reason_codes"])
+
+    def _cache_fixture(self, mutate):
+        asset = self.prepared["model_specific_context_asset"]
+        record = json.loads((self.cache / (asset.split(":")[1] + ".json")).read_text())
+        mutate(record)
+        raw = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+        key = hashlib.sha256(raw).hexdigest()
+        (self.cache / (key + ".json")).write_bytes(raw)
+        return dict(self.ctx, model_specific_context_asset="p1-reference:" + key)
+
+    def test_v1_cache_explicitly_requires_reprepare_without_inventing_targets(self):
+        def old_payload(record):
+            record["version"] = 1
+            record.pop("reference_policy")
+            for item in record["windows"]:
+                item["bass_dbfs"] = item.pop("source_levels_dbfs")["bass"]
+        ctx = self._cache_fixture(old_payload)
+        before = len(self.runner.calls)
+        evidence = self.analyzer.analyze(self.audio, ctx)
+        validate_analyzer_pair(ctx, evidence)
+        self.assertEqual(before, len(self.runner.calls))
+        self.assertIsNone(evidence["matched_context_window_id"])
+        for row in evidence["measurements"][:5]:
+            self.assertEqual(["reference_context_reprepare_required"], row["reason_codes"])
+            self.assertIsNone(row["source_level_db"])
+            self.assertIsNone(row["target_source_level_db"])
+        prepared = self.analyzer.prepare_reference([window(name="reprepared")], self.config)
+        self.assertNotEqual(ctx["model_specific_context_asset"], prepared["model_specific_context_asset"])
+        ev = self.analyzer.analyze(self.audio, context(self.analyzer, self.audio, prepared, self.config))
+        self.assertTrue(all(r["validity"] == "valid" for r in ev["measurements"][:4]))
+
+    def test_cache_policy_is_pinned_and_incomplete_source_values_fail_closed(self):
+        for mutate in (
+            lambda r: r["reference_policy"].update(policy_id="old-policy"),
+            lambda r: r["reference_policy"]["family_sources"].update(keys="other"),
+        ):
+            ctx = self._cache_fixture(mutate)
+            evidence = self.analyzer.analyze(self.audio, ctx)
+            self.assertEqual(["reference_context_reprepare_required"], evidence["measurements"][0]["reason_codes"])
+        for mutate in (
+            lambda r: r["windows"][0]["source_levels_dbfs"].pop("guitar"),
+            lambda r: r["windows"][0]["source_levels_dbfs"].update(guitar="not-a-level"),
+        ):
+            ctx = self._cache_fixture(mutate)
+            with self.assertRaisesRegex(ValueError, "P1 source levels"):
+                self.analyzer.analyze(self.audio, ctx)
+
+    def test_non_bass_missing_source_or_target_never_becomes_numeric_evidence(self):
+        for family in ("drums", "guitar", "vocals"):
+            for missing_target in (True, False):
+                with self.subTest(family=family, missing_target=missing_target):
+                    c = configured((family,))
+                    self.runner.level = None if missing_target else -40.0
+                    p = self.analyzer.prepare_reference([window(name="quiet-ref")], c)
+                    self.runner.level = -40.0 if missing_target else None
+                    row = self.analyzer.analyze(self.audio, context(self.analyzer, self.audio, p, c))["measurements"][0]
+                    self.assertEqual(["source_below_activity_floor"], row["reason_codes"])
+                    self.assertIsNone(row["source_level_db"])
+                    self.assertIsNone(row["target_source_level_db"])
 
     def test_close_is_idempotent_and_host_acceptance_is_rejected(self):
         self.analyzer.close()
@@ -335,10 +431,19 @@ class P1ActualCPUSmokeTests(unittest.TestCase):
             c = configured()
             ref, obs = window(read("reference"), name="reference"), window(read("observation"))
             prepared = a.prepare_reference([ref], c)
+            ref_levels = a.execution_diagnostics()["last_inference"]["source_levels_dbfs"]
             ctx = context(a, obs, prepared, c)
             ctx["observation_purpose"] = "live"
             first = a.analyze(obs, ctx)
             file_diagnostics = a.execution_diagnostics()
+            for row in first["measurements"][:4]:
+                family = row["family"]
+                self.assertEqual("valid", row["validity"])
+                self.assertEqual(ref_levels[family], row["target_source_level_db"])
+                self.assertEqual(file_diagnostics["last_inference"]["source_levels_dbfs"][family], row["source_level_db"])
+                self.assertEqual(family != "bass", "family_attribution_unvalidated" in row["reason_codes"])
+            self.assertEqual(["partial_source_representation"], first["measurements"][4]["reason_codes"])
+            self.assertIsNone(first["measurements"][4]["source_level_db"])
             second = a.analyze(obs, ctx)
             self.assertEqual(first, second)
             mic = replace(obs, window_id="mic-window", input_kind="live_microphone",
