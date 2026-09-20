@@ -335,7 +335,7 @@ class LiveAudioController:
                         session.capture["state"]="listening";changed=True
                     frame=session.latest_frame
                     if frame and session.monotonic_clock()-frame["capture_end_monotonic_s"]>worker.max_age_s:
-                        session.latest_frame=None;session._current_masks={};session.capture.update(frame_fresh=False,state="listening",reason_codes=["stale_evidence"])
+                        session.latest_frame=None;session._current_masks={};session._current_hints={};session._hint_expires_monotonic_s=None;session.capture.update(frame_fresh=False,state="listening",reason_codes=["stale_evidence"])
                         session.recommendations=[];session.latest_verification=None;session._detector.reset();session._verification_armed=False;changed=True
                     if changed:self.persist(session)
 

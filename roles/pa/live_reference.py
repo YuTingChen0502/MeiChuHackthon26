@@ -13,11 +13,15 @@ class LiveReferencePolicy:
             analysis_run_id=None,frame_fresh=False,timestamp_mode="unknown",operation_id=None,
             switch_result="none",reason_codes=[])
         self._current_masks={}
+        self._current_hints={}
+        self._hint_expires_monotonic_s=None
         self._switch_previous=None
         self._switch_paused=False
 
     def _perception(self):
-        supported=self.analyzer.capabilities().get("supported_families")
+        capabilities=self.analyzer.capabilities()
+        supported=capabilities.get("supported_families")
+        attempted=capabilities.get("attempted_families")
         rows=[]
         frame=self.latest_frame
         fresh=bool(frame and self.capture["frame_fresh"] and not frame["quality"]["stale"] and not frame["quality"]["dropout"])
@@ -33,16 +37,21 @@ class LiveReferencePolicy:
             validity=raw.get("validity","invalid") if fresh else "invalid"
             calibration=confidence.get("calibration_status","uncalibrated")
             abstained=confidence.get("abstained",True) if fresh else True
-            if supported is not None and configured["family"] not in supported:
+            if attempted is None and supported is not None and configured["family"] not in supported:
                 value="unsupported";activity="unsupported";validity="invalid";reasons=["unsupported_family"]
-            elif supported is None:
+            elif attempted is None and supported is None:
                 value="uncertain";reasons=["capabilities_unavailable"]
             elif not fresh:
                 value="listening" if self.capture["state"]=="listening" and frame is None and "stale_evidence" not in reasons else "uncertain"
+            elif activity=="unsupported":value="unsupported"
+            elif "family_attribution_unvalidated" in raw.get("reason_codes",[]):value="uncertain"
             elif activity=="inactive":value="not_heard"
             elif activity=="active" and observability=="observable" and validity=="valid":value="detected"
             else:value="uncertain"
-            rows.append(dict(**configured,state=value,frame_id=frame["frame_id"] if fresh else None,
+            hint=self._current_hints.get(identity) if fresh and value in ("detected","uncertain") else None
+            if hint and (hint["evidence_frame_id"] != frame["frame_id"] or self._hint_expires_monotonic_s is None
+                    or self.monotonic_clock() > self._hint_expires_monotonic_s):hint=None
+            rows.append(dict(**configured,adjustment_hint=copy.deepcopy(hint),state=value,frame_id=frame["frame_id"] if fresh else None,
                 activity=activity,observability=observability,validity=validity,calibration_status=calibration,
                 action_abstained=abstained,numerical_advice_allowed=bool(value=="detected" and calibration=="calibrated" and not abstained),
                 reason_codes=list(dict.fromkeys(reasons))))
@@ -56,6 +65,7 @@ class LiveReferencePolicy:
         self.latest_frame=None;self.latest_verification=None;self.recommendations=[]
         self._frames.clear();self._frame_audio_hashes.clear();self._baseline_windows.clear()
         self._baseline_pcm_samples=0;self._guided_frame_ids.clear();self._current_masks={}
+        self._current_hints={};self._hint_expires_monotonic_s=None
         self._incident_before_balance=None;self._verification_armed=False;self._detector.reset()
         self._cancel_probe();self.capture["frame_fresh"]=False
 

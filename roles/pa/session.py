@@ -29,6 +29,7 @@ from core.runtime.deviation import FrameBuilder
 from core.runtime.quality import pcm_clipped_fraction, quality_is_usable, quality_state
 
 from .policy import PersistentAnomalyPolicy, recommendation_for
+from .experimental_hints import adjustment_hints
 
 
 def _synchronized(method):
@@ -135,7 +136,9 @@ class PASession(LiveReferencePolicy):
             "name": song_name,
             "instrument_config_version": instrument_config["instrument_config_version"],
             "configured_families": [item["family"] for item in instrument_config["instruments"]],
-            "unsupported_families": [],
+            "unsupported_families": ([] if "attempted_families" in analyzer.capabilities() else
+                [item["family"] for item in instrument_config["instruments"]
+                 if item["family"] not in analyzer.capabilities().get("supported_families", ())]),
             "reference_id": reference_profile["reference_id"],
             "baseline_id": None,
             "workflow_state": "REHEARSAL",
@@ -252,6 +255,8 @@ class PASession(LiveReferencePolicy):
             "workflow_policy": self.workflow_policy,
             "capture": copy.deepcopy(self.capture),
             "current_masks": copy.deepcopy(self._current_masks),
+            "current_hints": copy.deepcopy(self._current_hints),
+            "hint_expires_monotonic_s": self._hint_expires_monotonic_s,
             "switch_previous": copy.deepcopy(self._switch_previous),
             "switch_paused": self._switch_paused,
             "session_id": self.session_id,
@@ -349,6 +354,8 @@ class PASession(LiveReferencePolicy):
         self.workflow_policy=state.get("workflow_policy","legacy_baseline_v1")
         self.capture=copy.deepcopy(state.get("capture",self.capture))
         self._current_masks=copy.deepcopy(state.get("current_masks",{}))
+        self._current_hints=copy.deepcopy(state.get("current_hints",{}))
+        self._hint_expires_monotonic_s=state.get("hint_expires_monotonic_s")
         self._switch_previous=copy.deepcopy(state.get("switch_previous"))
         self._switch_paused=state.get("switch_paused",False)
         self.instrument_config = copy.deepcopy(state["instrument_config"])
@@ -596,6 +603,9 @@ class PASession(LiveReferencePolicy):
         )
         if self.live_reference:
             self._current_masks={row["instrument_id"]:copy.deepcopy(row) for row in evidence["measurements"]}
+            self._current_hints=adjustment_hints(context=context,evidence=evidence,frame=frame,
+                anomaly_threshold_db=self._frame_builder.anomaly_threshold_db)
+            self._hint_expires_monotonic_s=window.capture_end_monotonic_s+(2.0 if max_age_s is None else max_age_s)
             fresh=not frame["quality"]["stale"] and not frame["quality"]["dropout"]
             self.capture.update(analysis_run_id=window.analysis_run_id,state="active" if fresh else "listening",
                 frame_fresh=fresh)

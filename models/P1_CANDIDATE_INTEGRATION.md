@@ -79,10 +79,24 @@ Deterministic mode and intraop threads are scoped and restored; actual interop t
 
 prepare_reference accepts legitimate AudioWindows and InstrumentConfig only. Its private cache
 stores five-ID identity, host pin hash, configuration, sample spans, window IDs, PCM hashes and
-bass source levels. It stores no ground-truth gain labels and does not publish reference coverage.
+all six actual source levels (including null below-floor estimates). It stores no ground-truth gain labels and does not publish reference coverage.
 Cache content is hash-bound and persists across analyzer instances with the same supplied directory.
 A target binds on first analysis and cannot be silently rebound. Missing/corrupt/incompatible context
 fails closed. Cache preparation is bounded to1024 windows.
+
+Cache payload version 2 includes `reference_policy` with policy ID
+`p1-dataset-family-attempt-v1`, the exact five-family source mapping below, and
+`partial_families: ["keys"]`. Per-window values are `source_levels_dbfs` keyed by
+all six model sources. The existing `p1-reference:<sha256>` asset hashes the entire
+payload; five public model identities and the frozen archive remain unchanged.
+Version 1 or a mismatched policy returns `reference_context_reprepare_required`,
+invalid/null measurements and no matched window. Missing cache still returns
+`reference_context_unavailable`; corrupt bytes, model/profile or configuration
+mismatches fail closed. No values are inferred from the old `bass_dbfs` field.
+Recovery: use existing POST song/reference with the retained original audio asset,
+prepare a new immutable reference, and explicitly create a new session for the
+same song. Never retarget an existing session silently. Valid v2 reference context
+remains reusable through same-session microphone changes.
 
 The synchronized-demo comparison is deliberately narrow: complete file or physical-microphone
 observations with equal relative sample spans in the supplied uploaded reference. New capture/source
@@ -101,13 +115,44 @@ they do not invalidate otherwise available bass perception. Numerical PA advice 
 the unchanged downstream calibration/identifiability gates.
 
 Evidence mode is source_levels with units dBFS_rms: observation source_level_db and matched
-target_source_level_db. Bass is the only candidate-supported family. Each configured instrument gets
-exactly one row. Guitar/drums/vocals/keys are invalid/null with unsupported_family and activity=unsupported.
-Unknown families are invalid/null with INSUFFICIENT_EVIDENCE and activity=unknown. Multiple configured
-bass instances are ambiguous and invalid. Below-floor source estimates are invalid, never Normal.
-Those publication rules are applied after actual inference, including configurations without bass.
+target_source_level_db. Dataset-family attempts follow the Lead-approved
+DATASET_PERCEPTION_HINT_FREEZE.md, separately from historical empirical support:
 
-Bass above the frozen-70dBFS floor gets raw source levels in explicit candidate mode only.
+| Canonical dataset family | Model source | Published matched measurement |
+|---|---|---|
+| bass | bass | Usable raw levels when both estimates exist |
+| drums | drums | Usable raw levels; family_attribution_unvalidated |
+| guitar | guitar | Usable raw levels; family_attribution_unvalidated |
+| vocals | vocals | Usable raw levels; family_attribution_unvalidated |
+| keys | piano | Partial proxy; invalid/null with partial_source_representation |
+
+`attempted_families` and `candidate_families` list all five canonical families;
+`validated_families` is bass only. Historical `supported_families` remains bass
+only in candidate mode and empty otherwise. Production authorization remains false.
+The MoisesDB handoff training_manifest.json has SHA-256
+5e3c4e479603c995daf16c8497fb631fbfed40cab4463864abfaffe98046b976:
+136 recordings from 68 parents with all five canonical families. This later
+48-train-parent handoff does not change the actual Nano4 40-parent/four-supervised-family
+training history. Keys was not a supervised adaptation family. These canonical
+families are not claimed to exhaust all raw-corpus instrument labels.
+
+Each configured instrument gets exactly one row. No piano alias is introduced;
+unknown labels, including piano and other, remain unknown/invalid/null with
+INSUFFICIENT_EVIDENCE. Generic other is never assigned a specific identity.
+All configured rows sharing a mapped model source are invalid/null with
+ambiguous_same_family_sources, so they cannot count as independent anchors.
+Missing source or target activity is invalid/null with source_below_activity_floor,
+never Normal. Missing alignment remains invalid/null while real inference continues.
+
+For the four exact mappings, finite matched estimates above the existing frozen
+-70dBFS floor can be valid/active/observable numerical source evidence in explicit
+candidate mode. This is not verified physical instrument identity. Non-bass rows
+retain family_attribution_unvalidated for uncertain Runtime presentation; all usable
+rows retain uncalibrated_candidate, plus real_room_not_validated on microphone input.
+No probability, directional suggestion, InstrumentState or PA action is constructed
+here. Core/Runtime owns independent-anchor, relative-balance, freshness, capture and
+quality gates, including the optional experimental non-numeric hint.
+
 execution_diagnostics() returns bounded real-runner started/completed call counters and the latest
 inference duration, six-source order/shape/RMS and waveform SHA-256 values. It stores no stem audio
 and is separate from AnalyzerEvidence, calibrated confidence and frontend/model identity. Reference
@@ -116,8 +161,8 @@ preparation counts as real inference too. Runtime owns queue age, freshness and 
 No calibrated probability or invented uncertainty feature is emitted. calibration_metadata() and
 acceptance_metadata() return None; valid raw bass rows retain uncalibrated_candidate.
 No InstrumentState, recommendations, common-mode centering, threshold decisions or workflow state
-is constructed. Unsupported stems never become hidden valid anchors. Core's existing>=3-valid-source
-rule therefore withholds centered balance and numerical advice for this bass-only evidence.
+is constructed. Partial and ambiguous estimates never become valid anchors. Numerical
+PA advice remains subject to unchanged downstream confidence/calibration gates.
 
 ## Dependencies and verification
 

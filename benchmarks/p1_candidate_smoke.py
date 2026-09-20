@@ -104,7 +104,7 @@ def run_smoke(candidate, *, cache_dir, device="cpu"):
                 "execution_proven": execution_proven, "mic_context": mic_context, "mic_evidence": mic_evidence,
             },
             "limitations": ["Restricted validation-excerpt smoke only; no real-room/PN54/MI300/production acceptance.",
-                            "Raw source levels only; unsupported anchors never enter evidence.",
+                            "Raw source estimates only; non-bass attribution is unvalidated, partial/ambiguous anchors are null.",
                             "Cross-profile tolerance is an integration check, not an accuracy or calibration claim."],
         }
     finally:

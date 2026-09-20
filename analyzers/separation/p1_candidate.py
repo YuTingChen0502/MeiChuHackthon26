@@ -1,9 +1,11 @@
-"""Uncalibrated bass-only evidence after actual file/microphone P1 execution."""
+"""Dataset-family source evidence; empirical support and attribution stay distinct."""
+from collections import Counter
 import copy
 import hashlib
 import json
 import math
 from pathlib import Path
+from types import MappingProxyType
 from uuid import uuid4
 
 from analyzers.bundle_validation import contained_file, require, strict_json_bytes
@@ -13,6 +15,11 @@ from analyzers.separation.p1_runner import P1Runner
 from core.contracts.validation import ANALYZER, validate_analyzer_pair, validate_record
 
 P1_ADAPTER_ID = "htdemucs6s-p1-output-projections-v1"
+P1_ATTEMPT_POLICY_ID = "p1-dataset-family-attempt-v1"
+# Reviewed canonical dataset mapping; do not infer aliases or identify residual other.
+P1_FAMILY_SOURCES = MappingProxyType({
+    "bass": "bass", "drums": "drums", "guitar": "guitar", "keys": "piano", "vocals": "vocals",
+})
 
 
 def _canonical(value):
@@ -36,13 +43,22 @@ class P1CandidateAnalyzer:
             "taxonomy_id": bundle.json(m["taxonomy"])["taxonomy_id"],
             "execution_profile_id": runner.profile_id, "level_scale_id": bundle.spec["level_scale_id"],
         }
-        self._taxonomy = bundle.json(m["taxonomy"])["families"]
+        taxonomy = bundle.json(m["taxonomy"])
+        require(all(taxonomy["families"][family]["model_source"] == source
+                    for family, source in P1_FAMILY_SOURCES.items()), "Incompatible attempt mapping")
+        self._source_names = tuple(taxonomy["model_source_order"])
+        self._reference_policy = {
+            "policy_id": P1_ATTEMPT_POLICY_ID, "family_sources": dict(P1_FAMILY_SOURCES),
+            "partial_families": ["keys"],
+        }
 
     def capabilities(self):
         return {
             "provider": P1_ADAPTER_ID, "example_only": False,
             "supported_families": ["bass"] if self._candidate_mode else [],
-            "candidate_families": ["bass"], "candidate_mode": self._candidate_mode,
+            "candidate_families": list(P1_FAMILY_SOURCES), "candidate_mode": self._candidate_mode,
+            "attempted_families": list(P1_FAMILY_SOURCES), "validated_families": ["bass"],
+            "reference_policy_id": P1_ATTEMPT_POLICY_ID, "reference_cache_version": 2,
             "production_authorized": False, "confidence_status": "UNCALIBRATED",
             "comparison_regimes": ["matched_excerpt"], "evidence_modes": ["source_levels"],
             "model": copy.deepcopy(self._model), "execution_profile": copy.deepcopy(self.runner.profile),
@@ -64,6 +80,13 @@ class P1CandidateAnalyzer:
         require(math.isfinite(window.input_clipped_fraction) and 0 <= window.input_clipped_fraction <= 1,
                 "Invalid PCM clipping metadata")
 
+    def _source_levels(self, levels):
+        require(isinstance(levels, dict) and set(levels) == set(self._source_names),
+                "Incomplete P1 source levels")
+        require(all(value is None or (type(value) in (int, float) and math.isfinite(value))
+                    for value in levels.values()), "Invalid P1 source levels")
+        return dict(levels)
+
     def prepare_reference(self, windows, instrument_config):
         require(not self._closed, "Analyzer is closed")
         validate_record(instrument_config, ANALYZER, "InstrumentConfig")
@@ -84,16 +107,17 @@ class P1CandidateAnalyzer:
             span = (window.sample_start, window.sample_end)
             require(span not in seen, "Ambiguous reference sample spans")
             seen.add(span)
-            levels = self.runner.levels(window.samples)
+            levels = self._source_levels(self.runner.levels(window.samples))
             import numpy as np
             records.append({
                 "window_id": window.window_id, "sample_start": window.sample_start, "sample_end": window.sample_end,
                 "pcm_sha256": hashlib.sha256(np.asarray(window.samples, dtype="<f4").tobytes()).hexdigest(),
-                "bass_dbfs": levels["bass"],
+                "source_levels_dbfs": levels,
             })
         require(records, "Reference windows required")
         require(len({x["window_id"] for x in records}) == len(records), "Duplicate reference window IDs")
-        payload = {"version": 1, "model": self._model, "bundle_pin": self.bundle.identity_hash,
+        payload = {"version": 2, "reference_policy": self._reference_policy,
+                   "model": self._model, "bundle_pin": self.bundle.identity_hash,
                    "instrument_config": instrument_config, "windows": records, "context_nonce": uuid4().hex}
         raw = _canonical(payload)
         key = hashlib.sha256(raw).hexdigest()
@@ -127,6 +151,12 @@ class P1CandidateAnalyzer:
         require(record["model"] == self._model and record["bundle_pin"] == self.bundle.identity_hash,
                 "Incompatible reference model/profile")
         require(record["instrument_config"] == config, "Incompatible reference instrument configuration")
+        if (type(record.get("version")) is not int or record["version"] != 2
+                or record.get("reference_policy") != self._reference_policy):
+            return None, "reference_context_reprepare_required"
+        require(isinstance(record.get("windows"), list) and record["windows"], "Invalid reference windows")
+        for item in record["windows"]:
+            self._source_levels(item.get("source_levels_dbfs"))
         _, reason = self._bindings.lookup_and_bind(self.bundle.identity_hash, asset, config, target)
         return (record, None) if reason is None else (None, reason)
 
@@ -152,14 +182,14 @@ class P1CandidateAnalyzer:
                     reason = "matched_reference_span_unavailable"
                 else:
                     matched = matches[0]
-        bass_count = sum(x["family"] == "bass" for x in configured)
+        source_counts = Counter(P1_FAMILY_SOURCES[x["family"]] for x in configured
+                                if x["family"] in P1_FAMILY_SOURCES)
         # Acquisition kind, configured support and target activity never suppress
         # compatible inference. All six sources are produced before publication masks.
         # Missing comparison coverage does not prevent source separation.
         # Keep unmatched results diagnostic-only; no fabricated reference values.
         can_execute = reason in (None, "matched_reference_span_unavailable")
-        observation_levels = self.runner.levels(window.samples) if can_execute else None
-        obs_level = observation_levels["bass"] if observation_levels is not None else None
+        observation_levels = self._source_levels(self.runner.levels(window.samples)) if can_execute else None
         if reason is None and not self._candidate_mode:
             reason = "candidate_mode_not_enabled"
         rows = []
@@ -167,22 +197,25 @@ class P1CandidateAnalyzer:
             row = dict(item, activity="unknown", observability="unknown", validity="invalid",
                        reason_codes=[], uncertainty_features=[], source_level_db=None, target_source_level_db=None)
             family = item["family"]
-            if family not in self._taxonomy:
+            source = P1_FAMILY_SOURCES.get(family)
+            if source is None:
                 row["reason_codes"] = ["INSUFFICIENT_EVIDENCE"]
-            elif family != "bass":
-                row.update(activity="unsupported", observability="not_observable", reason_codes=["unsupported_family"])
             elif reason is not None:
                 row["reason_codes"] = [reason]
-            elif bass_count != 1:
+            elif source_counts[source] != 1:
                 row["reason_codes"] = ["ambiguous_same_family_sources"]
-            elif matched["bass_dbfs"] is None or obs_level is None:
+            elif family == "keys":
+                row["reason_codes"] = ["partial_source_representation"]
+            elif matched["source_levels_dbfs"][source] is None or observation_levels[source] is None:
                 row["reason_codes"] = ["source_below_activity_floor"]
                 row["observability"] = "not_observable"
             else:
                 row.update(activity="active", observability="observable", validity="valid",
-                           source_level_db=obs_level, target_source_level_db=matched["bass_dbfs"],
-                           reason_codes=["uncalibrated_candidate"] + (
-                               ["real_room_not_validated"] if window.input_kind == "live_microphone" else []))
+                           source_level_db=observation_levels[source],
+                           target_source_level_db=matched["source_levels_dbfs"][source],
+                           reason_codes=["uncalibrated_candidate"]
+                           + (["family_attribution_unvalidated"] if family != "bass" else [])
+                           + (["real_room_not_validated"] if window.input_kind == "live_microphone" else []))
             rows.append(row)
         evidence = {
             "record_type": "AnalyzerEvidence", "schema_version": "1.0", "example_only": False,
