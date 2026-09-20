@@ -1,10 +1,10 @@
 {
   "milestone": "BOUNDED_DELAYED_CANDIDATE_ANALYSIS",
-  "status": "CORRECTIONS_INTEGRATED_PHYSICAL_AND_CANONICAL_VALIDATION_IN_PROGRESS",
-  "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
+  "status": "BOUNDED_DELAYED_CANDIDATE_WINDOWS_AND_BROWSER_VALIDATED",
+  "current_decision": "DELAYED_ANALYSIS_TIMING_FREEZE.md and DELAYED_ANALYSIS_ACCEPTANCE.md; user-approved delayed execution, bounded hint lifetime and explicit assumed reference span, no action-quality bypass",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "8d5607d573e5f7cbee50ce26571c62fbf10b06c3",
-  "latest_integration_commit": "be58f3e196d6e333d6fc0d57acf3716878239b07",
+  "latest_integration_commit": "9ceb348cbee3606167db3c078fe885f9b3d7061a",
   "lanes": {
     "ML": {
       "commit": "4bfdd532ee8b8bb9bfacc0880b84b0699065bca2",
@@ -13,12 +13,12 @@
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "ff7df18ea19390544fac6668215510b4898f5e8c",
-      "status": "Accepted/integrated;18streaming/16live/finalgap1/shared35 independently PASS; physical delayed-candidate acceptance pending"
+      "commit": "65c289f19d7b49c4887850ee4adde34cdcbd79e5",
+      "status": "Accepted/integrated; executableff7df18, physicalbe58f3e120.361s/22realcalls/12sampledfreshframes/controlPASS; evidence-only followups accepted"
     },
     "UI": {
-      "commit": "ffd82e1575ad727e2e6fa78d703b9bbf8c078dbc",
-      "status": "Accepted/integratedbe58f3e;102UI independently PASS; read-only deadline/clock/lifecycle review no blockers"
+      "commit": "6da3e3d8f45395bfdf7762ffd35f6de2eb3fee3f",
+      "status": "Accepted/integrated; executableffd82e1, hintsmoke9d74032,102UI PASS; realcandidatebrowserreceipt accepted"
     }
   },
   "pending_reviews": [],
@@ -40,6 +40,9 @@
     }
   ],
   "events": {
+    "CP2-UI/CORRECTION_COMPLETE/9d740329675e352e25e083dacb74d9d8c124e09c": "Accepted/integratedf4d74a7; HTTP hint smoke uses production deadline mapping; independent35eventsPASS",
+    "CP2-UI/BROWSER_RECEIPT/6da3e3d8f45395bfdf7762ffd35f6de2eb3fee3f": "Accepted; exactbe58f3e actualcandidate rendered fresh delayed evidence, assumedinterval, withheldadvice, automatic stoppedstate",
+    "CP2-RUNTIME/PHYSICAL_RECEIPT/65c289f19d7b49c4887850ee4adde34cdcbd79e5": "Accepted evidence frombe58f3e; sixsegments120.361s,22backendcalls,12sampledfreshframes,queue2,70skips,0callbackdrops,controlsPASS; no hint/accuracy/PN54 claim",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/0acbcc6c954103b6bdffe0163049aceffdb2cc2c": "Reviewed actual Git SHA (worker first full-SHA report was mistyped); one correction required: clear stale latest_verification on physical gap",
     "CP2-RUNTIME/CORRECTION_COMPLETE/ff7df18ea19390544fac6668215510b4898f5e8c": "Accepted/integrated; latest verification cleared while incident/adjustment preserved; gap regression independently PASS. Worker branch push auto-review rejected remote trust; Lead canonical integration retained all local commits.",
     "CP2-UI/CHECKPOINT_COMMIT/ffd82e1575ad727e2e6fa78d703b9bbf8c078dbc": "Accepted for integration;102UI independently PASS and86targeted reviewer PASS; bounded deadline, separate receipt/server clocks, assumed reference interval",
@@ -96,17 +99,18 @@
     "CP2-UI/CORRECTION_COMPLETE/69b23d7760e49eae049008330f102dd6605a76b7": "Accepted/integrated;95UI and all3HTTPWSsmokes PASS incl orphan stop; isolatedbrowser hint/reprepare receipt reviewed"
   },
   "integration_validation": {
-    "commit": "24c72baf27c5cb954bdfe0c563212152ee33fb8d",
-    "python_tests": 305,
+    "commit": "dfa8290890d1ec113b4f2b71d098d95b12cffdd8",
+    "python_tests": 314,
     "shared_tests": 35,
-    "ui_tests": 95,
+    "ui_tests": 102,
     "legacy_fake_smoke": "PASS",
-    "live_reference_fake_smoke": "PASS68notifications",
-    "experimental_hint_reprepare_smoke": "PASS34notifications including unadopted session stop",
+    "live_reference_fake_smoke": "PASS64notifications",
+    "experimental_hint_reprepare_smoke": "PASS35notifications including authoritative deadline mapping and unadopted session stop",
     "actual_frozen_weight_p1_regressions": "PASS; engineering execution only",
     "release_scan": "PASS clean source zero findings",
-    "browser": "PASS isolated simulated hints/reprepare and deletion; docs/demo/DATASET_HINT_UI.md and SESSION_DELETION_UI.md",
-    "physical_claim": "No new physical, empirical accuracy or calibration claim"
+    "browser": "PASS actual candidate delayedstate and lifecycle; docs/demo/DELAYED_ANALYSIS_BROWSER_RECEIPT.md; previous hint/deletion simulations retained",
+    "physical_claim": "Windows one-array execution/lifecycle only:120.361s across6segments,22realcalls,12sampledfreshframes; no physical accuracy/calibration/PN54 claim",
+    "validation_log_sha256": "f7f2bcbc24d314b4776c341944ee751b0efb6adba57d6a813124a025d02a7c05"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
@@ -115,10 +119,9 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "24c72baf27c5cb954bdfe0c563212152ee33fb8d",
+  "latest_approved_main_implementation": "f4d74a71d648c42f2fe3c2da3a97476a2623b53b",
   "remaining": [
-    "CPU inference slower than offered1s hop; user-approved bounded delayed candidate policy now frozen, implementation and physical retest pending",
-    "MIC005 timestamp-mode diagnostic transition churn and MIC007 old-cache execution regression: existing owners correcting",
+    "CPU inference still slower than1s hop; bounded delayed candidate profile verified, no instantaneous throughput claim",
     "Unverified native capture remains ineligible for advice even with a fresh model result",
     "Second distinct physical microphone and Linux/PN54 native acceptance unavailable",
     "Physical-room supported-envelope/accuracy and fitted confidence calibration",

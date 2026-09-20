@@ -16,6 +16,9 @@ The tested CPU does not sustain the one-second offered inference hop. The
 [delayed-analysis policy](docs/implementation/DELAYED_ANALYSIS_TIMING_FREEZE.md)
 keeps queue admission at two seconds while allowing candidate results up to twenty
 seconds from capture end; this is explicitly delayed analysis, not faster inference.
+The [latest timing acceptance](docs/implementation/DELAYED_ANALYSIS_ACCEPTANCE.md)
+verified fresh real-model results over six native segments totaling 120 seconds,
+working lifecycle controls, and the actual browser display.
 Linux/PN54 and distinct physical-device acceptance remain separate. The user-approved
 [Live-reference contract](docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md) supersedes
 the historical rehearsal/baseline product flow. Existing baseline sessions remain
