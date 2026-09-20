@@ -3,6 +3,7 @@ import itertools
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from apps.api.service import RuntimeAPI
 from core.runtime.fake_analyzer import ContinuousFakeInstrumentAnalyzer
 from test_api_service import wav_bytes
@@ -46,12 +47,16 @@ class ReferenceJobProgressTests(unittest.TestCase):
     def test_input_construction_failure_is_terminal_and_durable(self):
         with tempfile.TemporaryDirectory() as directory:
             api=RuntimeAPI(storage_dir=directory,window_size_samples=1024)
-            asset,job=self.setup_job(api)
-            api.assets[asset["asset_id"]]["clipping_blocks"]=[0.0]
-            result=api.run_reference_job(job["job_id"])[1]
+            _,job=self.setup_job(api)
+            # Preparation re-decodes verified original bytes; exercise an actual
+            # adapter construction failure rather than tampering with decoded metadata.
+            with patch("apps.api.service.FileAudioInput.__init__",
+                    side_effect=ValueError("injected input construction failure")) as construct:
+                result=api.run_reference_job(job["job_id"])[1]
+                construct.assert_called_once()
             self.assertEqual("failed",result["status"])
             self.assertEqual(1.0,result["progress"])
-            self.assertIn("clipping block coverage mismatch",result["error"])
+            self.assertIn("injected input construction failure",result["error"])
             api.close()
             restored=RuntimeAPI(storage_dir=directory,window_size_samples=1024)
             try:self.assertEqual(result,restored.get_job(job["job_id"])[1])
