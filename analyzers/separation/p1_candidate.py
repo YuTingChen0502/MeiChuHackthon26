@@ -155,7 +155,10 @@ class P1CandidateAnalyzer:
         bass_count = sum(x["family"] == "bass" for x in configured)
         # Acquisition kind, configured support and target activity never suppress
         # compatible inference. All six sources are produced before publication masks.
-        observation_levels = self.runner.levels(window.samples) if reason is None else None
+        # Missing comparison coverage does not prevent source separation.
+        # Keep unmatched results diagnostic-only; no fabricated reference values.
+        can_execute = reason in (None, "matched_reference_span_unavailable")
+        observation_levels = self.runner.levels(window.samples) if can_execute else None
         obs_level = observation_levels["bass"] if observation_levels is not None else None
         if reason is None and not self._candidate_mode:
             reason = "candidate_mode_not_enabled"
