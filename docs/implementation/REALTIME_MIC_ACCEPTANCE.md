@@ -124,3 +124,12 @@ needed for fresh one-second-hop perception on this model. Do not loosen freshnes
 or label old outputs Detected to conceal CPU latency. Linux/PN54 capture, distinct
 physical-device switching, MI300 competition lineage, physical-room accuracy and
 fitted calibration each require their own actual evidence.
+
+## Final software validation
+
+Clean commit `1d6536130493a690040815a0f728a2a0367c28fc`: canonical
+`python scripts/validate.py` PASS: 270 Python tests (33 shared, 39 Runtime,
+80 integration, 29 training infrastructure, 51 analyzers, 38 benchmarks),
+74 UI tests, both legacy and Live-reference HTTP/WS/Fake workflow smokes,
+and release audit/self-tests with zero findings. Subsequent receipt-only edits
+do not alter executable product code.

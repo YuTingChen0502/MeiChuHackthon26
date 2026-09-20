@@ -21,9 +21,7 @@
       "status": "Accepted/integrated; 74 UI tests independently PASS; actual candidate browser observed; final rollback wording verified separately"
     }
   },
-  "pending_reviews": [
-    "Final canonical validation after acceptance documentation"
-  ],
+  "pending_reviews": [],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -79,20 +77,22 @@
     "UI/LIVE_PERCEPTION/e5482f1e6e200897aab3f3761238fb5181be58c2": "Accepted; independently tested Live-only adapter smoke and 72 UI tests",
     "UI/CORRECTION_COMPLETE/4a36d4e0a7a0ae7a1104521df0722e224288bcc9": "Accepted: configured families no longer described as supported",
     "UI/CORRECTION_COMPLETE/ecae296cd69a83e33e8b153dd0effb7484f38551": "Accepted: rolled-back listening capture visibly acknowledges recovery, current errors retain precedence",
-    "LEAD/PHYSICAL_CANDIDATE/5ac8a81bd4291da6b71accc889d6ab0f815c0674": "Actual Windows execution PASS; CPU freshness NOT PASS; Linux/PN54 and second physical mic unavailable"
+    "LEAD/PHYSICAL_CANDIDATE/5ac8a81bd4291da6b71accc889d6ab0f815c0674": "Actual Windows execution PASS; CPU freshness NOT PASS; Linux/PN54 and second physical mic unavailable",
+    "LEAD/REALTIME_MIC_INTEGRATED/1d6536130493a690040815a0f728a2a0367c28fc": "Canonical270Python/74UI/both smokes/releaseauditPASS. Windows600sactualcandidate+restart+browserPASS execution; CPUfreshnessNOTPASS; externalhardware gatesremain."
   },
   "integration_validation": {
-    "commit": "5ac8a81bd4291da6b71accc889d6ab0f815c0674",
+    "commit": "1d6536130493a690040815a0f728a2a0367c28fc",
     "python_tests": 270,
-    "ui_tests": 72,
+    "ui_tests": 74,
     "final_ui_tests": 74,
     "legacy_fake_smoke": "PASS",
-    "live_reference_fake_smoke": "PASS 65 snapshot notifications",
-    "release_scan": "PASS zero findings",
+    "live_reference_fake_smoke": "PASS 64 snapshot notifications",
+    "release_scan": "PASS clean source; zero findings",
     "physical_candidate": "PASS 600.476s observed capture/97 actual model calls; docs/implementation/evidence/candidate_native_5ac8a81.json",
     "native_restart": "PASS actual candidate same-session restart; same reference, new clock/generation, two model calls before/after",
     "freshness": "NOT PASS on tested CPU: actual model p50 6.012s/p95 6.435s; unchanged2s freshness withholds stale outputs",
-    "browser": "Production candidate observed by existing UI owner, no Fake substitution; details in REALTIME_MIC_ACCEPTANCE.md"
+    "browser": "Production candidate observed by existing UI owner, no Fake substitution; details in REALTIME_MIC_ACCEPTANCE.md",
+    "final_canonical_validation": "PASS scripts/validate.py including all shared/Runtime/integration/ML/UI tests and both workflow smokes"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
