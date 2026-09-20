@@ -446,6 +446,9 @@ input, select {
 .saved-sessions .section-title { width: 100%; margin: 0; }
 .saved-session-row { display: flex; align-items: center; gap: var(--space-2, 8px); flex-wrap: wrap; }
 .saved-session-row .delete-session { font-size: 12px; }
+.session-delete-dialog { max-width: 480px; width: calc(100% - 48px); padding: 24px; background: var(--surface, #1A1A1A); color: var(--text, #F7F6F3); border: 1px solid var(--line); border-radius: 6px; }
+.session-delete-dialog::backdrop { background: rgb(0 0 0 / 60%); }
+.session-delete-dialog p { white-space: pre-line; margin: 16px 0 24px; }
 .global-status { max-width: 900px; }
 .global-status p { margin: 0; }
 .instrument-card {

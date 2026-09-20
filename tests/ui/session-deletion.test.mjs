@@ -91,7 +91,10 @@ test('delayed open cannot reconnect a deleted session',async()=>{
 test('recent entry presentation keeps delete secondary and guards catalog resurrection',()=>{
  const source=readFileSync(new URL('../../apps/ui/app.js',import.meta.url),'utf8');
  assert.match(source,/catalog\.forEach\(x=>list\.append\(recentSessionRow\(x\)\)\)/);
- assert.match(source,/window\.confirm\(message\)/);assert.match(source,/'ghost delete-session'/);
+ assert.match(source,/confirm:confirmSessionDeletion/);assert.match(source,/'ghost delete-session'/);
+ assert.match(source,/dialog\.showModal\(\);cancel\.focus\(\)/);
+ assert.match(source,/dialog\.addEventListener\('cancel',event=>\{event\.preventDefault\(\);finish\(false\);\}\)/);
+ assert.match(source,/aria-labelledby/);assert.match(source,/aria-describedby/);
  assert.match(source,/onDeleted:id=>\{removeCatalog\(id\);clearSessionView\(id\);\}/);
  assert.match(source,/function saveCatalog\(s\).*deletedSessionIds\.has\(s.session_id\)/);
  assert.match(source,/function loadSession\(id\).*activeSessionId!==sessionId/);
