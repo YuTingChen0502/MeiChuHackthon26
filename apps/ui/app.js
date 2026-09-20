@@ -83,9 +83,23 @@ function clearSessionView(id){
   calibrationDraft=null;reviewedFrame=null;restoredProbeStep=null;probePlan=[];probeIndex=-1;probePhase='idle';pendingCommand=false;
   clearTimer();clearFreshnessTimer();if(page==='console')renderSelection();
 }
+function confirmSessionDeletion(message){
+  return new Promise(resolve=>{
+    const previousFocus=document.activeElement,dialog=node('dialog','','session-delete-dialog');
+    const title=node('h2','Delete this session?','section-title');title.id='delete-session-title';
+    const copy=node('p',message);copy.id='delete-session-description';
+    dialog.setAttribute('aria-labelledby',title.id);dialog.setAttribute('aria-describedby',copy.id);
+    let settled=false;
+    const finish=confirmed=>{if(settled)return;settled=true;dialog.close();dialog.remove();if(previousFocus?.isConnected)previousFocus.focus();resolve(confirmed);};
+    const actions=node('div','','live-actions'),cancel=button('Cancel',()=>finish(false),'secondary');
+    actions.append(cancel,button('Delete session',()=>finish(true),'secondary'));
+    dialog.append(title,copy,actions);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
+    document.body.append(dialog);dialog.showModal();cancel.focus();
+  });
+}
 async function deleteRecentSession(row){
   try{
-    const result=await sessionDeletion.request(row,{adapter:runtimeAdapter,authoritative:viewMode==='authoritative',confirm:message=>window.confirm(message),
+    const result=await sessionDeletion.request(row,{adapter:runtimeAdapter,authoritative:viewMode==='authoritative',confirm:confirmSessionDeletion,
       onPending:()=>{if(page==='selection')renderSelection();},onDeleted:id=>{removeCatalog(id);clearSessionView(id);}});
     if(result.deleted&&page==='selection'){renderSelection();statusMessage('Session deleted. Your song and uploaded reference are kept.');}
   }catch(error){
