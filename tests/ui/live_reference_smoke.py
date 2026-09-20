@@ -22,6 +22,7 @@ from starlette.routing import Route
 from apps.api.service import RuntimeAPI
 from apps.api.transport import create_app
 from core.runtime.fake_analyzer import ContinuousFakeInstrumentAnalyzer, FakeEvidenceSpec
+from core.runtime.deviation import FrameBuilder
 from test_api_service import wav_bytes
 from test_live_reference_runtime import Backend
 
@@ -29,15 +30,34 @@ from test_live_reference_runtime import Backend
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--serve", action="store_true")
+    parser.add_argument("--hint-smoke", action="store_true")
     parser.add_argument("--port", type=int, default=0)
     args = parser.parse_args()
-    phase = {"guitar": 0}
+    phase = {"guitar": 0, "global": 0, "trial": False, "reprepare": False}
     backend = Backend()  # Always injected; never instantiate a physical native backend.
 
     class ScriptedFake(ContinuousFakeInstrumentAnalyzer):
         def analyze(self, window, context):
-            self.queue(FakeEvidenceSpec(deltas_db={"guitar": phase["guitar"], "bass": 0, "drums": 0}))
-            return super().analyze(window, context)
+            families = [item["instrument_id"] for item in context["instrument_config"]["instruments"]]
+            self.queue(FakeEvidenceSpec(
+                deltas_db={item: phase["global"] + (phase["guitar"] if item == "guitar" else 0) for item in families},
+                invalid_reasons={item: "reference_context_reprepare_required" for item in families} if phase["reprepare"] else {}))
+            result = super().analyze(window, context)
+            if phase["trial"]:
+                for item in result["measurements"]:
+                    if item["validity"] == "valid":
+                        item["reason_codes"] += ["uncalibrated_candidate", "family_attribution_unvalidated"]
+            return result
+
+    class TrialFrameBuilder(FrameBuilder):
+        # Test-only uncalibrated confidence, while frame/evidence example_only stay
+        # true. Runtime derives the hint from scripted measurements; no hint or
+        # direction is injected. Ordinary Fake calibrated coverage is unchanged.
+        @staticmethod
+        def _confidence(**values):
+            if phase["trial"]:
+                values["example_only"] = False
+            return FrameBuilder._confidence(**values)
 
     with tempfile.TemporaryDirectory(prefix="harmonix-ui-live-reference-") as directory:
         reference = wav_bytes([.1] * (48000 * (120 if args.serve else 25)), sample_rate=48000)
@@ -58,6 +78,14 @@ def main():
         async def scenario(request):
             value = await request.json()
             phase["guitar"] = float(value.get("guitar", phase["guitar"]))
+            for key in ("global", "trial", "reprepare"):
+                if key in value:
+                    phase[key] = value[key]
+            for session in api.sessions.values():
+                previous = session._frame_builder
+                session._frame_builder = TrialFrameBuilder(
+                    anomaly_threshold_db=previous.anomaly_threshold_db,
+                    calibration_policy=previous.calibration_policy)
             backend.fail = set(value.get("fail", []))
             backend.silent = set(value.get("silent", []))
             return JSONResponse({"example_only": True, "phase": phase, "physical": False})
@@ -82,7 +110,8 @@ def main():
                 while thread.is_alive():
                     thread.join(.5)
             else:
-                result = subprocess.run(["node", "tests/ui/live-reference-smoke.mjs"], cwd=ROOT,
+                script = "tests/ui/perception-hint-smoke.mjs" if args.hint_smoke else "tests/ui/live-reference-smoke.mjs"
+                result = subprocess.run(["node", script], cwd=ROOT,
                     env={**os.environ, "SMOKE_BASE": base}, timeout=45)
                 if result.returncode:
                     raise SystemExit(result.returncode)

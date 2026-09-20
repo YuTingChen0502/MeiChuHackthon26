@@ -1,8 +1,10 @@
 // Presentation only. No audio inference, baseline mutation, or command authorization.
 export function productError(error, context = 'action') {
+  if(error?.unadoptedSessionId)return `A new listening session could not be confirmed stopped. Open session ${error.unadoptedSessionId} from Home → Connection options to stop it. Your selected session was not changed.`;
   const raw = String(error?.payload?.error?.code ?? error?.payload?.command?.error?.code ?? error?.message ?? error ?? '');
   const detail = `${raw} ${error?.message ?? ''} ${error?.status ?? ''}`.toLowerCase();
   if (context === 'connection') return 'The listening service is unavailable. Check the connection, or explore an offline example.';
+  if (/reference_audio_unavailable/.test(detail)) return "We couldn't recover the original reference audio. Please select the original WAV again. Your existing session is kept.";
   if (/operator_paused/.test(detail)) return 'You paused listening. Resume when the band is ready.';
   if (/audio_eof|end.of.file/.test(detail)) return 'The audio file has finished. Choose another song or start a new listening session.';
   if (/capture.*fingerprint|capture.*mismatch|capture.*compatible|device_lost|portaudio|microphone.*lost|capture_dropout/.test(detail)) return 'We lost the microphone connection. Check the input before continuing.';

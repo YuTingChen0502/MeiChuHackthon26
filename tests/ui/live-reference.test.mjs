@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {RuntimeAdapter} from '../../apps/ui/runtime-adapter.js';
 import {commandFor,commandGuard,fixtureScenario} from '../../apps/ui/app.js';
-import {logicalMicrophones,currentSourceFrame,perceptionPresentation,capturePresentation,liveReferenceView} from '../../apps/ui/live-reference.js';
+import {logicalMicrophones,currentSourceFrame,perceptionPresentation,adjustmentHintPresentation,referenceReprepareRequired,capturePresentation,liveReferenceView} from '../../apps/ui/live-reference.js';
 const base=JSON.parse(await readFile(new URL('../../contracts/examples/pa_shared_v1.json',import.meta.url),'utf8'));
 function session(){
  const s=fixtureScenario(base);s.workflow_policy='live_reference_v1';s.active_baseline=null;s.song.baseline_id=null;s.incident=null;s.incident_state='none';s.adjustment=null;s.latest_verification=null;
@@ -12,6 +12,123 @@ function session(){
  s.perception=f.instruments.map(i=>({instrument_id:i.instrument_id,family:i.family,state:'detected',frame_id:f.frame_id,reason_codes:[],activity:'active',observability:'observable',validity:'valid',calibration_status:'calibrated',action_abstained:false,numerical_advice_allowed:true}));
  return s;
 }
+
+function hintSession(){
+ const s=session(),p=s.perception[0],i=s.latest_frame.instruments[0];
+ Object.assign(p,{state:'uncertain',calibration_status:'uncalibrated',action_abstained:true,numerical_advice_allowed:false,reason_codes:['family_attribution_unvalidated'],
+  adjustment_hint:{direction:'reduce_level',status:'experimental',basis:'relative_balance',evidence_frame_id:p.frame_id,reason_codes:['majority_active_sources_unchanged'],automatic_execution:false}});
+ Object.assign(i,{status:'unknown',balance_deviation_db:null,source_level_delta_db:null,presence_probability:null});
+ Object.assign(i.confidence,{calibration_status:'uncalibrated',abstained:true,probability:null});
+ return s;
+}
+
+test('experimental direction comes only from the current Runtime hint and stays nonnumeric',()=>{
+ const s=hintSession(),p=s.perception[0];
+ assert.match(adjustmentHintPresentation(s,p).text,/lowering.*experimental, uncalibrated/);
+ p.adjustment_hint.direction='increase_level';assert.match(adjustmentHintPresentation(s,p).text,/raising/);
+ assert.equal(perceptionPresentation(s,p).state,'uncertain');assert.equal(perceptionPresentation(s,p).numeric,false);
+ assert.equal(liveReferenceView(s),'LISTENING');assert.doesNotMatch(JSON.stringify(adjustmentHintPresentation(s,p)),/dB|%|probability/);
+ // Opposing numeric input cannot change the authoritative direction.
+ s.latest_frame.instruments[0].balance_deviation_db=99;assert.match(adjustmentHintPresentation(s,p).text,/raising/);
+ delete p.adjustment_hint;assert.equal(adjustmentHintPresentation(s,p),null);
+ p.adjustment_hint=null;assert.equal(adjustmentHintPresentation(s,p),null);
+});
+
+test('hint clears on stale, disconnected, switched, mismatched and unavailable audio',()=>{
+ for(const options of [{connected:false},{fresh:false},{switchPending:true}]){
+  const s=hintSession();assert.equal(adjustmentHintPresentation(s,s.perception[0],options),null);
+ }
+ const mutations=[
+  s=>s.capture.state='paused',s=>s.capture.state='stopped',s=>s.capture.state='switching',s=>s.capture.state='listening',
+  s=>s.capture.frame_fresh=false,s=>s.capture.switch_result='pending',s=>s.latest_frame.quality.stale=true,
+  s=>s.latest_frame.quality.dropout=true,s=>s.latest_frame.quality.capture_compatible=false,
+  s=>s.latest_frame.quality.clipped_fraction=.01,s=>s.latest_frame.quality.comparability='weak',
+  s=>s.latest_frame.identifiability_assumption='unidentifiable',s=>s.perception[0].family='another-family',
+  s=>s.latest_frame.quality.comparability='not_comparable',s=>s.latest_frame.clock_id='previous',
+  s=>s.latest_frame.analysis_run_id='previous',s=>s.latest_frame.reference_id='previous',
+  s=>s.perception[0].frame_id='previous',s=>s.perception[0].adjustment_hint.evidence_frame_id='previous',
+  s=>s.perception[0].validity='invalid',s=>s.perception[0].observability='unobservable',
+  s=>s.perception[0].activity='inactive',s=>s.perception[0].state='unsupported',s=>s.latest_frame=null,
+  s=>s.perception[0].calibration_status='calibrated',s=>s.perception[0].action_abstained=false,
+  s=>s.perception[0].numerical_advice_allowed=true,
+ ];
+ for(const mutate of mutations){const s=hintSession();mutate(s);assert.equal(adjustmentHintPresentation(s,s.perception[0]),null,String(mutate));}
+});
+
+test('malformed hint cannot become an instruction and null never gains a fallback direction',()=>{
+ for(const fields of [{direction:'unknown'},{automatic_execution:true},{status:'verified'},{basis:'global_level'},{reason_codes:[]},{reason_codes:null}]){
+  const s=hintSession();Object.assign(s.perception[0].adjustment_hint,fields);assert.equal(adjustmentHintPresentation(s,s.perception[0]),null);
+ }
+});
+
+test('unvalidated dataset families stay uncertain and partial keys never acquire whole-family advice',()=>{
+ for(const family of ['bass','drums','guitar','keys','vocals']){
+  const s=hintSession(),p=s.perception[0];p.family=family;s.song.unsupported_families=[];
+  const view=perceptionPresentation(s,p);assert.equal(view.state,'uncertain');assert.match(view.detail,/not yet validated/);assert.equal(view.numeric,false);
+ }
+ const s=hintSession(),p=s.perception[0];p.family='keys';p.reason_codes=['partial_source_representation'];p.validity='invalid';p.adjustment_hint=null;
+ assert.match(perceptionPresentation(s,p).detail,/Only part/);assert.equal(adjustmentHintPresentation(s,p),null);
+});
+
+test('UI hint wiring is display-only and setup does not equate lack of validation with unsupported',async()=>{
+ const source=await readFile(new URL('../../apps/ui/app.js',import.meta.url),'utf8');
+ assert.match(source,/hint=adjustmentHintPresentation\(snapshot,p,options\)/);
+ assert.match(source,/node\('p',hint.text,'listening-note'\)/);
+ assert.match(source,/Recognition may remain uncertain; adding a family does not validate its identification/);
+});
+
+test('old reference recovery is requested only from explicit Runtime reason',()=>{
+ const s=hintSession();assert.equal(referenceReprepareRequired(s),false);
+ s.perception[0].reason_codes.push('reference_context_reprepare_required');assert.equal(referenceReprepareRequired(s),true);
+ delete s.workflow_policy;assert.equal(referenceReprepareRequired(s),false);
+});
+
+test('reprepare reuses reference ID and polls a new immutable reference without changing active session',async()=>{
+ const s=session(),a=new RuntimeAdapter({onSnapshot(){},onStatus(){}}),requests=[],updates=[];
+ a.activateSession(s.session_id);a.acceptSnapshot(s);
+ a.request=async(path,options)=>{requests.push([path,options]);return path.endsWith('/reference')?
+  {status:'queued',job_id:'prepare-job',reference_id:'new-reference',progress:0}:
+  {status:'completed',job_id:'prepare-job',reference_id:'new-reference',progress:1};};
+ const job=await a.reprepareReference({song_id:s.song.song_id,reference_id:s.active_reference.reference_id,onProgress:x=>updates.push(x.status),jobPollIntervalMs:0});
+ assert.deepEqual(JSON.parse(requests[0][1].body),{reference_id:s.active_reference.reference_id});
+ assert.match(requests[0][0],/\/songs\/.*\/reference$/);assert.equal(requests[1][0],'/jobs/prepare-job');
+ assert.equal(job.reference_id,'new-reference');assert.deepEqual(updates,['queued','completed']);
+ assert.equal(a.activeSessionId,s.session_id);assert.equal(a.snapshot.active_reference.reference_id,s.active_reference.reference_id);
+ assert.equal(requests.some(([path])=>path==='/audio-assets'||path==='/sessions'),false);
+});
+
+test('failed reprepare retains active reference and does not start new listening',async()=>{
+ const s=session(),a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession(s.session_id);a.acceptSnapshot(s);
+ for(const job of [{status:'failed',error:'retained_asset_missing'},{status:'completed',reference_id:s.active_reference.reference_id}]){
+  a.request=async()=>job;await assert.rejects(a.reprepareReference({song_id:s.song.song_id,reference_id:s.active_reference.reference_id}));
+  assert.equal(a.snapshot.active_reference.reference_id,s.active_reference.reference_id);
+ }
+});
+
+test('new re-prepared session cannot replace a deliberately switched session',async()=>{
+  const s=session(),a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession(s.session_id);a.acceptSnapshot(s);
+ let resolve,stopped;a.request=async(path,options)=>{if(path==='/sessions')return new Promise(r=>resolve=r);stopped=JSON.parse(options.body);return {snapshot:{session_id:'newly-created',capture:{state:'stopped'}}};};a.connect=()=>assert.fail('late create cannot connect');
+ const pending=a.createLiveReferenceSession({song_id:s.song.song_id,reference_id:'new-reference',expectedSessionId:s.session_id});
+ a.activateSession('another');resolve({...s,session_id:'newly-created'});
+ await assert.rejects(pending,/Session changed/);assert.equal(a.activeSessionId,'another');assert.equal(stopped.session_id,'newly-created');assert.equal(stopped.action,'stop');
+});
+
+test('unadopted creation retries exact-session conflict and surfaces ID if cleanup fails',async()=>{
+ const s=session(),created={...s,session_id:'unadopted'},a=new RuntimeAdapter({onSnapshot(){},onStatus(){}});a.activateSession('selected');
+ const commands=[];a.request=async(path,options)=>{commands.push(JSON.parse(options.body));if(commands.length===1)throw Object.assign(new Error('conflict'),{status:409,payload:{snapshot:{...created,state_version:created.state_version+1}}});return {snapshot:{...created,capture:{state:'stopped'}}};};
+ await a.stopUnadoptedSession(created);assert.equal(commands.length,2);assert.equal(commands[1].expected_state_version,commands[0].expected_state_version+1);assert.ok(commands.every(c=>c.session_id==='unadopted'));assert.equal(a.activeSessionId,'selected');
+ a.activateSession(s.session_id);let resolve;a.request=async path=>{if(path==='/sessions')return new Promise(r=>resolve=r);throw new Error('connection lost');};
+ const pending=a.createLiveReferenceSession({song_id:s.song.song_id,reference_id:'new-ref',expectedSessionId:s.session_id});a.activateSession('selected');resolve(created);
+ await assert.rejects(pending,error=>error.unadoptedSessionId==='unadopted');assert.equal(a.activeSessionId,'selected');
+});
+
+test('migration UI has separate explicit prepare and new-session actions, never silent retarget',async()=>{
+ const source=await readFile(new URL('../../apps/ui/app.js',import.meta.url),'utf8');
+ assert.match(source,/Prepare stored reference/);assert.match(source,/Stop this session and start anew/);
+ const prepare=source.slice(source.indexOf('async function prepareStoredReference()'),source.indexOf('async function startRepreparedSession()'));
+ assert.doesNotMatch(prepare,/createLiveReferenceSession|\.command\(/);
+ assert.match(source,/source:\{input_kind:previous.source.input_kind,input_asset_or_device_id:previous.source.input_asset_or_device_id\},expectedSessionId:id/);
+});
 test('logical inventory never exposes legacy raw endpoints or aliases',()=>{
  const d={devices:[{device_id:'portaudio:1',name:'Raw ASIO'}],microphones:[{microphone_id:'group-a',name:'Room mic',is_default:true}]};
  assert.deepEqual(logicalMicrophones(d),[{id:'group-a',label:'Room mic (Default)'}]);assert.deepEqual(logicalMicrophones({devices:d.devices}),[]);

@@ -210,15 +210,63 @@ export class RuntimeAdapter {
     return this.setup({...values,workflowPolicy:'live_reference_v1'});
   }
 
-  async createLiveReferenceSession({song_id,reference_id,source}) {
+  async reprepareReference({song_id,reference_id,onProgress=()=>{},jobPollIntervalMs=150}) {
+    if(!song_id||!reference_id)throw new Error('Retained song and reference are required.');
+    let job=await this.request(`/songs/${encodeURIComponent(song_id)}/reference`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reference_id})});
+    onProgress(job);
+    job=await pollReferenceJob(job,{
+      fetchJob:(id,signal)=>this.request(`/jobs/${encodeURIComponent(id)}`,signal?{signal}:{}),
+      onUpdate:onProgress,pollIntervalMs:jobPollIntervalMs,
+    });
+    if(job.status!=='completed'||!job.reference_id||job.reference_id===reference_id)
+      throw new Error(job.error??'Reference preparation did not produce a new reference.');
+    return job;
+  }
+
+  async createLiveReferenceSession({song_id,reference_id,source,expectedSessionId}) {
+    const generation=this.generation;
+    if(expectedSessionId!==undefined&&this.activeSessionId!==expectedSessionId)throw new Error('Session changed before starting new listening.');
     const body={song_id,reference_id,workflow_policy:'live_reference_v1'};
     if(source)body.source=source;
     const snapshot=await this.request('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(expectedSessionId!==undefined&&(this.activeSessionId!==expectedSessionId||this.generation!==generation||this.deletedSessionIds.has(expectedSessionId))){
+      try{await this.stopUnadoptedSession(snapshot);}
+      catch(cleanupError){
+        const error=new Error(`New session ${snapshot.session_id} could not be confirmed stopped: ${cleanupError.message}`);
+        error.unadoptedSessionId=snapshot.session_id;throw error;
+      }
+      throw new Error('Session changed while starting new listening. The unused new session was stopped.');
+    }
     if(snapshot.workflow_policy!=='live_reference_v1')throw new Error('The listening service needs the live-reference update.');
     this.activateSession(snapshot.session_id);
     this.acceptSnapshot(snapshot);
     this.connect(snapshot.session_id,snapshot.event_sequence);
     return snapshot;
+  }
+
+  async stopUnadoptedSession(created){
+    // Never bind this response to the operator's currently selected session.
+    const id=created.session_id;
+    if(!id||id===this.activeSessionId)throw new Error('Cannot clean up an adopted or unidentified session.');
+    let current=created;
+    for(let attempt=0;attempt<4;attempt++){
+      if(current.capture?.state==='stopped')return;
+      const command={record_type:'SessionCommand',schema_version:'1.0',session_id:id,
+        idempotency_key:`ui-unadopted-stop-${id}-${current.state_version}`,expected_state_version:current.state_version,
+        reference:current.active_reference&&{reference_id:current.active_reference.reference_id,source_asset_hash:current.active_reference.source_asset_hash},
+        baseline:current.active_baseline&&{baseline_id:current.active_baseline.baseline_id,baseline_version:current.active_baseline.version},
+        event:current.incident&&{event_id:current.incident.event.event_id,event_version:current.incident.event_version},action:'stop',payload:{}};
+      try{
+        const result=await this.request(`/sessions/${encodeURIComponent(id)}/actions`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(command)});
+        if(result.snapshot?.session_id===id&&result.snapshot.capture?.state==='stopped')return;
+        throw new Error('Stop was not acknowledged.');
+      }catch(error){
+        if(error.status===404)return;
+        if(attempt<3&&error.status===409&&error.payload?.snapshot?.session_id===id){current=error.payload.snapshot;continue;}
+        throw error;
+      }
+    }
   }
 
   async recreateSession(previous) {
