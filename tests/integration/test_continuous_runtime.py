@@ -153,6 +153,34 @@ class SustainedSessionTests(unittest.TestCase):
         self.assertTrue(all(x['confidence']['abstained'] for x in result['instruments']))
         self.assertIsNone(f.session.incident)
 
+    def test_candidate_completion_budget_accepts_six_seconds_but_rejects_over_twenty(self):
+        for delay,stale in ((6,False),(20.01,True)):
+            with self.subTest(delay=delay):
+                f=self.fixture;w=f.window(f'candidate-{delay}',1);f.clock.value=2
+                original=f.analyzer.analyze
+                def slow(window,context):
+                    evidence=original(window,context);f.clock.value+=delay;return evidence
+                f.analyzer.analyze=slow
+                f.analyzer.queue(FakeEvidenceSpec(deltas_db=dict(guitar=4,bass=0,drums=0)))
+                result=f.session.observe_window(w,max_age_s=20)
+                self.assertEqual(stale,result['quality']['stale'])
+                f.analyzer.analyze=original
+
+    def test_physical_gap_suppresses_old_verification_but_preserves_workflow(self):
+        f=self.fixture;f.open_persistent_incident('gap-verification',2)
+        f.apply('gap-start','start_adjustment');f.clock.value=10
+        adjustment_id=f.session.snapshot()['adjustment']['adjustment_id']
+        f.apply('gap-complete','complete_adjustment',{'adjustment_id':adjustment_id})
+        f.apply('gap-recheck','recheck',{'adjustment_id':adjustment_id})
+        f.analyzer.queue(FakeEvidenceSpec(deltas_db=dict(guitar=0,bass=0,drums=0)))
+        f.session.observe_window(f.window('gap-recovered',12))
+        before=f.session.snapshot();self.assertIsNotNone(before['latest_verification'])
+        incident=before['incident'];adjustment=before['adjustment']
+        self.assertTrue(f.session.suppress_for_capture_gap())
+        after=f.session.snapshot()
+        self.assertIsNone(after['latest_verification'])
+        self.assertEqual(incident,after['incident']);self.assertEqual(adjustment,after['adjustment'])
+
     def test_silent_pcm_cannot_be_scripted_into_recovery_or_normal(self):
         from dataclasses import replace
         f=self.fixture

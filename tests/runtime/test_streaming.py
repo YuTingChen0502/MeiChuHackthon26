@@ -93,9 +93,9 @@ class StreamingTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual([items[0].window_id,items[4].window_id],result[1])
 
-    def test_worker_drops_old_work_and_records_discontinuities(self):
+    def test_worker_drops_old_work_without_fabricating_capture_dropout(self):
         entered,release,done=threading.Event(),threading.Event(),threading.Event()
-        received=[]
+        received=[];analysis_gaps=[]
         class Source:
             def chunks(self):
                 for start in range(0,100,4):
@@ -109,13 +109,37 @@ class StreamingTests(unittest.TestCase):
                 release.wait(2)
             received.append((window,quality))
         worker=AudioWorker(audio_input=Source(),pipeline=SharedAudioPipeline(window_size_samples=4),
-            session_id='s',on_window=observe,on_end=lambda r:done.set(),clock=lambda:11,max_age_s=20,queue_capacity=2)
+            session_id='s',on_window=observe,on_end=lambda r:done.set(),clock=lambda:11,
+            queue_max_age_s=20,result_max_age_s=20,queue_capacity=2,
+            on_analysis_gap=lambda window:analysis_gaps.append(window.sample_start))
         worker.start()
         self.assertTrue(done.wait(3))
         worker.stop()
         self.assertGreater(worker.dropped_windows,0)
         self.assertLessEqual(worker.max_queue_depth,2)
-        self.assertTrue(received[-1][1]['dropout']) if len(received)==2 else self.assertTrue(received[1][1]['dropout'])
+        self.assertTrue(analysis_gaps)
+        self.assertFalse(received[-1][1]['dropout'])
+        self.assertEqual(worker.dropped_windows,worker.analysis_skips)
+
+    def test_queue_and_completion_age_are_independent(self):
+        class Clock:
+            value=10
+            def __call__(self):return self.value
+        for queue_age,inference_s,result_age,expected in ((0,6,20,1),(0,21,20,0),(3,0,20,0)):
+            with self.subTest(queue_age=queue_age,inference_s=inference_s):
+                clock=Clock();clock.value=10+queue_age;done=threading.Event();seen=[]
+                source=FileAudioInput(input_asset_or_device_id='a',clock_id='c',sample_rate_hz=10,
+                    samples=[.1]*4,origin_monotonic_s=9.6,chunk_size_samples=4)
+                def observe(window,quality,max_age):
+                    clock.value+=inference_s
+                    if clock()-window.capture_end_monotonic_s>max_age:return False
+                    seen.append(window);return True
+                worker=AudioWorker(audio_input=source,pipeline=SharedAudioPipeline(window_size_samples=4),
+                    session_id='s',on_window=observe,on_end=lambda r:done.set(),clock=clock,
+                    queue_max_age_s=2,result_max_age_s=result_age)
+                worker.start();self.assertTrue(done.wait(2));worker.stop()
+                self.assertEqual(expected,len(seen))
+                if not expected:self.assertGreater(worker.stale_windows,0)
 
     def test_worker_stale_windows_never_reach_analyzer(self):
         done=threading.Event();received=[]
@@ -152,17 +176,35 @@ class StreamingTests(unittest.TestCase):
         mic.close();stream.close()
 
     def test_capture_gap_produces_new_run_and_no_straddling_window(self):
-        done=threading.Event();seen=[]
+        done=threading.Event();first_seen=threading.Event();seen=[]
         class Source:
             def chunks(self):
                 for start in (0,2,9,11):
                     yield AudioChunk('live_microphone','m','c',10,start,1+(start+2)/10,(.1,)*2)
+                    if start==2:first_seen.wait(2)
         worker=AudioWorker(audio_input=Source(),pipeline=SharedAudioPipeline(window_size_samples=4),session_id='s',
-            on_window=lambda w,q,a:seen.append((w,q)),on_end=lambda r:done.set(),clock=lambda:3,max_age_s=5)
+            on_window=lambda w,q,a:(seen.append((w,q)),first_seen.set()),on_end=lambda r:done.set(),clock=lambda:3,max_age_s=5)
         worker.start();self.assertTrue(done.wait(2));worker.stop()
         self.assertEqual([(0,4),(9,13)],[(w.sample_start,w.sample_end) for w,q in seen])
         self.assertNotEqual(seen[0][0].analysis_run_id,seen[1][0].analysis_run_id)
         self.assertTrue(seen[1][1]['dropout'])
+
+    def test_rejected_physical_gap_remains_latched_until_a_publication(self):
+        first=threading.Event();rejected=threading.Event();done=threading.Event();seen=[]
+        class Source:
+            def chunks(self):
+                yield AudioChunk('live_microphone','m','c',10,0,10,(.1,)*4);first.wait(2)
+                yield AudioChunk('live_microphone','m','c',10,8,11,(.1,)*4);rejected.wait(2)
+                yield AudioChunk('live_microphone','m','c',10,12,11.4,(.1,)*4)
+        def observe(window,quality,max_age):
+            seen.append((window.sample_start,quality['dropout']))
+            if window.sample_start==0:first.set()
+            if window.sample_start==8:rejected.set();return False
+            return True
+        worker=AudioWorker(audio_input=Source(),pipeline=SharedAudioPipeline(window_size_samples=4),
+            session_id='s',on_window=observe,on_end=lambda r:done.set(),clock=lambda:11.4,max_age_s=20)
+        worker.start();self.assertTrue(done.wait(2));worker.stop()
+        self.assertEqual([(0,False),(8,True),(12,True)],seen)
 
     def test_native_timestamp_jitter_is_bounded_but_clock_jump_breaks_span(self):
         mic=NativeMicAudioInput(backend=None,device_id='mic',clock_id='clock',sample_rate_hz=48000,

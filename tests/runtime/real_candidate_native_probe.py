@@ -51,7 +51,8 @@ def run(storage,output,segment_seconds=20):
     options["analyzer_factory"]=instrumented
     backend=SoundDeviceBackend()
     api=RuntimeAPI(storage_dir=root,window_size_samples=176400,hop_size_samples=44100,
-        analysis_sample_rate_hz=44100,native_backend=backend,managed_audio=True,**options)
+        analysis_sample_rate_hz=44100,native_backend=backend,managed_audio=True,
+        analysis_timing_profile_id="candidate_delayed_v1",**options)
     server=None;server_thread=None;began=time.monotonic()
     def remember():
         for worker in api.workers.values():
@@ -75,6 +76,7 @@ def run(storage,output,segment_seconds=20):
         raise RuntimeError("command did not stabilize")
     def measure(sid,label):
         snapshot=wait(sid,lambda s:s["capture"]["state"] in ("listening","active"))
+        assert snapshot["analysis_timing"]["profile_id"]=="candidate_delayed_v1"
         clock=snapshot["source"]["clock_id"];start=time.monotonic();next_sample=0
         while True:
             remember();snapshot=api.get_session(sid)[1];elapsed=time.monotonic()-start
@@ -129,6 +131,11 @@ def run(storage,output,segment_seconds=20):
         print(json.dumps({"phase":"native_capture_start","http_port":port}),flush=True)
         _,snapshot=api.create_session(request);sid=snapshot["session_id"]
         measure(sid,"initial-system-default")
+        execute(sid,"pause","pause")
+        paused=wait(sid,lambda s:s["capture"]["state"]=="paused")
+        assert not paused["capture"]["frame_fresh"]
+        execute(sid,"resume","resume")
+        measure(sid,"pause-resume")
         transport=[]
         route=f"/v1/sessions/{sid}"
         for _ in range(2):
@@ -147,10 +154,21 @@ def run(storage,output,segment_seconds=20):
         _,reopened=api.create_session(request);sid2=reopened["session_id"]
         measure(sid2,"new-session-reopen");execute(sid2,"stop","reopen-stop")
         for task in api.live_audio.closers.values():task.join(30)
+        completed_calls=[call for call in calls if call["after"]["model_calls_completed"]>call["before"]["model_calls_completed"]]
+        processing=sorted(call["completed_monotonic_s"]-call["started_monotonic_s"] for call in completed_calls)
+        result_ages=sorted(call["completed_monotonic_s"]-call["observation"]["capture_end_monotonic_s"] for call in completed_calls)
+        percentile=lambda values,fraction:values[min(len(values)-1,int((len(values)-1)*fraction))] if values else None
+        fresh_frames={sample["latest_frame"]["frame_id"] for sample in snapshots
+            if sample["capture"]["frame_fresh"] and sample["latest_frame"] is not None}
         report=dict(status="passed_execution_not_accuracy",git_commit=sha,platform=platform.platform(),python=platform.python_version(),
             sounddevice=backend.module.__version__,elapsed_total_s=time.monotonic()-began,
             measured_native_s=sum(s["duration_s"] for s in segments),segments=segments,inventory=inventory,
             operations=operations,transport=transport,calls=list(calls),snapshots=snapshots,
+            timing=dict(profile_id="candidate_delayed_v1",completed_model_calls=len(completed_calls),
+                fresh_frame_count=len(fresh_frames),processing_p50_s=percentile(processing,.5),
+                processing_p95_s=percentile(processing,.95),result_age_p50_s=percentile(result_ages,.5),
+                result_age_p95_s=percentile(result_ages,.95),
+                non_null_hints=sum(p.get("adjustment_hint") is not None for sample in snapshots for p in sample["perception"])),
             model=api.runtime_session(sid2)._model_identity,
             runs=[dict(device_id=w.audio_input.device_id,clock_id=w.audio_input.clock_id,rate=w.audio_input.sample_rate_hz,
                 captured_seconds=w.audio_input._next_sample/w.audio_input.sample_rate_hz,

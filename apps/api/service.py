@@ -20,6 +20,7 @@ from core.audio import FileAudioInput, SharedAudioPipeline
 from core.contracts.validation import SETUP, validate_record
 from core.profiles import BaselineStore, ReferenceBuilder
 from core.runtime.fake_analyzer import ContinuousFakeInstrumentAnalyzer
+from core.runtime.timing import analysis_timing_profile
 from core.audio.native import NativeMicAudioInput, SoundDeviceBackend
 from core.runtime.worker import AudioWorker
 from core.runtime.real_analyzer import RealAnalyzerAdapter
@@ -107,6 +108,7 @@ class RuntimeAPI:
         native_backend=None,
         max_upload_bytes: int = 128 * 1024 * 1024,
         max_audio_duration_s: float = 900.0,
+        analysis_timing_profile_id: str = "strict_v1",
     ) -> None:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -139,6 +141,7 @@ class RuntimeAPI:
         self.close_errors = []
         self.max_upload_bytes = max_upload_bytes
         self.max_audio_duration_s = max_audio_duration_s
+        self.analysis_timing = analysis_timing_profile(analysis_timing_profile_id)
         self._lock = RLock()
         self.projects: dict[str, dict] = {}
         self.songs: dict[str, dict] = {}
@@ -212,6 +215,7 @@ class RuntimeAPI:
                 session_state,
                 analyzer=HistoricalAnalyzer(session_state),
                 baseline_store=baseline_store,
+                analysis_timing_profile_id=self.analysis_timing["profile_id"],
                 **kwargs,
             )
             session.set_persistence_callback(
@@ -610,6 +614,7 @@ class RuntimeAPI:
                 capture_runtime_verified=runtime_verified,
                 capture_profile_enforced=self.managed_audio or not analyzer.capabilities()["example_only"],
                 analysis_sample_rate_hz=self.pipeline.frontend.sample_rate_hz,
+                analysis_timing_profile_id=self.analysis_timing["profile_id"],
                 **kwargs,
             )
             ledger = SQLiteCommandLedger(self._store, session_id)
@@ -668,8 +673,9 @@ class RuntimeAPI:
                         quality["capture_compatible"] = False
                         quality["reason_codes"].append("capture_not_runtime_verified")
                     try:
-                        session.observe_window(window, quality=quality, max_age_s=max_age,
+                        frame=session.observe_window(window, quality=quality, max_age_s=max_age,
                                                clock_uncertainty_s=0.05 if native else 0.0)
+                        if frame["quality"]["stale"]:return False
                     except Exception as exc:
                         if session._deletion_requested.is_set():return False
                         self._failed_analyzers.add(session.session_id)
@@ -678,9 +684,16 @@ class RuntimeAPI:
                 with session.command_transaction():
                     if not session._deletion_requested.is_set() and session.song["workflow_state"] not in ("SUSPENDED", "STOPPED"):
                         session.suspend_for_input(reason)
+            def analysis_gap(window):
+                with session.command_transaction():
+                    if session._deletion_requested.is_set() or session.song["workflow_state"] in ("SUSPENDED", "STOPPED"):
+                        return False
+                    session.reset_analysis_persistence();return True
             worker = AudioWorker(audio_input=audio, pipeline=self.pipeline,
                 session_id=session.session_id, on_window=observe, on_end=ended, clock=clock,
-                pace_file=source["input_kind"] == "uploaded_file")
+                on_analysis_gap=analysis_gap,pace_file=source["input_kind"] == "uploaded_file",
+                queue_max_age_s=self.analysis_timing["queue_max_age_s"],
+                result_max_age_s=self.analysis_timing["result_max_age_s"])
             self.workers[session.session_id] = worker
             worker.start()
         except Exception as exc:

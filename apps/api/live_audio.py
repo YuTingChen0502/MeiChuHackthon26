@@ -53,7 +53,8 @@ class LiveAudioController:
                 song_name=song["name"],instrument_config=song["instrument_config"],reference_profile=reference,
                 source=source,capture_fingerprint=capture,analyzer=analyzer,workflow_policy="live_reference_v1",
                 capture_runtime_verified=False,capture_profile_enforced=True,
-                analysis_sample_rate_hz=api.pipeline.frontend.sample_rate_hz,**kwargs)
+                analysis_sample_rate_hz=api.pipeline.frontend.sample_rate_hz,
+                analysis_timing_profile_id=api.analysis_timing["profile_id"],**kwargs)
             session.set_persistence_callback(lambda state:api._save_session_state(sid,state))
             api._store.save_runtime_and_session(api._runtime_state_payload(),session.export_state())
         except Exception:
@@ -248,7 +249,9 @@ class LiveAudioController:
                 if not self.current(session,token,generation):return False
             try:
                 if not self.current(session,token,generation):return False
-                if session.monotonic_clock()-window.capture_end_monotonic_s>max_age:return False
+                if session.monotonic_clock()-window.capture_end_monotonic_s>api.analysis_timing["queue_max_age_s"]:return False
+                physical_epoch=(worker.discontinuities,getattr(audio,"discontinuities",0),
+                    getattr(audio,"dropped_packets",0))
                 begin=session.monotonic_clock()
                 try:evidence=analyzer.analyze(window,context)
                 except Exception:
@@ -257,17 +260,28 @@ class LiveAudioController:
             finally:analyzer_lock.release()
             with session.command_transaction():
                 if not self.current(session,token,generation):return False
+                if physical_epoch != (worker.discontinuities,getattr(audio,"discontinuities",0),
+                        getattr(audio,"dropped_packets",0)):
+                    return False
                 if not file_source and not session.capture_runtime_verified:
                     quality["capture_compatible"]=False;quality["reason_codes"].append("capture_not_runtime_verified")
                 session.capture["timestamp_mode"]="sample_count" if file_source else audio.timestamp_mode
-                session.observe_window(window,quality=quality,max_age_s=max_age,clock_uncertainty_s=.05 if not file_source else 0,
+                frame=session.observe_window(window,quality=quality,max_age_s=max_age,clock_uncertainty_s=.05 if not file_source else 0,
                     _prepared_evidence=evidence,_inference_started=begin)
                 if session.capture["frame_fresh"]:first_frame.set()
+                if frame["quality"]["stale"]:return False
+        def analysis_gap(window):
+            with session.command_transaction():
+                if not self.current(session,token,generation):return False
+                session.reset_analysis_persistence()
+                return True
         def ended(reason):
             with session.command_transaction():
                 if self.current(session,token,generation):session.suspend_for_input(reason)
         worker=AudioWorker(audio_input=audio,pipeline=api.pipeline,session_id=sid,on_window=observe,on_end=ended,
-            clock=session.monotonic_clock,pace_file=file_source,analysis_run_id=run_id)
+            on_analysis_gap=analysis_gap,clock=session.monotonic_clock,pace_file=file_source,
+            analysis_run_id=run_id,queue_max_age_s=api.analysis_timing["queue_max_age_s"],
+            result_max_age_s=api.analysis_timing["result_max_age_s"])
         api.workers[sid]=worker
         keep=False
         try:
@@ -328,15 +342,15 @@ class LiveAudioController:
                 with session.command_transaction():
                     if (session._deletion_requested.is_set() or session.source["clock_id"]!=getattr(audio,"clock_id",None)
                             or session.capture["state"] in ("switching","paused","stopped","unavailable")):continue
-                    stamp="sample_count" if isinstance(audio,FileAudioInput) else audio.timestamp_mode
-                    changed=session.capture["timestamp_mode"]!=stamp
-                    session.capture["timestamp_mode"]=stamp
+                    changed=False
+                    fault_epoch=worker.physical_fault_epoch()
+                    if fault_epoch!=worker._reported_fault_epoch:
+                        worker._reported_fault_epoch=fault_epoch
+                        changed=session.suppress_for_capture_gap() or changed
                     if session.capture["state"]=="starting" and getattr(audio,"_next_sample",0)>0:
-                        session.capture["state"]="listening";changed=True
-                    frame=session.latest_frame
-                    if frame and session.monotonic_clock()-frame["capture_end_monotonic_s"]>worker.max_age_s:
-                        session.latest_frame=None;session._current_masks={};session._current_hints={};session._hint_expires_monotonic_s=None;session.capture.update(frame_fresh=False,state="listening",reason_codes=["stale_evidence"])
-                        session.recommendations=[];session.latest_verification=None;session._detector.reset();session._verification_armed=False;changed=True
+                        session.capture.update(state="listening",timestamp_mode=("sample_count"
+                            if isinstance(audio,FileAudioInput) else audio.timestamp_mode));changed=True
+                    if session.expire_live_evidence(session.monotonic_clock()):changed=True
                     if changed:self.persist(session)
 
     def close(self):

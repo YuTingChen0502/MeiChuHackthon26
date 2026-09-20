@@ -265,6 +265,7 @@ def create_app(
                 window_size_samples=int(os.environ.get("PA_WINDOW_SIZE_SAMPLES", "192000")),
                 hop_size_samples=int(os.environ.get("PA_HOP_SIZE_SAMPLES", "48000")),
                 analysis_sample_rate_hz=int(os.environ.get("PA_ANALYSIS_RATE_HZ", "48000")),
+                analysis_timing_profile_id=os.environ.get("PA_ANALYSIS_TIMING_PROFILE", "strict_v1"),
                 **runtime_options(registry=bundle_registry, loader=bundle_loader),
             )
         origins = os.environ.get("PA_ALLOWED_ORIGINS")

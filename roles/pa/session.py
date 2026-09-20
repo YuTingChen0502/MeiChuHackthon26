@@ -27,6 +27,7 @@ from core.contracts.guided import GUIDED, validate_probe_request
 from core.profiles.baselines import BaselineStore, build_baseline_profile
 from core.runtime.deviation import FrameBuilder
 from core.runtime.quality import pcm_clipped_fraction, quality_is_usable, quality_state
+from core.runtime.timing import analysis_timing_profile
 
 from .policy import PersistentAnomalyPolicy, recommendation_for
 from .experimental_hints import adjustment_hints
@@ -95,9 +96,11 @@ class PASession(LiveReferencePolicy):
         capture_profile_enforced: bool = True,
         analysis_sample_rate_hz: int | None = None,
         workflow_policy: str = "legacy_baseline_v1",
+        analysis_timing_profile_id: str = "strict_v1",
     ) -> None:
         validate_record(reference_profile, PUBLIC, "ReferenceProfile")
         self.workflow_policy = workflow_policy
+        self._analysis_timing = analysis_timing_profile(analysis_timing_profile_id)
         self.session_id = session_id
         self.instrument_config = copy.deepcopy(instrument_config)
         self.reference = copy.deepcopy(reference_profile)
@@ -213,6 +216,9 @@ class PASession(LiveReferencePolicy):
 
     @_synchronized
     def snapshot(self) -> dict:
+        snapshot_now = self.monotonic_clock()
+        expired = bool(self.live_reference and self.latest_frame and self.capture["frame_fresh"] and
+            snapshot_now > self.latest_frame["capture_end_monotonic_s"] + self._analysis_timing["result_max_age_s"])
         result = {
             "record_type": "SessionSnapshot",
             "schema_version": "1.0",
@@ -234,13 +240,44 @@ class PASession(LiveReferencePolicy):
             "suspension_reasons": list(self.suspension_reasons),
         }
         if self.live_reference:
-            result.update(workflow_policy=self.workflow_policy,capture=copy.deepcopy(self.capture),perception=self._perception())
+            timing=copy.deepcopy(self._analysis_timing);timing["snapshot_monotonic_s"]=snapshot_now
+            capture=copy.deepcopy(self.capture)
+            if expired:
+                capture.update(frame_fresh=False,state="listening",reason_codes=["stale_evidence"])
+                result["recommendations"]=[];result["latest_verification"]=None
+            result.update(workflow_policy=self.workflow_policy,capture=capture,
+                perception=self._perception(snapshot_now,expired),analysis_timing=timing)
         validate_snapshot(result)
         return result
 
     def set_persistence_callback(self, callback) -> None:
         with self._lock:
             self._persistence_callback = callback
+
+    def expire_live_evidence(self, now: float) -> bool:
+        """Retire over-age evidence during the controller's durable monitor tick."""
+        frame=self.latest_frame
+        if (not self.live_reference or not frame or not self.capture["frame_fresh"] or
+                now <= frame["capture_end_monotonic_s"] + self._analysis_timing["result_max_age_s"]):
+            return False
+        self.latest_frame=None;self._current_masks={};self._current_hints={};self._hint_expires_monotonic_s=None
+        self.capture.update(frame_fresh=False,state="listening",reason_codes=["stale_evidence"])
+        self.recommendations=[];self.latest_verification=None;self._detector.reset();self._verification_armed=False
+        return True
+
+    def reset_analysis_persistence(self) -> None:
+        """Prevent persistence from bridging intentionally omitted inference work."""
+        self._detector.reset()
+
+    def suppress_for_capture_gap(self) -> bool:
+        """Withhold current evidence immediately while preserving human workflow state."""
+        changed=bool(self.latest_frame or self._current_masks or self._current_hints or self.recommendations
+            or self.capture["frame_fresh"] or "capture_dropout" not in self.capture["reason_codes"])
+        self.latest_frame=None;self._current_masks={};self._current_hints={};self._hint_expires_monotonic_s=None
+        self.recommendations=[];self.latest_verification=None
+        self.capture.update(frame_fresh=False,state="listening",reason_codes=["capture_dropout"])
+        self._detector.reset()
+        return changed
 
     @contextmanager
     def command_transaction(self):
@@ -257,6 +294,7 @@ class PASession(LiveReferencePolicy):
             "current_masks": copy.deepcopy(self._current_masks),
             "current_hints": copy.deepcopy(self._current_hints),
             "hint_expires_monotonic_s": self._hint_expires_monotonic_s,
+            "analysis_timing": copy.deepcopy(self._analysis_timing),
             "switch_previous": copy.deepcopy(self._switch_previous),
             "switch_paused": self._switch_paused,
             "session_id": self.session_id,
@@ -314,9 +352,13 @@ class PASession(LiveReferencePolicy):
         baseline_store: BaselineStore,
         monotonic_clock=time.monotonic,
         wall_clock=None,
+        analysis_timing_profile_id: str | None = None,
     ):
         if state.get("state_format") != "pa-session-state-v1":
             raise ValueError("unsupported persisted session state")
+        if analysis_timing_profile_id is not None:
+            state=copy.deepcopy(state)
+            state["analysis_timing"]=analysis_timing_profile(analysis_timing_profile_id)
         song = state["song"]
         session = cls(
             workflow_policy=state.get("workflow_policy","legacy_baseline_v1"),
@@ -336,6 +378,8 @@ class PASession(LiveReferencePolicy):
             persistence_frames=state["persistence_frames"],
             event_retention=state["event_retention"],
             capture_runtime_verified=state.get("capture_runtime_verified", False),
+            analysis_timing_profile_id=(analysis_timing_profile_id or
+                state.get("analysis_timing", {}).get("profile_id", "strict_v1")),
         )
         session.restore_state(state)
         return session
@@ -356,6 +400,8 @@ class PASession(LiveReferencePolicy):
         self._current_masks=copy.deepcopy(state.get("current_masks",{}))
         self._current_hints=copy.deepcopy(state.get("current_hints",{}))
         self._hint_expires_monotonic_s=state.get("hint_expires_monotonic_s")
+        self._analysis_timing=analysis_timing_profile(
+            state.get("analysis_timing", self._analysis_timing).get("profile_id", "strict_v1"))
         self._switch_previous=copy.deepcopy(state.get("switch_previous"))
         self._switch_paused=state.get("switch_paused",False)
         self.instrument_config = copy.deepcopy(state["instrument_config"])
@@ -605,10 +651,18 @@ class PASession(LiveReferencePolicy):
             self._current_masks={row["instrument_id"]:copy.deepcopy(row) for row in evidence["measurements"]}
             self._current_hints=adjustment_hints(context=context,evidence=evidence,frame=frame,
                 anomaly_threshold_db=self._frame_builder.anomaly_threshold_db)
-            self._hint_expires_monotonic_s=window.capture_end_monotonic_s+(2.0 if max_age_s is None else max_age_s)
+            result_age=self._analysis_timing["result_max_age_s"] if max_age_s is None else max_age_s
+            self._hint_expires_monotonic_s=min(
+                frame["published_monotonic_s"]+self._analysis_timing["hint_hold_s"],
+                window.capture_end_monotonic_s+result_age)
+            for hint in self._current_hints.values():
+                hint["expires_monotonic_s"]=self._hint_expires_monotonic_s
             fresh=not frame["quality"]["stale"] and not frame["quality"]["dropout"]
             self.capture.update(analysis_run_id=window.analysis_run_id,state="active" if fresh else "listening",
                 frame_fresh=fresh)
+            if fresh:
+                self.capture["reason_codes"]=[reason for reason in self.capture["reason_codes"]
+                    if reason!="capture_dropout"]
         self.latest_frame = copy.deepcopy(frame)
         self._frames.append(copy.deepcopy(frame))
         if purpose == "guided_probe":
