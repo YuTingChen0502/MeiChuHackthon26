@@ -1,0 +1,71 @@
+{
+  "git_commit": "5cea661afdbf2760ecfc590fa339c25e4b7f25ca",
+  "git_dirty": false,
+  "analysis_rate_hz": 48000,
+  "window_seconds": 4.0,
+  "hop_seconds": 1.0,
+  "recording": "No microphone PCM saved",
+  "device_id": "portaudio:7e9e9dff606f9c65ff87",
+  "claim": "Local native transport/lifecycle only; Fake abstains; no model/calibration/PN54 claim.",
+  "duration_s": 16.577999999994063,
+  "runs": [
+    {
+      "metrics": {
+        "processed_windows": 4,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 32.00000000651926,
+        "processing_p95_ms": 47.00000000593718,
+        "publication_age_p95_s": 0.05233333334035706,
+        "error": null
+      },
+      "analysis_run_id": "run:8552e9ec6e5f48b486c7cadfca96a6b4",
+      "callback_max_queue": 2,
+      "clock_mode": "monotonic_fallback",
+      "adc_packets": 0,
+      "fallback_packets": 374,
+      "callback_drops": 0,
+      "adc_residual_s": 0.0,
+      "rss_bytes": 66850816,
+      "all_abstained": true
+    },
+    {
+      "metrics": {
+        "processed_windows": 4,
+        "dropped_windows": 0,
+        "stale_windows": 0,
+        "discontinuities": 0,
+        "queue_depth": 0,
+        "max_queue_depth": 1,
+        "processing_p50_ms": 30.999999988125637,
+        "processing_p95_ms": 31.000000002677552,
+        "publication_age_p95_s": 0.05233333334035706,
+        "error": null
+      },
+      "analysis_run_id": "run:7f1b11f9aa06445bac8993321e47a6ac",
+      "callback_max_queue": 2,
+      "clock_mode": "monotonic_fallback",
+      "adc_packets": 0,
+      "fallback_packets": 374,
+      "callback_drops": 0,
+      "adc_residual_s": 0.0,
+      "rss_bytes": 67706880,
+      "all_abstained": true
+    }
+  ],
+  "final_workflow": "STOPPED",
+  "capture": {
+    "device_id": "portaudio:7e9e9dff606f9c65ff87",
+    "profile_id": "unverified-native-probe",
+    "native_sample_rate_hz": 48000,
+    "channels": 1,
+    "gain_setting": null,
+    "enhancements_verified_disabled": null,
+    "geometry_id": null,
+    "provenance": "unverified"
+  },
+  "status": "passed"
+}

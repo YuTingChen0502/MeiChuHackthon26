@@ -12,15 +12,17 @@ from core.runtime.quality import pcm_clipped_fraction, quality_state
 
 class AudioWorker:
     def __init__(self, *, audio_input, pipeline, session_id, on_window, on_end,
-                 clock=time.monotonic, queue_capacity=2, max_age_s=2.0, pace_file=False, clock_tolerance_s=0.05):
+                 clock=time.monotonic, queue_capacity=2, max_age_s=2.0, pace_file=False, clock_tolerance_s=0.05, analysis_run_id=None):
         if queue_capacity < 1 or min(max_age_s, clock_tolerance_s) <= 0:
             raise ValueError('positive worker limits required')
         self.audio_input, self.pipeline = audio_input, pipeline
         self.session_id, self.on_window, self.on_end = session_id, on_window, on_end
         self.clock, self.max_age_s, self.pace_file = clock, max_age_s, pace_file
         self.clock_tolerance_s = clock_tolerance_s
+        self.analysis_run_id = analysis_run_id
         self._queue = queue.Queue(maxsize=queue_capacity)
         self._stop, self._finished = Event(), Event()
+        self.received_pcm = Event()
         self._producer = self._consumer = None
         self.error = None
         self.dropped_windows = self.stale_windows = self.processed_windows = 0
@@ -52,8 +54,10 @@ class AudioWorker:
             source = iter(self.audio_input.chunks())
             pending = next(source, None)
             while pending is not None and not self._stop.is_set():
-                run_id = f'run:{uuid.uuid4().hex}'
+                run_id = self.analysis_run_id or f'run:{uuid.uuid4().hex}'
+                self.analysis_run_id = None
                 first, pending = pending, None
+                if first.samples:self.received_pcm.set()
                 def segment():
                     nonlocal pending
                     previous = first
@@ -125,7 +129,10 @@ class AudioWorker:
                     dropout=gap,
                     comparability='weak' if not any(window.samples) else 'comparable')
                 begin = self.clock()
-                self.on_window(window, quality, self.max_age_s)
+                if self.on_window(window, quality, self.max_age_s) is False:
+                    self.stale_windows += 1
+                    gap = True
+                    continue
                 end = self.clock()
                 self.processing_ms.append(max(0, (end - begin) * 1000))
                 self.publication_age_s.append(max(0, end - window.capture_end_monotonic_s))

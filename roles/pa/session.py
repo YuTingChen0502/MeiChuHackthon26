@@ -63,7 +63,10 @@ class SessionCommandError(Exception):
         self.retryable = retryable
 
 
-class PASession:
+from .live_reference import LiveReferencePolicy
+
+
+class PASession(LiveReferencePolicy):
     def __init__(
         self,
         *,
@@ -86,8 +89,10 @@ class PASession:
         frame_retention: int = 128,
         capture_profile_enforced: bool = True,
         analysis_sample_rate_hz: int | None = None,
+        workflow_policy: str = "legacy_baseline_v1",
     ) -> None:
         validate_record(reference_profile, PUBLIC, "ReferenceProfile")
+        self.workflow_policy = workflow_policy
         self.session_id = session_id
         self.instrument_config = copy.deepcopy(instrument_config)
         self.reference = copy.deepcopy(reference_profile)
@@ -161,11 +166,15 @@ class PASession:
         self._require_fresh_after_resume = False
         self._detector = PersistentAnomalyPolicy(required_frames=persistence_frames)
         self._frame_builder = FrameBuilder(calibration_policy=getattr(analyzer, "calibration_policy", None))
+        self._init_capture()
+        if self.live_reference:
+            self.session_mode = "live"
+            self.song["workflow_state"] = "LIVE_MONITORING"
         validate_snapshot(self.snapshot())
 
     def _target(self) -> dict:
         target = {"target_kind": "reference", "reference": reference_binding(self.reference), "baseline": None}
-        if self.session_mode == "live":
+        if self.session_mode == "live" and not self.live_reference:
             target = {
                 "target_kind": "baseline",
                 "reference": reference_binding(self.reference),
@@ -176,7 +185,7 @@ class PASession:
     def _context(self, window, *, purpose: str, probe_instrument_id: str | None) -> dict:
         context_asset = (
             self.baseline["model_specific_context_asset"]
-            if self.session_mode == "live"
+            if self.session_mode == "live" and not self.live_reference
             else self.reference["model_specific_context_asset"]
         )
         return {
@@ -187,7 +196,7 @@ class PASession:
             "instrument_config": copy.deepcopy(self.instrument_config),
             "target": self._target(),
             "comparison_regime": (
-                self.baseline["comparison_regime"] if self.session_mode == "live" else self.reference["comparison_regime"]
+                self.baseline["comparison_regime"] if self.session_mode == "live" and not self.live_reference else self.reference["comparison_regime"]
             ),
             "model_specific_context_asset": context_asset,
             "observation_purpose": purpose,
@@ -216,6 +225,8 @@ class PASession:
             "latest_verification": copy.deepcopy(self.latest_verification),
             "suspension_reasons": list(self.suspension_reasons),
         }
+        if self.live_reference:
+            result.update(workflow_policy=self.workflow_policy,capture=copy.deepcopy(self.capture),perception=self._perception())
         validate_snapshot(result)
         return result
 
@@ -233,6 +244,11 @@ class PASession:
     def export_state(self) -> dict:
         return {
             "state_format": "pa-session-state-v1",
+            "workflow_policy": self.workflow_policy,
+            "capture": copy.deepcopy(self.capture),
+            "current_masks": copy.deepcopy(self._current_masks),
+            "switch_previous": copy.deepcopy(self._switch_previous),
+            "switch_paused": self._switch_paused,
             "session_id": self.session_id,
             "instrument_config": copy.deepcopy(self.instrument_config),
             "reference": copy.deepcopy(self.reference),
@@ -293,6 +309,7 @@ class PASession:
             raise ValueError("unsupported persisted session state")
         song = state["song"]
         session = cls(
+            workflow_policy=state.get("workflow_policy","legacy_baseline_v1"),
             session_id=state["session_id"],
             project_id=song["project_id"],
             song_id=song["song_id"],
@@ -324,6 +341,11 @@ class PASession:
             raise ValueError("unsupported persisted session state")
         if state.get("session_id") != self.session_id:
             raise ValueError("persisted state belongs to a different session")
+        self.workflow_policy=state.get("workflow_policy","legacy_baseline_v1")
+        self.capture=copy.deepcopy(state.get("capture",self.capture))
+        self._current_masks=copy.deepcopy(state.get("current_masks",{}))
+        self._switch_previous=copy.deepcopy(state.get("switch_previous"))
+        self._switch_paused=state.get("switch_paused",False)
         self.instrument_config = copy.deepcopy(state["instrument_config"])
         self.reference = copy.deepcopy(state["reference"])
         self.source = copy.deepcopy(state["source"])
@@ -399,6 +421,9 @@ class PASession:
     def suspend_for_input(self, reason: str) -> None:
         if self.song["workflow_state"] == "STOPPED":
             return
+        if self.live_reference:
+            self._clear_source_evidence(reason)
+            self.capture.update(state="unavailable",frame_fresh=False,reason_codes=[reason])
         self.song["workflow_state"] = "SUSPENDED"
         self.suspension_reasons = [reason]
         self.recommendations = []
@@ -410,8 +435,13 @@ class PASession:
     def suspend_for_runtime_restart(self) -> None:
         if self.song["workflow_state"] == "STOPPED":
             return
+        reason="runtime_restart_requires_reopen" if self.live_reference else "runtime_restart_requires_new_session"
+        if self.live_reference:
+            self.capture["source_generation"]+=1
+            self._clear_source_evidence(reason)
+            self.capture.update(state="unavailable",frame_fresh=False,switch_result="failed" if self.capture["switch_result"]=="pending" else self.capture["switch_result"],reason_codes=[reason])
         self.song["workflow_state"] = "SUSPENDED"
-        self.suspension_reasons = ["runtime_restart_requires_new_session"]
+        self.suspension_reasons = [reason]
         self.recommendations = []
         self._verification_armed = False
         self._detector.reset()
@@ -468,6 +498,8 @@ class PASession:
 
     @_synchronized
     def apply_probe(self, command):
+        if self.live_reference:
+            raise SessionCommandError("legacy_action_unavailable","Guided rehearsal is unavailable in Live reference.")
         try:
             validate_probe_request(command, self.snapshot())
         except ValueError as exc:
@@ -501,6 +533,8 @@ class PASession:
         quality: dict | None = None,
         max_age_s: float | None = None,
         clock_uncertainty_s: float = 0.0,
+        _prepared_evidence=None,
+        _inference_started=None,
     ) -> dict:
         if self.song["workflow_state"] == "STOPPED":
             raise SessionCommandError("session_stopped", "Stopped sessions cannot accept audio.")
@@ -532,8 +566,8 @@ class PASession:
         if purpose is None:
             purpose = "verification" if self._verification_armed else ("live" if self.session_mode == "live" else "rehearsal")
         context = self._context(window, purpose=purpose, probe_instrument_id=probe_instrument_id)
-        begin = self.monotonic_clock()
-        evidence = self.analyzer.analyze(window, context)
+        begin = self.monotonic_clock() if _inference_started is None else _inference_started
+        evidence = self.analyzer.analyze(window, context) if _prepared_evidence is None else _prepared_evidence
         quality = copy.deepcopy(quality or quality_state())
         # Recheck freshness after inference: a fast capture callback does not make
         # a slow model result current at publication.
@@ -555,6 +589,11 @@ class PASession:
             published_monotonic_s=self.monotonic_clock(),
             inference_wall_ms=max(0, (self.monotonic_clock() - begin) * 1000),
         )
+        if self.live_reference:
+            self._current_masks={row["instrument_id"]:copy.deepcopy(row) for row in evidence["measurements"]}
+            fresh=not frame["quality"]["stale"] and not frame["quality"]["dropout"]
+            self.capture.update(analysis_run_id=window.analysis_run_id,state="active" if fresh else "listening",
+                frame_fresh=fresh)
         self.latest_frame = copy.deepcopy(frame)
         self._frames.append(copy.deepcopy(frame))
         if purpose == "guided_probe":
@@ -618,7 +657,7 @@ class PASession:
             "direction": state["status"],
             "onset_monotonic_s": frame["capture_end_monotonic_s"],
             "confirmed_monotonic_s": frame["capture_end_monotonic_s"],
-            "baseline_id": self.baseline["baseline_id"] if self.session_mode == "live" else None,
+            "baseline_id": self.baseline["baseline_id"] if self.baseline is not None and self.session_mode == "live" else None,
             "reference_id": self.reference["reference_id"],
             "evidence_frame_ids": evidence_ids,
             "state": "active",
@@ -669,8 +708,8 @@ class PASession:
             "verification_id": f"verification:{self.session_id}:{self._verification_counter}",
             "event_id": self.incident["event"]["event_id"],
             "adjustment_id": self.adjustment["adjustment_id"],
-            "baseline_id": self.baseline["baseline_id"] if self.session_mode == "live" else None,
-            "baseline_version": self.baseline["version"] if self.session_mode == "live" else None,
+            "baseline_id": self.baseline["baseline_id"] if self.baseline is not None and self.session_mode == "live" else None,
+            "baseline_version": self.baseline["version"] if self.baseline is not None and self.session_mode == "live" else None,
             "adjustment_completed_monotonic_s": self.adjustment["completed_monotonic_s"],
             "first_evidence_sample_start_monotonic_s": window_start_monotonic_s,
             "evidence_frame_ids": [frame["frame_id"]],
@@ -728,7 +767,12 @@ class PASession:
         except ValueError as exc:
             raise SessionCommandError("stale_or_invalid_binding", str(exc), retryable=True) from exc
         action = command["action"]
+        if self.live_reference and action == "switch_microphone":
+            self._accept_source_switch(command)
+            return self.snapshot()
         self._authorize_action(action)
+        if self.live_reference:
+            self._live_lifecycle_command(action)
         if action == "accept_baseline":
             self._accept_baseline(command["payload"])
         elif action == "start_adjustment":
@@ -756,7 +800,7 @@ class PASession:
         if workflow == "STOPPED":
             raise SessionCommandError("session_stopped", "STOPPED is terminal for this session.")
         if workflow == "SUSPENDED":
-            if action in ("resume", "stop"):
+            if action in ("resume", "stop") or (self.live_reference and action=="pause"):
                 return
             raise SessionCommandError(
                 "session_suspended",
@@ -814,10 +858,10 @@ class PASession:
 
     def _recheck(self, adjustment_id: str | None) -> None:
         if adjustment_id is None:
-            if self.session_mode != "rehearsal" or self.adjustment is not None:
+            if (self.session_mode != "rehearsal" and not self.live_reference) or self.adjustment is not None:
                 raise SessionCommandError("invalid_state", "A free recheck is rehearsal-only.")
             self._detector.reset()
-            self.song["workflow_state"] = "REHEARSAL"
+            self.song["workflow_state"] = "LIVE_MONITORING" if self.live_reference else "REHEARSAL"
             self._transition()
             return
         if self.adjustment is None or self.adjustment["adjustment_id"] != adjustment_id:
