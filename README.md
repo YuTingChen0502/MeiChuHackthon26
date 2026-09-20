@@ -7,6 +7,8 @@ microphones without re-uploading or re-analyzing the reference. Perception and P
 action confidence are separate: a source can be detected while numerical advice is
 withheld. Humans adjust the sound; Harmonix never controls a mixer.
 
+- [Demo Video](https://youtu.be/0dBj09gttvE)
+
 ## Current milestone
 
 **Windows real microphone execution verified; full physical acceptance remains open.**
