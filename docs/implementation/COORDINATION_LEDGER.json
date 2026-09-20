@@ -1,14 +1,14 @@
 {
   "milestone": "DATASET_FAMILY_PERCEPTION_AND_DIRECTION_HINTS",
-  "status": "SESSION_DELETION_DONE_NEW_USER_AMENDMENT_FROZEN",
+  "status": "DATASET_ML_INTEGRATED_RUNTIME_UI_IMPLEMENTING",
   "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
   "updated": "2026-09-20",
-  "latest_approved_shared_commit": "d9e231442b9f6b2acb1060f763561b3109c8e90c",
+  "latest_approved_shared_commit": "509c8cdbf8885893b7a6d35f60e61986903467e6",
   "latest_integration_commit": "456a00b",
   "lanes": {
     "ML": {
-      "commit": "302926fadb62833338a0914b954d163f59f389b4",
-      "status": "Accepted and integrated; 51 analyzer tests incl actual weight file/mic and missing-alignment execution regression PASS",
+      "commit": "6b8152a64dac73e29043a8f33dc3b459329c4e75",
+      "status": "Accepted/integrated891f749;25 P1 tests independently PASS incl actual frozen weights; five dataset families attempted, uncertainty/partial-keys preserved",
       "go_no_go": "NARROW matched-digital bass engineering candidate only; production NO_GO",
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
@@ -21,7 +21,10 @@
       "status": "Accepted and cherry-picked456a00b;84UI/actual HTTPWS/browser deletion PASS; next user amendment pending"
     }
   },
-  "pending_reviews": [],
+  "pending_reviews": [
+    "Runtime experimental hint and retained-reference reprepare checkpoint",
+    "UI uncertain direction and migration recovery checkpoint"
+  ],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -83,7 +86,8 @@
     "CP2-RUNTIME/CHECKPOINT_COMMIT/39df3a5e24a5ea3b66a7d257a004fc01996296c5": "Accepted and merged5239116; durable deletion, source/model lifecycle,13 focused tests independently PASS",
     "UI/CHECKPOINT_COMMIT/480138508251ed27e0a8f73fa0ff23436951fd74": "Reviewed and mergedef67ce6;84UI independently PASS; actual HTTP/WS/browser acceptance in progress",
     "UI/CHECKPOINT_COMMIT/3168c1edaba43b7125bf7651528a1c7fff4c8651": "Accepted; browser Cancel/Escape/delete/reload/GET404/reference reuse PASS on isolated temporary test storage; independently84UI and69-eventHTTPWS smoke PASS",
-    "LEAD/DATASET_FAMILY_HINT_CONTRACT/d9e231442b9f6b2acb1060f763561b3109c8e90c": "User authorized dataset-family attempted perception and evidence-backed nonnumeric directions despite calibration abstention.34 shared tests PASS; existing ML/Runtime/UI owners dispatched, historical empirical support unchanged."
+    "LEAD/DATASET_FAMILY_HINT_CONTRACT/d9e231442b9f6b2acb1060f763561b3109c8e90c": "User authorized dataset-family attempted perception and evidence-backed nonnumeric directions despite calibration abstention.34 shared tests PASS; existing ML/Runtime/UI owners dispatched, historical empirical support unchanged.",
+    "CP2-ML/CHECKPOINT_COMMIT/6b8152a64dac73e29043a8f33dc3b459329c4e75": "Accepted/integrated891f749; actual P1 tests independently25PASS; frozen model/evidence archive untouched"
   },
   "integration_validation": {
     "commit": "1d6536130493a690040815a0f728a2a0367c28fc",
