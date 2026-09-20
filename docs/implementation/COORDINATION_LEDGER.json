@@ -1,10 +1,10 @@
 {
   "milestone": "REALTIME_MIC_EXECUTION_CORRECTION",
-  "status": "INTEGRATED_PENDING_CANONICAL_AND_PHYSICAL_CANDIDATE_ACCEPTANCE",
-  "current_decision": "docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md; inspected origin/main95fa5fe; existing Runtime/UI owners only",
+  "status": "WINDOWS_REAL_CANDIDATE_EXECUTION_PASS_CPU_FRESHNESS_AND_EXTERNAL_HARDWARE_NOT_ACCEPTED",
+  "current_decision": "LIVE_REFERENCE_MIC_FREEZE.md and REALTIME_MIC_ACCEPTANCE.md; user-authorized real microphone execution independent of PA action confidence",
   "updated": "2026-09-20",
   "latest_approved_shared_commit": "34474ea10e0658a3ae9743ca24d5714776ba754b",
-  "latest_integration_commit": "872ea07d74cf970e3003cf3dd8d6e9968760dde1",
+  "latest_integration_commit": "eae1da72c67cc4dc6729f81a456086337589de76",
   "lanes": {
     "ML": {
       "commit": "302926fadb62833338a0914b954d163f59f389b4",
@@ -17,13 +17,12 @@
       "status": "Accepted and integrated; 80 integration tests PASS; same-session restart and bounded source switch; actual candidate acceptance pending"
     },
     "UI": {
-      "commit": "e5482f1e6e200897aab3f3761238fb5181be58c2",
-      "status": "Accepted and integrated; 72 UI tests and Live-only HTTP/WS/Fake smoke independently PASS"
+      "commit": "ecae296cd69a83e33e8b153dd0effb7484f38551",
+      "status": "Accepted/integrated; 74 UI tests independently PASS; actual candidate browser observed; final rollback wording verified separately"
     }
   },
   "pending_reviews": [
-    "Canonical all-lane validation",
-    "Sustained real candidate Windows microphone and actual Live UI"
+    "Final canonical validation after acceptance documentation"
   ],
   "cross_lane_requests": [
     {
@@ -77,18 +76,23 @@
     "LEAD/TEMPORARY_LANE_COMPLETION/user-authorized-20260920": "ML and Runtime workers hit usage limit; user explicitly authorized Lead to finish narrow corrections in existing worktrees. No replacement writers.",
     "ML/LIVE_MIC_P1_COMPAT/302926fadb62833338a0914b954d163f59f389b4": "Accepted; source separation runs without reference coverage; comparison remains invalid/null",
     "CP2-RUNTIME/LIVE_MIC_REAL_ANALYZER/11ee347b0ecc82934b314620ae969ad28387c200": "Accepted; independently tested restart/switch corrections",
-    "UI/LIVE_PERCEPTION/e5482f1e6e200897aab3f3761238fb5181be58c2": "Accepted; independently tested Live-only adapter smoke and 72 UI tests"
+    "UI/LIVE_PERCEPTION/e5482f1e6e200897aab3f3761238fb5181be58c2": "Accepted; independently tested Live-only adapter smoke and 72 UI tests",
+    "UI/CORRECTION_COMPLETE/4a36d4e0a7a0ae7a1104521df0722e224288bcc9": "Accepted: configured families no longer described as supported",
+    "UI/CORRECTION_COMPLETE/ecae296cd69a83e33e8b153dd0effb7484f38551": "Accepted: rolled-back listening capture visibly acknowledges recovery, current errors retain precedence",
+    "LEAD/PHYSICAL_CANDIDATE/5ac8a81bd4291da6b71accc889d6ab0f815c0674": "Actual Windows execution PASS; CPU freshness NOT PASS; Linux/PN54 and second physical mic unavailable"
   },
   "integration_validation": {
-    "commit": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
-    "python_tests": 239,
-    "ui_tests": 44,
-    "cp1_full_smoke": "PASS",
-    "release_scan": "PASS clean executable merge zero findings",
-    "documented_launch": "PASS Python3.12: Fake health/UI200, native inventory7; default selected-port origin POST201 and foreign origin403",
-    "browser": "PASS long226s44.1kstereo upload -> advancing progress -> completed -> native rehearsal; one transient WASAPI start failure recovered via Resume; fresh native frames observed. See ACCEPTANCE_REFERENCE_MIC_FIX.md.",
-    "actual_p1_runtime_probe": "PASS clean42695c4,20.052s,actual CPU reference/cache/file+synthetic-mic abstention,HTTP200/WS replay; docs/implementation/evidence/p1_runtime_42695c4.json",
-    "production_ui_route": "PASS /apps/ui/ title Harmonix \u2014 Live Sound Reference; served index.html/app.js/styles.css byte-equal to canonical main; health fake-simulated"
+    "commit": "5ac8a81bd4291da6b71accc889d6ab0f815c0674",
+    "python_tests": 270,
+    "ui_tests": 72,
+    "final_ui_tests": 74,
+    "legacy_fake_smoke": "PASS",
+    "live_reference_fake_smoke": "PASS 65 snapshot notifications",
+    "release_scan": "PASS zero findings",
+    "physical_candidate": "PASS 600.476s observed capture/97 actual model calls; docs/implementation/evidence/candidate_native_5ac8a81.json",
+    "native_restart": "PASS actual candidate same-session restart; same reference, new clock/generation, two model calls before/after",
+    "freshness": "NOT PASS on tested CPU: actual model p50 6.012s/p95 6.435s; unchanged2s freshness withholds stale outputs",
+    "browser": "Production candidate observed by existing UI owner, no Fake substitution; details in REALTIME_MIC_ACCEPTANCE.md"
   },
   "release": {
     "route": "scanned source-only archive without Git history or authority PDFs",
@@ -97,11 +101,13 @@
     "scope": "Only scanned history-free source archive is eligible for public publication; no visibility or private-history change"
   },
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
-  "latest_approved_main_implementation": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
+  "latest_approved_main_implementation": "eae1da72c67cc4dc6729f81a456086337589de76",
   "remaining": [
-    "Actual canonical sustained candidate microphone/UI acceptance",
-    "Second physical microphone and Linux/PN54 unavailable",
-    "Empirical calibration, MI300 final lineage and physical accuracy"
+    "CPU inference slower than offered1s hop and2s freshness gate; needs measured faster host/provider, no freshness widening",
+    "Second distinct physical microphone and Linux/PN54 native acceptance unavailable",
+    "Physical-room supported-envelope/accuracy and fitted confidence calibration",
+    "Final meaningful MI300 adaptation lineage",
+    "Noncritical UI disconnected-service notice deduplication"
   ],
   "candidate": {
     "publication": "01eaf5ddcc439efe799be61e54589d331c8556c6",

@@ -1,0 +1,58 @@
+{
+  "git_commit": "5ac8a81bd4291da6b71accc889d6ab0f815c0674",
+  "status": "passed_execution_not_accuracy",
+  "wall_s": 619.0128431000048,
+  "measured_native_s": 600.4762302000163,
+  "actual_model_calls": 97,
+  "inference_p50_s": 6.011737499997253,
+  "inference_p95_s": 6.435256099997787,
+  "max_queue": 2,
+  "dropped_windows": 440,
+  "stale_windows": 17,
+  "publication_age_p95_s_by_run": [
+    null,
+    8.100226909737103,
+    7.70726947824005,
+    null,
+    8.165242857605335,
+    8.217695100000128,
+    null,
+    8.474311899990425
+  ],
+  "callback_drops": 0,
+  "discontinuities": 8,
+  "rss_min": 677212160,
+  "rss_max": 1961504768,
+  "segments": [
+    {
+      "label": "initial-system-default",
+      "clock_id": "clock:d5f32a1b3eb149fab469bffafbba6389",
+      "duration_s": 120.08539009999367,
+      "completed_native_model_calls": 18
+    },
+    {
+      "label": "switch-0",
+      "clock_id": "clock:7d93dfbd5e914514962d5aefd0cdeb0f",
+      "duration_s": 120.00138459999289,
+      "completed_native_model_calls": 20
+    },
+    {
+      "label": "switch-1",
+      "clock_id": "clock:1f8915bdef0a422695eb7a7db3db2a11",
+      "duration_s": 120.09582790000422,
+      "completed_native_model_calls": 18
+    },
+    {
+      "label": "switch-2",
+      "clock_id": "clock:fe4fc1a452304a91925f3cfbb4b35d00",
+      "duration_s": 120.06485600001179,
+      "completed_native_model_calls": 18
+    },
+    {
+      "label": "new-session-reopen",
+      "clock_id": "clock:7204965445fd4ff0b7e639252e42e433",
+      "duration_s": 120.22877160001372,
+      "completed_native_model_calls": 18
+    }
+  ]
+}

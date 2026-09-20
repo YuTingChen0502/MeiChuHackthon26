@@ -1,0 +1,195 @@
+{
+  "source_git_sha": "eae1da72c67cc4dc6729f81a456086337589de76",
+  "observation": "Existing UI owner verified ordinary Restored/Listening banner, corrected configuration-only label, Bass Uncertain/others Unsupported, no numerical advice. Earlier driver rollback failed atgeneration9; logical recoverygeneration12 succeeded; this retrygeneration14 rolled back successfully. Actual candidate, no Fake.",
+  "snapshot": {
+    "record_type": "SessionSnapshot",
+    "schema_version": "1.0",
+    "session_id": "session-6",
+    "state_version": 1157,
+    "event_sequence": 1198,
+    "session_mode": "live",
+    "incident_state": "none",
+    "song": {
+      "baseline_id": null,
+      "configured_families": [
+        "bass",
+        "guitar",
+        "drums",
+        "vocals",
+        "keys"
+      ],
+      "instrument_config_version": 1,
+      "name": "Generated reference - no acoustic labels",
+      "project_id": "project-1",
+      "record_type": "SongState",
+      "reference_id": "reference-1",
+      "schema_version": "1.0",
+      "song_id": "song-1",
+      "unsupported_families": [],
+      "workflow_state": "LIVE_MONITORING"
+    },
+    "source": {
+      "input_kind": "live_microphone",
+      "input_asset_or_device_id": "portaudio:f37605fbb72310a0a093",
+      "clock_id": "clock:a772b7d4ac4b44489c34416dc810fe75"
+    },
+    "execution": {
+      "execution_profile_id": "p1-dc557d5adaeb59a625e1d7367cf216fcba3d9b85c8703cb7f9c3da68afec1321",
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "provider": "htdemucs6s-p1-output-projections-v1"
+    },
+    "active_reference": {
+      "comparison_regime": "matched_excerpt",
+      "context_policy": "fixed_target_with_comparability_gate",
+      "coverage": [
+        {
+          "instrument_id": "bass",
+          "qualified_nonoverlap_windows": 0,
+          "status": "insufficient",
+          "valid_active_seconds": 0.0
+        },
+        {
+          "instrument_id": "guitar",
+          "qualified_nonoverlap_windows": 0,
+          "status": "insufficient",
+          "valid_active_seconds": 0.0
+        },
+        {
+          "instrument_id": "drums",
+          "qualified_nonoverlap_windows": 0,
+          "status": "insufficient",
+          "valid_active_seconds": 0.0
+        },
+        {
+          "instrument_id": "vocals",
+          "qualified_nonoverlap_windows": 0,
+          "status": "insufficient",
+          "valid_active_seconds": 0.0
+        },
+        {
+          "instrument_id": "keys",
+          "qualified_nonoverlap_windows": 0,
+          "status": "insufficient",
+          "valid_active_seconds": 0.0
+        }
+      ],
+      "duration_s": 32.0,
+      "frontend_id": "htdemucs6s-matched-reference-44k1-4s-v1",
+      "instrument_config_version": 1,
+      "limitations": [
+        "Per-source reference coverage is unvalidated."
+      ],
+      "model_bundle_id": "nano4-cp2-mvp-p1-adapted-v1",
+      "model_specific_context_asset": "p1-reference:765506830bc5f0da9d753bb530186e4117f3e8328973c9eb3d921d5b7042d4f9",
+      "record_type": "ReferenceProfile",
+      "reference_id": "reference-1",
+      "schema_version": "1.0",
+      "song_id": "song-1",
+      "source_asset_hash": "sha256:8cef8b9a7f61d73db734f3fcee8a08bf68d4d93909248a88a46ec2f03593c659",
+      "taxonomy_id": "cp2b-mvp-family-support-v1"
+    },
+    "active_baseline": null,
+    "incident": null,
+    "adjustment": null,
+    "latest_frame": null,
+    "recommendations": [],
+    "latest_verification": null,
+    "suspension_reasons": [],
+    "workflow_policy": "live_reference_v1",
+    "capture": {
+      "analysis_run_id": "run:cef37780f8bb4df6b3c5522c6306af64",
+      "clock_id": "clock:a772b7d4ac4b44489c34416dc810fe75",
+      "frame_fresh": false,
+      "logical_microphone_id": "mic:8bd88c35478aa95009e9",
+      "name": "Microphone Array (Realtek(R) Audio)",
+      "native_device_id": "portaudio:f37605fbb72310a0a093",
+      "operation_id": "final-browser-failed-switch-retry",
+      "reason_codes": [
+        "stale_evidence"
+      ],
+      "requested_microphone_id": "unavailable-final-browser-probe",
+      "source_generation": 14,
+      "state": "listening",
+      "switch_result": "rolled_back",
+      "timestamp_mode": "adc_sample_count"
+    },
+    "perception": [
+      {
+        "family": "bass",
+        "instrument_id": "bass",
+        "state": "uncertain",
+        "frame_id": null,
+        "activity": "unknown",
+        "observability": "unknown",
+        "validity": "invalid",
+        "calibration_status": "uncalibrated",
+        "action_abstained": true,
+        "numerical_advice_allowed": false,
+        "reason_codes": [
+          "stale_evidence"
+        ]
+      },
+      {
+        "family": "guitar",
+        "instrument_id": "guitar",
+        "state": "unsupported",
+        "frame_id": null,
+        "activity": "unsupported",
+        "observability": "unknown",
+        "validity": "invalid",
+        "calibration_status": "uncalibrated",
+        "action_abstained": true,
+        "numerical_advice_allowed": false,
+        "reason_codes": [
+          "unsupported_family"
+        ]
+      },
+      {
+        "family": "drums",
+        "instrument_id": "drums",
+        "state": "unsupported",
+        "frame_id": null,
+        "activity": "unsupported",
+        "observability": "unknown",
+        "validity": "invalid",
+        "calibration_status": "uncalibrated",
+        "action_abstained": true,
+        "numerical_advice_allowed": false,
+        "reason_codes": [
+          "unsupported_family"
+        ]
+      },
+      {
+        "family": "vocals",
+        "instrument_id": "vocals",
+        "state": "unsupported",
+        "frame_id": null,
+        "activity": "unsupported",
+        "observability": "unknown",
+        "validity": "invalid",
+        "calibration_status": "uncalibrated",
+        "action_abstained": true,
+        "numerical_advice_allowed": false,
+        "reason_codes": [
+          "unsupported_family"
+        ]
+      },
+      {
+        "family": "keys",
+        "instrument_id": "keys",
+        "state": "unsupported",
+        "frame_id": null,
+        "activity": "unsupported",
+        "observability": "unknown",
+        "validity": "invalid",
+        "calibration_status": "uncalibrated",
+        "action_abstained": true,
+        "numerical_advice_allowed": false,
+        "reason_codes": [
+          "unsupported_family"
+        ]
+      }
+    ]
+  }
+}

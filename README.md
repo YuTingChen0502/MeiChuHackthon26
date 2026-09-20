@@ -9,7 +9,11 @@ withheld. Humans adjust the sound; Harmonix never controls a mixer.
 
 ## Current milestone
 
-**Real microphone candidate integration: acceptance in progress.** The user-approved
+**Windows real microphone execution verified; full physical acceptance remains open.**
+The [actual acceptance record](docs/implementation/REALTIME_MIC_ACCEPTANCE.md)
+contains ten minutes of candidate capture, switching, restart and browser evidence.
+The tested CPU does not meet freshness latency; Linux/PN54 and a second physical
+microphone are not validated. The user-approved
 [Live-reference contract](docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md) supersedes
 the historical rehearsal/baseline product flow. Existing baseline sessions remain
 explicitly legacy; the new console does not expose rehearsal or acceptance controls.
@@ -79,14 +83,15 @@ python scripts/validate.py
 ```
 
 The validation runner executes shared, Runtime, integration, UI, selected ML suites,
-the unchanged full Fake correction-loop smoke, and the source release audit.
+the unchanged legacy Fake correction-loop smoke, the Live-reference HTTP/WS smoke,
+and the source release audit.
 
 ## Frozen candidate integration
 
 The Nano4 P1 candidate adapter and Runtime host mode are integrated for engineering
 use. It reconstructs the exact offline HTDemucs base plus adapted projections and
-emits frozen AnalyzerEvidence. Compatible matched microphone PCM executes the real
-model; lack of room calibration is not an execution rejection. Product evidence
+emits frozen AnalyzerEvidence. Compatible microphone PCM executes the real
+model, including when reference coverage is unavailable; lack of room calibration is not an execution rejection. Product evidence
 support remains bass-only, and confidence is uncalibrated. Other model sources are
 produced internally but do not become supported product claims. Public numerical
 actions remain disabled. Prior CPU observation time was 7.929 seconds per four-second

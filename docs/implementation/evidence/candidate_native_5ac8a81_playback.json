@@ -1,0 +1,9 @@
+{
+  "purpose": "Generated 4-second low-level speaker tone during actual candidate microphone capture; not accuracy ground truth",
+  "output_name": "Speakers (Realtek(R) Audio)",
+  "sample_rate": 48000,
+  "started_monotonic_s": 84188.5950507,
+  "completed_monotonic_s": 84192.9571557,
+  "amplitude": 0.03,
+  "frequency_hz": 220
+}
