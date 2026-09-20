@@ -1,27 +1,30 @@
 {
   "milestone": "REALTIME_MIC_EXECUTION_CORRECTION",
-  "status": "SHARED_CONTRACT_FROZEN_IMPLEMENTATION_AND_PHYSICAL_ACCEPTANCE_PENDING",
+  "status": "INTEGRATED_PENDING_CANONICAL_AND_PHYSICAL_CANDIDATE_ACCEPTANCE",
   "current_decision": "docs/implementation/LIVE_REFERENCE_MIC_FREEZE.md; inspected origin/main95fa5fe; existing Runtime/UI owners only",
   "updated": "2026-09-20",
-  "latest_approved_shared_commit": "7f884e6",
+  "latest_approved_shared_commit": "34474ea10e0658a3ae9743ca24d5714776ba754b",
   "latest_integration_commit": "872ea07d74cf970e3003cf3dd8d6e9968760dde1",
   "lanes": {
     "ML": {
-      "commit": "8e6922cd3070be001b50841d5023b687621796c1",
-      "status": "CHECKPOINT_ACCEPTED; merged872ea07;51 analyzer tests independently pass incl actual six-source file/mic replay parity; physical native/Live UI acceptance pending",
+      "commit": "302926fadb62833338a0914b954d163f59f389b4",
+      "status": "Accepted and integrated; 51 analyzer tests incl actual weight file/mic and missing-alignment execution regression PASS",
       "go_no_go": "NARROW matched-digital bass engineering candidate only; production NO_GO",
       "empirical_claim": "Frozen bass-only matched-digital candidate and CPU parity accepted for engineering; no calibrated or room capability authorization"
     },
     "Runtime": {
-      "commit": "221c401cfdbf76e51d699490c6901c4681584a9b",
-      "status": "CHECKPOINT_ACCEPTED; reference progress/lifecycle and additive native device metadata integrated"
+      "commit": "11ee347b0ecc82934b314620ae969ad28387c200",
+      "status": "Accepted and integrated; 80 integration tests PASS; same-session restart and bounded source switch; actual candidate acceptance pending"
     },
     "UI": {
-      "commit": "55ccfa069ac2c782f0b357cef4b59b67de562496",
-      "status": "CHECKPOINT_ACCEPTED; Harmonix production presentation merged f4d8718; Runtime/API/evidence behavior preserved"
+      "commit": "e5482f1e6e200897aab3f3761238fb5181be58c2",
+      "status": "Accepted and integrated; 72 UI tests and Live-only HTTP/WS/Fake smoke independently PASS"
     }
   },
-  "pending_reviews": ["Runtime ADC fallback5cea661; worker reports243Python/44UI and Windows60s+reopen physical evidence; not yet accepted or integrated"],
+  "pending_reviews": [
+    "Canonical all-lane validation",
+    "Sustained real candidate Windows microphone and actual Live UI"
+  ],
   "cross_lane_requests": [
     {
       "id": "integration-loader-types-v1",
@@ -70,7 +73,11 @@
     "CP2-RUNTIME/CORRECTION_COMPLETE/605e868fe2064a82909a476a00cb86c768a79b0c": "accepted; running progress and durable input-construction failure regressions pass",
     "CP2-RUNTIME/CHECKPOINT_COMMIT/221c401cfdbf76e51d699490c6901c4681584a9b": "accepted; metadata/default/legacy/filter regressions pass, no guessed physical deduplication",
     "UI/CORRECTION_COMPLETE/d377b571c4dfc5646ec4d539358e673c3a475881": "accepted; UI43 and full suite pass; unrelated later visual checkpoint excluded",
-    "UI/HARMONIX_STYLE_READY/55ccfa069ac2c782f0b357cef4b59b67de562496": "accepted and merged f4d8718; exact9dbe03b ancestry and clean pushed branch verified; four UI-owned files; full239Python/44UI/Fake smoke/source audit PASS"
+    "UI/HARMONIX_STYLE_READY/55ccfa069ac2c782f0b357cef4b59b67de562496": "accepted and merged f4d8718; exact9dbe03b ancestry and clean pushed branch verified; four UI-owned files; full239Python/44UI/Fake smoke/source audit PASS",
+    "LEAD/TEMPORARY_LANE_COMPLETION/user-authorized-20260920": "ML and Runtime workers hit usage limit; user explicitly authorized Lead to finish narrow corrections in existing worktrees. No replacement writers.",
+    "ML/LIVE_MIC_P1_COMPAT/302926fadb62833338a0914b954d163f59f389b4": "Accepted; source separation runs without reference coverage; comparison remains invalid/null",
+    "CP2-RUNTIME/LIVE_MIC_REAL_ANALYZER/11ee347b0ecc82934b314620ae969ad28387c200": "Accepted; independently tested restart/switch corrections",
+    "UI/LIVE_PERCEPTION/e5482f1e6e200897aab3f3761238fb5181be58c2": "Accepted; independently tested Live-only adapter smoke and 72 UI tests"
   },
   "integration_validation": {
     "commit": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
@@ -92,10 +99,9 @@
   "authoritative_source_ref": "origin/main; readiness documentation commits descend from latest_integration_commit",
   "latest_approved_main_implementation": "f4d87181c27fe1172cb92918f45957f218c4f6fa",
   "remaining": [
-    "empirical calibration and supported operating envelope",
-    "MI300 final adaptation lineage",
-    "PN54 model deployment/performance",
-    "physical validation"
+    "Actual canonical sustained candidate microphone/UI acceptance",
+    "Second physical microphone and Linux/PN54 unavailable",
+    "Empirical calibration, MI300 final lineage and physical accuracy"
   ],
   "candidate": {
     "publication": "01eaf5ddcc439efe799be61e54589d331c8556c6",

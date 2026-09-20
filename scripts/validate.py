@@ -21,6 +21,7 @@ def main():
         raise RuntimeError('UI test suite missing')
     subprocess.run(['node', '--test', *tests], cwd=ROOT, check=True)
     subprocess.run([sys.executable, '-B', 'docs/implementation/checkpoint1_smoke.py'], cwd=ROOT, check=True)
+    subprocess.run([sys.executable, '-B', 'tests/ui/live_reference_smoke.py'], cwd=ROOT, check=True)
     subprocess.run([sys.executable, '-B', 'scripts/release_audit.py', '--self-test'], cwd=ROOT, check=True)
     print('ALL SELECTED VALIDATION PASSED; no empirical or hardware claim.')
 
