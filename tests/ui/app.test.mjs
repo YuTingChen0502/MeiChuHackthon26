@@ -30,6 +30,9 @@ test('fixture mode never permits mutations and expired local receipt freshness i
   assert.equal(receiptIsFresh({ quality:{ stale:false } }, 1_000, true, 7_000), false);
   assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 6_000), true);
   assert.equal(receiptIsFresh({ quality:{ stale:true } }, 2_000, true, 2_100), false);
+  assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 2_999, 12_000, 3_000), true);
+  assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 3_000, 12_000, 3_000), false);
+  assert.equal(receiptIsFresh({ quality:{ stale:false } }, 2_000, true, 3_000, 12_000, null), false);
 });
 test('real command guards reject disconnected or stale actionable state but retain safe stop', () => {
   const snapshot = { session_id:'s-1', latest_frame:{ quality:{ stale:false } } };
@@ -39,6 +42,9 @@ test('real command guards reject disconnected or stale actionable state but reta
   assert.equal(commandGuard('accept_baseline','authoritative',adapter,snapshot,true,1_000,2_000).allowed, true);
   assert.equal(commandGuard('stop','authoritative',adapter,snapshot,false,null,99_000).allowed, true);
   assert.equal(commandGuard('pause','fixture',adapter,snapshot,true,1_000,1_100).allowed, false);
+  snapshot.analysis_timing={receipt_max_age_s:12};
+  assert.equal(commandGuard('start_adjustment','authoritative',adapter,snapshot,true,1_000,1_999,2_000).allowed, true);
+  assert.equal(commandGuard('start_adjustment','authoritative',adapter,snapshot,true,1_000,2_000,2_000).allowed, false);
 });
 test('renders tolerance as probability semantics and only renders an actual interval', () => {
   const withoutInterval = confidence(false);
@@ -176,6 +182,9 @@ test('source status distinguishes file, microphone, connection, suspension, stal
   const file={...mic,source:{input_kind:'uploaded_file'},latest_frame:{quality:{stale:false}}};
   assert.equal(sourcePresentation(file,true,1_000,'active',7_000).label,'Uploaded File · Stale');
   assert.equal(sourcePresentation(file,true,2_000,'active',3_000).label,'Uploaded File · Active');
+  file.analysis_timing={receipt_max_age_s:12};
+  assert.equal(sourcePresentation(file,true,2_000,'active',3_000,3_001).label,'Uploaded File · Active');
+  assert.equal(sourcePresentation(file,true,2_000,'active',3_001,3_001).label,'Uploaded File · Stale');
 });
 test('reference preparation reports queued, progress, completion and failure honestly', () => {
   assert.equal(referenceProgressText({message:'Reference analysis queued.',progress:0}),'Reference analysis queued. · 0%');

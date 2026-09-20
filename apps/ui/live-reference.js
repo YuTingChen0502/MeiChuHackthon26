@@ -1,5 +1,6 @@
 // Frozen live_reference_v1 presentation. Never derive recognition from configuration or numbers.
 export const LIVE_REFERENCE_POLICY = 'live_reference_v1';
+export const LEGACY_RECEIPT_MAX_AGE_MS = 5000;
 export const isLiveReference = s => s?.workflow_policy === LIVE_REFERENCE_POLICY;
 
 export function logicalMicrophones(discovery) {
@@ -21,6 +22,108 @@ export function currentSourceFrame(s) {
     f.input_asset_or_device_id===s.source?.input_asset_or_device_id &&
     f.reference_id===s.active_reference?.reference_id && f.baseline_id===null && f.baseline_version===null &&
     !f.quality?.stale && !f.quality?.dropout);
+}
+
+export function receiptMaxAgeMs(s) {
+  const seconds=s?.analysis_timing?.receipt_max_age_s;
+  return Number.isFinite(seconds)&&seconds>0?seconds*1000:LEGACY_RECEIPT_MAX_AGE_MS;
+}
+
+export function analysisTimingPresentation(s,snapshotReceivedAt,now=Date.now(),frameReceivedAt=snapshotReceivedAt) {
+  const f=s?.latest_frame,t=s?.analysis_timing;
+  if(!f)return null;
+  const snapshotElapsed=snapshotReceivedAt===null?0:Math.max(0,(now-snapshotReceivedAt)/1000);
+  const receiptElapsed=frameReceivedAt===null?null:Math.max(0,(now-frameReceivedAt)/1000);
+  const serverAge=t&&Number.isFinite(t.snapshot_monotonic_s)?Math.max(0,t.snapshot_monotonic_s-f.capture_end_monotonic_s):null;
+  const observationAge=serverAge===null?null:serverAge+snapshotElapsed;
+  const processing=Math.max(0,f.published_monotonic_s-f.capture_end_monotonic_s);
+  return {
+    profile:t?.profile_id??'legacy timing',
+    observation:observationAge===null?'Observation age unavailable':`Observation captured ${observationAge.toFixed(1)} s ago`,
+    processing:`Published ${processing.toFixed(1)} s after capture${f.inference_wall_ms>0?` · model processing ${(f.inference_wall_ms/1000).toFixed(1)} s`:''}`,
+    receipt:receiptElapsed===null?'Local receipt age unavailable':`Received ${receiptElapsed.toFixed(1)} s ago`,
+  };
+}
+
+export function referenceComparisonPresentation(s) {
+  const f=s?.latest_frame,reasons=(s?.perception??[]).flatMap(p=>p.reason_codes??[]);
+  const unavailable=!f||f.reference_id!==s?.active_reference?.reference_id||f.quality?.comparability!=='comparable'||
+    reasons.some(reason=>['matched_reference_span_unavailable','reference_context_reprepare_required','alignment_unavailable'].includes(reason));
+  if(unavailable)return {available:false,title:'Reference comparison unavailable',detail:'No matching synchronized-start reference interval is available for this observation.'};
+  const start=f.sample_start/f.sample_rate_hz,end=f.sample_end/f.sample_rate_hz;
+  if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return {available:false,title:'Reference comparison unavailable',detail:'The listening service did not provide a valid comparison interval.'};
+  return {available:true,title:`Assumed synchronized-start interval ${start.toFixed(1)}–${end.toFixed(1)} s`,
+    detail:'This is the same relative sample interval in the uploaded reference, not a recognized song position. Start, restart, and microphone changes begin again at 0 s; late entry, drift, seeking, loops, and section jumps are not aligned.'};
+}
+
+const hintScope=s=>`${sourceIdentity(s)??'none'}:${s?.latest_frame?.frame_id??'none'}`;
+const hintKey=(s,p)=>`${hintScope(s)}:${p?.instrument_id??'none'}`;
+const hintSignature=hint=>JSON.stringify([hint?.direction,hint?.status,hint?.basis,hint?.evidence_frame_id,hint?.expires_monotonic_s,hint?.automatic_execution,hint?.reason_codes]);
+
+export class SnapshotClockTracker {
+  constructor(){this.scope=null;this.serverNow=null;this.receivedAt=null;}
+  reset(){this.scope=null;this.serverNow=null;this.receivedAt=null;}
+  update(s,now=Date.now()){
+    const scope=hintScope(s),serverNow=s?.analysis_timing?.snapshot_monotonic_s;
+    if(scope!==this.scope){this.scope=scope;this.serverNow=null;this.receivedAt=now;}
+    if(Number.isFinite(serverNow)&&(this.serverNow===null||serverNow>this.serverNow)){
+      this.serverNow=serverNow;this.receivedAt=now;
+    }
+  }
+  anchor(s){return hintScope(s)===this.scope?this.receivedAt:null;}
+}
+
+export class FrameResultDeadlineTracker {
+  constructor(){this.scope=null;this.deadlineMs=null;this.timed=false;this.terminal=false;}
+  reset(){this.scope=null;this.deadlineMs=null;this.timed=false;this.terminal=false;}
+  update(s,now=Date.now()){
+    const scope=hintScope(s),changed=scope!==this.scope;
+    if(changed){this.scope=scope;this.deadlineMs=null;this.timed=false;this.terminal=false;}
+    const t=s?.analysis_timing,f=s?.latest_frame;
+    if(!t){return;}
+    this.timed=true;
+    if(this.terminal)return;
+    if(!currentSourceFrame(s)||!Number.isFinite(t.snapshot_monotonic_s)||!Number.isFinite(t.result_max_age_s)||
+       !Number.isFinite(f?.capture_end_monotonic_s)){this.deadlineMs=null;this.terminal=true;return;}
+    const remaining=f.capture_end_monotonic_s+t.result_max_age_s-t.snapshot_monotonic_s;
+    if(remaining<=0){this.deadlineMs=null;this.terminal=true;return;}
+    const candidate=now+remaining*1000;
+    if(changed||this.deadlineMs===null)this.deadlineMs=candidate;
+    else this.deadlineMs=Math.min(this.deadlineMs,candidate);
+  }
+  deadline(s){return hintScope(s)===this.scope&&this.timed?this.deadlineMs:undefined;}
+  hasTiming(s){return hintScope(s)===this.scope&&this.timed;}
+}
+
+export class HintDeadlineTracker {
+  constructor(){this.scope=null;this.entries=new Map();}
+  reset(){this.scope=null;this.entries.clear();}
+  update(s,receivedAt,now=Date.now()){
+    const scope=hintScope(s);
+    if(scope!==this.scope){this.scope=scope;this.entries.clear();}
+    if(!currentSourceFrame(s)){
+      for(const p of s?.perception??[])this.entries.set(hintKey(s,p),null);
+      return;
+    }
+    const active=new Set();
+    for(const p of s?.perception??[]){
+      const key=hintKey(s,p);active.add(key);const hint=p.adjustment_hint,existing=this.entries.get(key);
+      if(!hint){this.entries.set(key,null);continue;}
+      const signature=hintSignature(hint);
+      if(existing===null)continue;
+      if(existing&&existing.signature!==signature){this.entries.set(key,null);continue;}
+      if(existing)continue;
+      let deadlineMs=Infinity;
+      if(s.analysis_timing){
+        const expires=hint.expires_monotonic_s,serverNow=s.analysis_timing.snapshot_monotonic_s;
+        if(!Number.isFinite(expires)||!Number.isFinite(serverNow)||expires<=serverNow){this.entries.set(key,null);continue;}
+        deadlineMs=now+(expires-serverNow)*1000;
+      }else if(receivedAt!==null)deadlineMs=receivedAt+LEGACY_RECEIPT_MAX_AGE_MS;
+      this.entries.set(key,{signature,deadlineMs});
+    }
+    for(const key of this.entries.keys())if(!active.has(key))this.entries.set(key,null);
+  }
+  deadline(s,p){return this.entries.get(hintKey(s,p))?.deadlineMs??null;}
 }
 
 export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPending=false}={}) {
@@ -59,9 +162,10 @@ export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPend
 
 // Display only an explicit current Runtime hint. Never calculate a direction or
 // reinterpret this listening trial as calibrated advice, an incident or recovery.
-export function adjustmentHintPresentation(s,p,{connected=true,fresh=true,switchPending=false}={}) {
+export function adjustmentHintPresentation(s,p,{connected=true,fresh=true,switchPending=false,hintDeadlineMs=null,now=Date.now()}={}) {
   const hint=p?.adjustment_hint,q=s?.latest_frame?.quality;
   if(!connected||!fresh||switchPending||!currentSourceFrame(s)||!hint||
+     (s.analysis_timing&&(hintDeadlineMs===null||now>=hintDeadlineMs))||
      !['detected','uncertain'].includes(p.state)||p.activity!=='active'||
      p.calibration_status!=='uncalibrated'||p.action_abstained!==true||p.numerical_advice_allowed!==false||
      p.observability!=='observable'||p.validity!=='valid'||
@@ -95,10 +199,10 @@ export function capturePresentation(s,discovery,{connected=true,fresh=true,switc
   if(switchPending||c.state==='switching'||c.switch_result==='pending')return {title:'Changing microphone…',detail:`Waiting for ${requested}. Acknowledgement does not mean audio is ready.`};
   if(c.switch_result==='rolled_back'&&['listening','active'].includes(c.state)){
     const waiting=c.state==='listening'||!fresh||!c.frame_fresh;
-    return {title:`${name} · Restored · ${waiting?'Listening — waiting for fresh audio':'Active'}`,detail:`Couldn't use ${requested}. The previous input was restored. ${waiting?'Recognition may remain uncertain; previous advice is withheld.':'Only fresh audio can be used.'}`};
+    return {title:`${name} · Restored · ${waiting?'Capturing audio':'Active'}`,detail:`Couldn't use ${requested}. The previous input was restored. ${waiting?'Capture is active while we wait for a completed analysis; previous advice is withheld.':'Only fresh audio can be used.'}`};
   }
-  if(c.state==='active'&&!fresh)return {title:`${name} · Waiting for fresh audio`,detail:'The last observation is no longer current. Previous advice is withheld.'};
-  return {title:`${name} · ${{starting:'Connecting',listening:'Listening',active:'Active',paused:'Paused',stopped:'Stopped'}[c.state]??'Unavailable'}`,detail:c.state==='paused'?'Resume listening when you are ready.':c.state==='active'?'Listening against the uploaded reference.':'Waiting for current audio. Recognition may remain uncertain.'};
+  if(c.state==='active'&&!fresh)return {title:`${name} · Capturing audio`,detail:'Waiting for a completed analysis. The last completed observation is no longer current, so previous advice is withheld.'};
+  return {title:`${name} · ${{starting:'Connecting',listening:'Capturing audio',active:'Active',paused:'Paused',stopped:'Stopped'}[c.state]??'Unavailable'}`,detail:c.state==='paused'?'Resume listening when you are ready.':c.state==='active'?'Listening against the uploaded reference.':c.state==='listening'?'Audio capture is active. Waiting for the listening service to publish a completed analysis.':'Waiting for current audio. Recognition may remain uncertain.'};
 }
 
 export function liveReferenceView(s,{connected=true,fresh=true,switchPending=false,acknowledgedRecovery=null,recoveredKey=null}={}) {
