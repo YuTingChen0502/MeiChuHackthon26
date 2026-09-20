@@ -52,8 +52,17 @@ and resolve the retained audio by its exact content hash, including a check of
 the retained bytes before analysis. Missing/incompatible assets fail explicitly.
 The response remains ReferenceJob and prepares a new immutable reference ID. UI
 may explicitly start a new session for the same song after completion; it must
-not silently retarget an old session. No re-upload or new song is required. Normal
+not silently retarget an old session. With verified retained audio, no re-upload
+or new song is required. Normal
 microphone switches with a compatible reference retain the same session/reference.
+
+Historical storage limitation: older uploads retained decoded mono samples, not
+the original WAV bytes. A canonical mono WAV may be reconstructed only when its
+complete SHA-256 matches the original asset hash. Otherwise migration reports
+`reference_audio_unavailable` and asks for the original WAV; do not fabricate lost
+stereo/header bytes. New uploads retain hash-addressed original bytes, so verified
+retained-audio reanalysis does not require another upload. No claim that all old
+stores can recover discarded bytes.
 
 ## Optional non-numeric human suggestion
 
