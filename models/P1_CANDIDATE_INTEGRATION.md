@@ -90,7 +90,12 @@ Cache payload version 2 includes `reference_policy` with policy ID
 all six model sources. The existing `p1-reference:<sha256>` asset hashes the entire
 payload; five public model identities and the frozen archive remain unchanged.
 Version 1 or a mismatched policy returns `reference_context_reprepare_required`,
-invalid/null measurements and no matched window. Missing cache still returns
+invalid/null measurements and no matched window. A structurally valid, hash/model/config/target-bound
+version 1 cache still permits observation-side six-source separation diagnostics;
+it never supplies comparison spans or target levels. Unsupported regimes, clipping,
+bad PCM geometry, corruption, identity mismatches and target-binding mismatches still
+prevent execution. A mismatched unknown policy is not treated as a compatible v1 cache.
+Missing cache still returns
 `reference_context_unavailable`; corrupt bytes, model/profile or configuration
 mismatches fail closed. No values are inferred from the old `bass_dbfs` field.
 Recovery: use existing POST song/reference with the retained original audio asset,

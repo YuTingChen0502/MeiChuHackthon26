@@ -47,6 +47,33 @@ def context(analyzer, audio, prepared, config):
     }
 
 
+def install_legacy_reference(analyzer, reference, config, bass_dbfs=-40.0):
+    """Install the literal v1 payload shape emitted by the pre-upgrade adapter."""
+    record = {
+        "version": 1,
+        "model": analyzer.capabilities()["model"],
+        "bundle_pin": analyzer.bundle.identity_hash,
+        "instrument_config": config,
+        "windows": [{
+            "window_id": reference.window_id,
+            "sample_start": reference.sample_start,
+            "sample_end": reference.sample_end,
+            "pcm_sha256": hashlib.sha256(np.asarray(reference.samples, dtype="<f4").tobytes()).hexdigest(),
+            "bass_dbfs": bass_dbfs,
+        }],
+        "context_nonce": "genuine-v1-test-context",
+    }
+    raw = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    key = hashlib.sha256(raw).hexdigest()
+    asset = "p1-reference:" + key
+    if analyzer._root:
+        (analyzer._root / (key + ".json")).write_bytes(raw)
+    else:
+        analyzer._cache[key] = raw
+    analyzer._bindings.add(analyzer.bundle.identity_hash, asset, config, [reference.window_id])
+    return {"model_specific_context_asset": asset, "window_count": 1, "example_only": False}
+
+
 class TestOnlyRunner:
     """Contract fixture only; production loader cannot select this through metadata."""
     profile_id = "test-only"
@@ -277,19 +304,18 @@ class P1ContractTests(unittest.TestCase):
         raw = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
         key = hashlib.sha256(raw).hexdigest()
         (self.cache / (key + ".json")).write_bytes(raw)
-        return dict(self.ctx, model_specific_context_asset="p1-reference:" + key)
+        asset = "p1-reference:" + key
+        self.analyzer._bindings.add(self.analyzer.bundle.identity_hash, asset, self.config,
+                                    [item["window_id"] for item in record["windows"]])
+        return dict(self.ctx, model_specific_context_asset=asset)
 
-    def test_v1_cache_explicitly_requires_reprepare_without_inventing_targets(self):
-        def old_payload(record):
-            record["version"] = 1
-            record.pop("reference_policy")
-            for item in record["windows"]:
-                item["bass_dbfs"] = item.pop("source_levels_dbfs")["bass"]
-        ctx = self._cache_fixture(old_payload)
+    def test_genuine_v1_cache_executes_sources_but_requires_reprepare_for_comparison(self):
+        prepared = install_legacy_reference(self.analyzer, window(name="legacy-reference"), self.config)
+        ctx = context(self.analyzer, self.audio, prepared, self.config)
         before = len(self.runner.calls)
         evidence = self.analyzer.analyze(self.audio, ctx)
         validate_analyzer_pair(ctx, evidence)
-        self.assertEqual(before, len(self.runner.calls))
+        self.assertEqual(before + 1, len(self.runner.calls))
         self.assertIsNone(evidence["matched_context_window_id"])
         for row in evidence["measurements"][:5]:
             self.assertEqual(["reference_context_reprepare_required"], row["reason_codes"])
@@ -299,6 +325,43 @@ class P1ContractTests(unittest.TestCase):
         self.assertNotEqual(ctx["model_specific_context_asset"], prepared["model_specific_context_asset"])
         ev = self.analyzer.analyze(self.audio, context(self.analyzer, self.audio, prepared, self.config))
         self.assertTrue(all(r["validity"] == "valid" for r in ev["measurements"][:4]))
+
+    def test_v1_target_binding_mismatch_does_not_execute(self):
+        prepared = install_legacy_reference(self.analyzer, window(name="legacy-binding"), self.config)
+        first = context(self.analyzer, self.audio, prepared, self.config)
+        self.analyzer.analyze(self.audio, first)
+        bad = copy.deepcopy(first)
+        bad["target"]["reference"]["reference_id"] = "different-reference"
+        before = len(self.runner.calls)
+        evidence = self.analyzer.analyze(self.audio, bad)
+        self.assertEqual(before, len(self.runner.calls))
+        self.assertEqual(["reference_target_binding_mismatch"], evidence["measurements"][0]["reason_codes"])
+
+    def test_v1_regime_clipping_geometry_and_corruption_remain_fail_closed(self):
+        prepared = install_legacy_reference(self.analyzer, window(name="legacy-negative"), self.config)
+        base = context(self.analyzer, self.audio, prepared, self.config)
+        for audio, update, reason in (
+            (self.audio, {"comparison_regime": "stable_texture"}, "comparison_regime_unsupported"),
+            (replace(self.audio, input_clipped_fraction=0.1), {}, "clipping_outside_candidate_envelope"),
+        ):
+            ctx = copy.deepcopy(base)
+            ctx.update(update)
+            ctx["observation"] = audio.identity()
+            before = len(self.runner.calls)
+            evidence = self.analyzer.analyze(audio, ctx)
+            self.assertEqual(before, len(self.runner.calls))
+            self.assertEqual([reason], evidence["measurements"][0]["reason_codes"])
+        malformed = replace(self.audio, samples=self.audio.samples[:-1], sample_end=self.audio.sample_end - 1)
+        malformed_ctx = dict(base, observation=malformed.identity())
+        before = len(self.runner.calls)
+        with self.assertRaisesRegex(ValueError, "frontend/window mismatch"):
+            self.analyzer.analyze(malformed, malformed_ctx)
+        self.assertEqual(before, len(self.runner.calls))
+        key = prepared["model_specific_context_asset"].split(":", 1)[1]
+        (self.cache / (key + ".json")).write_bytes(b"corrupt")
+        with self.assertRaisesRegex(ValueError, "cache hash"):
+            self.analyzer.analyze(self.audio, base)
+        self.assertEqual(before, len(self.runner.calls))
 
     def test_cache_policy_is_pinned_and_incomplete_source_values_fail_closed(self):
         for mutate in (
@@ -315,6 +378,22 @@ class P1ContractTests(unittest.TestCase):
             ctx = self._cache_fixture(mutate)
             with self.assertRaisesRegex(ValueError, "P1 source levels"):
                 self.analyzer.analyze(self.audio, ctx)
+
+    def test_bool_and_float_versions_never_authorize_v1_or_v2_execution(self):
+        cases = (
+            lambda r: r.update(version=True),
+            lambda r: r.update(version=1.0),
+            lambda r: r.update(version=2.0),
+        )
+        for mutate in cases:
+            with self.subTest(mutate=mutate):
+                ctx = self._cache_fixture(mutate)
+                before = len(self.runner.calls)
+                evidence = self.analyzer.analyze(self.audio, ctx)
+                self.assertEqual(before, len(self.runner.calls))
+                self.assertEqual(["reference_context_reprepare_required"],
+                                 evidence["measurements"][0]["reason_codes"])
+                self.assertIsNone(evidence["matched_context_window_id"])
 
     def test_non_bass_missing_source_or_target_never_becomes_numeric_evidence(self):
         for family in ("drums", "guitar", "vocals"):
@@ -476,6 +555,20 @@ class P1ActualCPUSmokeTests(unittest.TestCase):
                                 for r in unmatched_evidence["measurements"]))
             self.assertEqual(["matched_reference_span_unavailable"],
                              unmatched_evidence["measurements"][0]["reason_codes"])
+            legacy = install_legacy_reference(a, ref, c, bass_dbfs=ref_levels["bass"])
+            legacy_context = context(a, mic, legacy, c)
+            legacy_context["observation_purpose"] = "live"
+            legacy_before = a.execution_diagnostics()["model_calls_completed"]
+            legacy_evidence = a.analyze(mic, legacy_context)
+            legacy_diagnostics = a.execution_diagnostics()
+            self.assertEqual(legacy_before + 1, legacy_diagnostics["model_calls_completed"])
+            self.assertEqual(mic_diagnostics["last_inference"]["source_waveform_sha256"],
+                             legacy_diagnostics["last_inference"]["source_waveform_sha256"])
+            self.assertIsNone(legacy_evidence["matched_context_window_id"])
+            for row in legacy_evidence["measurements"][:5]:
+                self.assertEqual(["reference_context_reprepare_required"], row["reason_codes"])
+                self.assertIsNone(row["source_level_db"])
+                self.assertIsNone(row["target_source_level_db"])
             validate_analyzer_pair(ctx, first)
             bass = first["measurements"][0]
             published = json.loads((CANDIDATE / "runtime_smoke/inference-run-1.json").read_text())
