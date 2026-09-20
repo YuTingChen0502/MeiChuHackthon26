@@ -210,10 +210,28 @@ export class RuntimeAdapter {
     return this.setup({...values,workflowPolicy:'live_reference_v1'});
   }
 
-  async createLiveReferenceSession({song_id,reference_id,source}) {
+  async reprepareReference({song_id,reference_id,onProgress=()=>{},jobPollIntervalMs=150}) {
+    if(!song_id||!reference_id)throw new Error('Retained song and reference are required.');
+    let job=await this.request(`/songs/${encodeURIComponent(song_id)}/reference`,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reference_id})});
+    onProgress(job);
+    job=await pollReferenceJob(job,{
+      fetchJob:(id,signal)=>this.request(`/jobs/${encodeURIComponent(id)}`,signal?{signal}:{}),
+      onUpdate:onProgress,pollIntervalMs:jobPollIntervalMs,
+    });
+    if(job.status!=='completed'||!job.reference_id||job.reference_id===reference_id)
+      throw new Error(job.error??'Reference preparation did not produce a new reference.');
+    return job;
+  }
+
+  async createLiveReferenceSession({song_id,reference_id,source,expectedSessionId}) {
+    const generation=this.generation;
+    if(expectedSessionId!==undefined&&this.activeSessionId!==expectedSessionId)throw new Error('Session changed before starting new listening.');
     const body={song_id,reference_id,workflow_policy:'live_reference_v1'};
     if(source)body.source=source;
     const snapshot=await this.request('/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(expectedSessionId!==undefined&&(this.activeSessionId!==expectedSessionId||this.generation!==generation||this.deletedSessionIds.has(expectedSessionId)))
+      throw new Error('Session changed while starting new listening.');
     if(snapshot.workflow_policy!=='live_reference_v1')throw new Error('The listening service needs the live-reference update.');
     this.activateSession(snapshot.session_id);
     this.acceptSnapshot(snapshot);

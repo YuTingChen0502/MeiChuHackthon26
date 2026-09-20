@@ -40,6 +40,7 @@ test('implementation failures become useful product messages without raw identif
   assert.match(productError('HTTP 409'),/no longer current/);
   assert.match(productError('PortAudio error'),/microphone connection/);
   assert.match(productError('model_unavailable'),/analyze this reference/);
+  assert.match(productError({payload:{error:{code:'reference_audio_unavailable'}}},'reference'),/original WAV again.*existing session is kept/);
 });
 test('uncalibrated and abstained summaries never manufacture confidence',()=>{
   assert.equal(conciseConfidence({calibration_status:'uncalibrated',probability:.92}),'Uncalibrated');

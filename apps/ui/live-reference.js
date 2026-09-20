@@ -36,7 +36,9 @@ export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPend
   const reasons=[...(p?.reason_codes??[]),...(s?.capture?.reason_codes??[]),...(s?.latest_frame?.quality?.reason_codes??[])];
   if (p?.state==='uncertain' || s?.latest_frame?.quality?.stale ||
       reasons.some(reason=>['stale_evidence','alignment_unavailable'].includes(reason)))
-    return {state:'uncertain',label:'Uncertain',numeric:false,advice:'Advice withheld'};
+    return {state:'uncertain',label:'Uncertain',numeric:false,advice:'Advice withheld',
+      detail:p?.reason_codes?.includes('partial_source_representation')?'Only part of this instrument family can be assessed.':
+        p?.reason_codes?.includes('family_attribution_unvalidated')?'Instrument identification is not yet validated.':undefined};
   if (p?.state==='listening' && p.frame_id===null && s?.capture?.state==='listening')
     return {state:'listening',label:'Listening',numeric:false};
   if (!current || !p?.frame_id || p.frame_id!==s.latest_frame?.frame_id)
@@ -53,6 +55,31 @@ export function perceptionPresentation(s,p,{connected=true,fresh=true,switchPend
     s.latest_frame.quality?.capture_compatible!==false&&
     !['unsupported','not_comparable'].includes(s.latest_frame.quality?.comparability);
   return {state:p.state,label,numeric:Boolean(numeric),advice:numeric?'Relative to reference':'Advice withheld'};
+}
+
+// Display only an explicit current Runtime hint. Never calculate a direction or
+// reinterpret this listening trial as calibrated advice, an incident or recovery.
+export function adjustmentHintPresentation(s,p,{connected=true,fresh=true,switchPending=false}={}) {
+  const hint=p?.adjustment_hint,q=s?.latest_frame?.quality;
+  if(!connected||!fresh||switchPending||!currentSourceFrame(s)||!hint||
+     !['detected','uncertain'].includes(p.state)||p.activity!=='active'||
+     p.calibration_status!=='uncalibrated'||p.action_abstained!==true||p.numerical_advice_allowed!==false||
+     p.observability!=='observable'||p.validity!=='valid'||
+     p.frame_id!==s.latest_frame.frame_id||hint.evidence_frame_id!==p.frame_id||
+     q?.capture_compatible!==true||q.comparability!=='comparable'||q.clipped_fraction!==0||
+     s.latest_frame.identifiability_assumption!=='majority_active_sources_unchanged'||
+     !s.latest_frame.instruments?.some(i=>i.instrument_id===p.instrument_id&&i.family===p.family)||
+     hint.status!=='experimental'||hint.basis!=='relative_balance'||hint.automatic_execution!==false||
+     !Array.isArray(hint.reason_codes)||!hint.reason_codes.length) return null;
+  const direction={increase_level:'raising',reduce_level:'lowering'}[hint.direction];
+  if(!direction)return null;
+  return {title:'Experimental listening trial',
+    text:`May try ${direction} this instrument, then listen again — experimental, uncalibrated.`,
+    detail:'Assumes most other instruments are unchanged. Not a verified correction.'};
+}
+
+export function referenceReprepareRequired(s) {
+  return isLiveReference(s)&&Boolean(s.perception?.some(p=>p.reason_codes?.includes('reference_context_reprepare_required')));
 }
 
 export function capturePresentation(s,discovery,{connected=true,fresh=true,switchPending=false}={}) {
