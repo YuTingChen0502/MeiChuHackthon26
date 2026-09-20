@@ -21,9 +21,10 @@ saved.
   discontinuity each and were handled through the physical-gap gate.
 - Controls: pause and resume succeeded; two switches applied; an unavailable input
   rolled back; both stop operations succeeded; reopen completed three model calls.
-- Browser receipt: a fresh frame rendered 5.6 s after capture and 0.1 s after local
-  receipt. The UI disclosed delayed analysis and an assumed synchronized-start
-  5.0–9.0 s reference interval. It did not claim detected song position.
+- Browser receipt: the UI displayed a 5.6 s publication delay, 0.1 s local receipt
+  age, and 7.6 s observation age; browser render latency was not measured. The UI
+  disclosed delayed analysis and an assumed synchronized-start 5.0–9.0 s reference
+  interval. It did not claim detected song position.
 - Evidence: bass rendered Detected / uncalibrated while guitar, drums, vocals and
   keys remained uncertain. Advice, numeric confidence and adjustment hints stayed
   withheld. Native capture remained unverified for advice; timing did not bypass
