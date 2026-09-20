@@ -1,5 +1,15 @@
 # `INFO.md`
 
+## Dataset-family perception amendment — 2026-09-20
+
+Attempt analysis of all instrument families represented in dataset provenance;
+absence of empirical validation must not become a hard-coded unsupported gate.
+Unreliable identification remains uncertain. Where actual current comparative
+evidence supports a direction, a clearly experimental human listening trial may
+suggest raising/lowering without a numeric amount or invented confidence.
+See [the shared amendment](../implementation/DATASET_PERCEPTION_HINT_FREEZE.md).
+This supersedes conflicting historical bass-only product masks, not measured results.
+
 ## User-approved workflow correction — 2026-09-20
 
 The current product is song/instrument configuration + uploaded ideal reference

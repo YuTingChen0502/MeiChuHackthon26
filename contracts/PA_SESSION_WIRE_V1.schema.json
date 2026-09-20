@@ -1061,6 +1061,27 @@
         },
         "numerical_advice_allowed": {
           "type": "boolean"
+        },
+        "adjustment_hint": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "direction": { "enum": ["increase_level", "reduce_level"] },
+                "status": { "const": "experimental" },
+                "basis": { "const": "relative_balance" },
+                "evidence_frame_id": { "type": "string", "minLength": 1 },
+                "reason_codes": {
+                  "type": "array", "minItems": 1, "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "automatic_execution": { "const": false }
+              },
+              "required": ["direction", "status", "basis", "evidence_frame_id", "reason_codes", "automatic_execution"],
+              "additionalProperties": false
+            }
+          ]
         }
       },
       "required": [

@@ -117,6 +117,36 @@ class LiveReferenceContracts(unittest.TestCase):
         instrument['confidence']['abstained'] = True
         instrument['confidence']['reasons'] = ['test_uncalibrated']
         validate_snapshot(s)  # Perception can be detected while PA advice is withheld.
+        hinted = copy.deepcopy(s)
+        hinted['latest_frame']['identifiability_assumption'] = 'majority_active_sources_unchanged'
+        hinted['perception'][0]['state'] = 'uncertain'
+        hinted['perception'][0]['adjustment_hint'] = dict(
+            direction='reduce_level', status='experimental', basis='relative_balance',
+            evidence_frame_id=frame['frame_id'], reason_codes=['uncalibrated_estimate'],
+            automatic_execution=False)
+        validate_snapshot(hinted)  # Direction does not authorize numerical advice.
+        for key, value in (('stale', True), ('dropout', True), ('clipped_fraction', .1),
+                           ('capture_compatible', False), ('comparability', 'weak')):
+            bad = copy.deepcopy(hinted)
+            bad['latest_frame']['quality'][key] = value
+            with self.subTest(hint_quality=key), self.assertRaises(ValueError):
+                validate_snapshot(bad)
+        for key, value in (('evidence_frame_id', 'old-frame'), ('automatic_execution', True),
+                           ('suggested_step_db', 2), ('probability', .9)):
+            bad = copy.deepcopy(hinted)
+            bad['perception'][0]['adjustment_hint'][key] = value
+            with self.subTest(hint_field=key), self.assertRaises((ValueError, ValidationError)):
+                validate_snapshot(bad)
+        for key, value in (('activity', 'unknown'), ('validity', 'invalid'),
+                           ('observability', 'not_observable')):
+            bad = copy.deepcopy(hinted)
+            bad['perception'][0][key] = value
+            with self.subTest(hint_measurement=key), self.assertRaises(ValueError):
+                validate_snapshot(bad)
+        bad = copy.deepcopy(hinted)
+        bad['latest_frame']['identifiability_assumption'] = 'unresolved'
+        with self.assertRaises(ValueError):
+            validate_snapshot(bad)
         for key, value in (('validity', 'invalid'), ('observability', 'unknown'),
                            ('activity', 'inactive'), ('numerical_advice_allowed', True)):
             bad = copy.deepcopy(s)
