@@ -63,7 +63,29 @@ try{
  await adapter.openSession(legacy.session_id);assert.notEqual(adapter.snapshot.workflow_policy,'live_reference_v1');
  const reused=await adapter.createLiveReferenceSession({song_id:setup.song.song_id,reference_id:referenceId});
  assert.notEqual(reused.session_id,sid);assert.equal(reused.active_reference.reference_id,referenceId);
- await wait(s=>currentSourceFrame(s),'reused reference');await action('stop');
+ await wait(s=>currentSourceFrame(s),'reused reference');
+ // Delete only sessions created by this isolated smoke. Never user storage.
+ const activeBeforeDelete=adapter.snapshot;
+ assert.deepEqual(await adapter.deleteSession(sid),{session_id:sid,deleted:true});
+ assert.equal(adapter.activeSessionId,reused.session_id);assert.equal(adapter.snapshot.session_id,activeBeforeDelete.session_id);
+ await assert.rejects(adapter.request(`/sessions/${sid}`),error=>error.status===404);
+ assert.deepEqual(await adapter.request(`/sessions/${sid}`,{method:'DELETE'}),{session_id:sid,deleted:true});
+ assert.equal((await adapter.request(`/sessions/${legacy.session_id}`)).session_id,legacy.session_id);
+ let closedId=null;
+ const observer=new RuntimeAdapter({onSnapshot(){},onStatus(){},onSessionUnavailable:id=>closedId=id});
+ try{
+  await observer.openSession(reused.session_id);
+  await wait(()=>observer.socket?.readyState===WebSocket.OPEN,'delete observer connected');
+  await adapter.deleteSession(reused.session_id);
+  await wait(()=>closedId===reused.session_id,'deleted session WS4404');
+  assert.equal(adapter.snapshot,null);assert.equal(adapter.activeSessionId,null);assert.equal(adapter.stopped,true);
+  assert.equal(observer.snapshot,null);assert.equal(observer.stopped,true);assert.equal(observer.reconnectTimer,null);
+  assert.equal(adapter.acceptSnapshot(activeBeforeDelete),false);
+  await assert.rejects(adapter.request(`/sessions/${reused.session_id}`),error=>error.status===404);
+ }finally{observer.stopEvents();}
+ const retained=await adapter.createLiveReferenceSession({song_id:setup.song.song_id,reference_id:referenceId});
+ assert.equal(retained.active_reference.reference_id,referenceId);assert.notEqual(retained.session_id,reused.session_id);
+ await wait(s=>currentSourceFrame(s),'retained song/reference after deletion');await action('stop');await adapter.deleteSession(retained.session_id);
  assert.ok(events>8);
- console.log(JSON.stringify({result:'PASS',scope:'actual UI adapter + new-policy HTTP/WS + Fake + injected PCM; no physical/model claim',events,flow:'setup/file/reference-target anomaly/adjustment/recheck/recovered/mic switch/idempotency/rollback/paused selection/resume/reconnect/stop/legacy reference reuse'}));
+ console.log(JSON.stringify({result:'PASS',scope:'actual UI adapter + new-policy HTTP/WS + Fake + injected PCM; no physical/model claim',events,flow:'setup/file/reference-target anomaly/adjustment/recheck/recovered/mic switch/idempotency/rollback/paused selection/resume/reconnect/stop/legacy reference reuse/delete active+other/idempotent delete/WS4404/retained reference reuse'}));
 }finally{adapter.stopEvents();}

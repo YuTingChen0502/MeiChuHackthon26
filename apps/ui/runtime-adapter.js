@@ -53,11 +53,12 @@ export async function pollReferenceJob(initialJob, {
 }
 
 export class RuntimeAdapter {
-  constructor({ onSnapshot, onStatus, onConnection, onProbe }) {
+  constructor({ onSnapshot, onStatus, onConnection, onProbe, onSessionUnavailable }) {
     this.onSnapshot = onSnapshot;
     this.onStatus = onStatus;
     this.onConnection = onConnection ?? (() => {});
     this.onProbe = onProbe ?? (() => {});
+    this.onSessionUnavailable = onSessionUnavailable ?? (() => {});
     this.socket = null;
     this.snapshot = null;
     this.cursor = 0;
@@ -66,6 +67,8 @@ export class RuntimeAdapter {
     this.reconnectTimer = null;
     this.stopped = false;
     this.probe = null;
+    this.deletedSessionIds = new Set();
+    this.pendingDeletes = new Map();
   }
 
   async request(path, options = {}) {
@@ -83,6 +86,36 @@ export class RuntimeAdapter {
   async health() { return this.request('/health'); }
 
   async audioDevices() { return this.request('/audio-devices'); }
+
+  clearSession(sessionId) {
+    if (this.activeSessionId !== sessionId) return false;
+    // Fence requests/socket callbacks before closing; other sessions are untouched.
+    this.generation += 1;
+    this.activeSessionId = null;
+    this.snapshot = null;
+    this.probe = null;
+    this.cursor = 0;
+    const socket = this.socket;
+    this.socket = null;
+    this.stopEvents();
+    this.reconnectTimer = null;
+    socket?.close();
+    return true;
+  }
+
+  deleteSession(sessionId) {
+    const id = sessionId.trim();
+    if (!id) return Promise.reject(new Error('Session ID is required.'));
+    if (this.pendingDeletes.has(id)) return this.pendingDeletes.get(id);
+    const pending = this.request(`/sessions/${encodeURIComponent(id)}`, {method:'DELETE'}).then(result => {
+      if (result?.session_id !== id || result?.deleted !== true) throw new Error('The listening service did not confirm session deletion.');
+      this.deletedSessionIds.add(id);
+      this.clearSession(id);
+      return result;
+    }).finally(() => this.pendingDeletes.delete(id));
+    this.pendingDeletes.set(id, pending);
+    return pending;
+  }
 
   acceptProbe(probe, sessionId = this.activeSessionId, generation = this.generation) {
     if (!probe || sessionId !== this.activeSessionId || generation !== this.generation || probe.session_id !== sessionId) return false;
@@ -236,6 +269,7 @@ export class RuntimeAdapter {
   }
 
   activateSession(sessionId) {
+    if (this.deletedSessionIds.has(sessionId)) throw new Error('This session has been deleted.');
     this.generation += 1;
     this.activeSessionId = sessionId;
     this.cursor = 0;
@@ -250,7 +284,7 @@ export class RuntimeAdapter {
   }
 
   acceptSnapshot(snapshot) {
-    if (snapshot.session_id !== this.activeSessionId) return false;
+    if (this.deletedSessionIds.has(snapshot.session_id) || snapshot.session_id !== this.activeSessionId) return false;
     if (this.snapshot?.workflow_policy==='live_reference_v1' &&
         (snapshot.workflow_policy!=='live_reference_v1' ||
          !snapshot.capture || snapshot.capture.source_generation<this.snapshot.capture.source_generation)) return false;
@@ -264,7 +298,7 @@ export class RuntimeAdapter {
   }
 
   connect(sessionId, cursor) {
-    if (sessionId !== this.activeSessionId) return;
+    if (this.deletedSessionIds.has(sessionId) || sessionId !== this.activeSessionId) return;
     const generation = this.generation;
     this.stopped = false;
     this.socket?.close();
@@ -275,8 +309,13 @@ export class RuntimeAdapter {
     socket.onopen = () => { if (this.socket === socket && !this.stopped) { this.onConnection(true, 'active'); this.onStatus('Connected to local Runtime event stream.'); } };
     socket.onmessage = event => { if(this.socket===socket&&!this.stopped) this.handleEvent(sessionId, JSON.parse(event.data), generation); };
     socket.onerror = () => { if(this.socket===socket&&generation===this.generation&&!this.stopped) this.onStatus('Runtime event stream unavailable; corrective controls are gated.'); };
-    socket.onclose = () => {
+    socket.onclose = event => {
       if (this.socket !== socket || generation !== this.generation) return;
+      if (event?.code === 4404) {
+        this.clearSession(sessionId);
+        this.onSessionUnavailable(sessionId);
+        return;
+      }
       this.onConnection(false, 'disconnected');
       this.onStatus('Runtime event stream disconnected; corrective controls are gated.');
       if (!this.stopped) this.reconnectTimer = setTimeout(() => this.recover(sessionId, generation), 500);
