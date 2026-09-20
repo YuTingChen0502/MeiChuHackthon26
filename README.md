@@ -92,8 +92,13 @@ The Nano4 P1 candidate adapter and Runtime host mode are integrated for engineer
 use. It reconstructs the exact offline HTDemucs base plus adapted projections and
 emits frozen AnalyzerEvidence. Compatible microphone PCM executes the real
 model, including when reference coverage is unavailable; lack of room calibration is not an execution rejection. Product evidence
-support remains bass-only, and confidence is uncalibrated. Other model sources are
-produced internally but do not become supported product claims. Public numerical
+validation remains bass-only in the matched-digital evidence, and confidence is
+uncalibrated. The user-approved [dataset-family amendment](docs/implementation/DATASET_PERCEPTION_HINT_FREEZE.md)
+requires attempts for bass, drums, guitar, keys and vocals instead of a bass-only
+execution/publication allowlist. Keys has only a partial piano-source proxy; missing
+or unreliable attribution stays uncertain. An experimental raise/lower listening
+hint may be shown when current comparative evidence supports it, without a dB amount
+or calibrated probability. These attempts do not expand historical accuracy claims. Public numerical
 actions remain disabled. Prior CPU observation time was 7.929 seconds per four-second
 window; this does not meet the one-second offered hop. Slow results remain stale and
 uncertain, with bounded old-window dropping rather than an accumulating backlog.
