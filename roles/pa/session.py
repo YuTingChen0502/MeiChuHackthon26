@@ -274,7 +274,8 @@ class PASession(LiveReferencePolicy):
         changed=bool(self.latest_frame or self._current_masks or self._current_hints or self.recommendations
             or self.capture["frame_fresh"] or "capture_dropout" not in self.capture["reason_codes"])
         self.latest_frame=None;self._current_masks={};self._current_hints={};self._hint_expires_monotonic_s=None
-        self.recommendations=[];self.capture.update(frame_fresh=False,state="listening",reason_codes=["capture_dropout"])
+        self.recommendations=[];self.latest_verification=None
+        self.capture.update(frame_fresh=False,state="listening",reason_codes=["capture_dropout"])
         self._detector.reset()
         return changed
 
