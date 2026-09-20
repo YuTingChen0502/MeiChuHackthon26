@@ -79,3 +79,64 @@ show Uncertain; initial Runtime Listening without a model result stays Listening
 Input loss is separate, and Runtime Unsupported masks remain visible while waiting.
 No positive recognition or advice is inferred. Added three targeted regressions:
 **72 UI tests passed**. Actual new-policy/candidate integration still awaits Runtime.
+
+## Runtime integration checkpoint (2026-09-20)
+
+Merged the Lead-authorized Runtime commit
+`6f86da3feb1ac015f6e45757509b92d42f277f8d` without editing Runtime files.
+This resolves the new-policy **Fake** integration dependency above. Final same-session
+Runtime restart correction and candidate/physical acceptance remain with Runtime/Lead;
+this report does not claim those pending checks passed.
+
+Reproduce the nonphysical integration test from the repository root:
+
+```text
+python tests/ui/live_reference_smoke.py
+node --test tests/ui/*.test.mjs
+python scripts/validate.py --runtime-only
+```
+
+The Python harness binds loopback, uses RuntimeAPI and the real HTTP/WS transport,
+serves the existing production UI, and supplies only the existing injected test
+backend plus explicitly scripted FakeAnalyzer. Its test-only scenario route is
+never installed in production. No native hardware backend is constructed or opened.
+`--serve --port 8101` supports browser QA and prints a generated WAV path. Temporary
+storage and injected streams are released when the harness stops.
+
+Results on Windows/Python 3.14/Node 25:
+
+- New smoke **PASS**, 60 adapter snapshot notifications on final rerun: actual upload/job/file Live,
+  reference-target anomaly, start/complete adjustment, recheck/fresh recovery,
+  logical microphone switch, exact idempotent replay, failed-switch rollback,
+  paused selection/resume, WS reconnect cursor, stop, and reuse of an actual legacy
+  session's existing song/reference without reupload or reanalysis.
+- **72 UI regressions PASS**.
+- Merged full Runtime validator **PASS**: 33 contract + 39 Runtime + 76 integration
+  Python tests, UI tests, legacy Fake HTTP/WS smoke, release audit. Negative launcher
+  argument tests intentionally print usage errors while their tests pass.
+
+Actual browser walkthrough (not offline UI fixtures): Home -> Add song -> generated
+PCM16 WAV upload -> visible preparation progress -> direct Uploaded File Live ->
+Runtime anomaly/recommendation -> Start adjustment -> I've adjusted -> Listen again ->
+Re-listening -> Back in range -> Return to monitoring. Then selected logical USB
+input backed exclusively by injected PCM: pending cleared advice, applied input
+showed Detected with advice withheld, failed Desk selection restored USB binding,
+stale Runtime evidence showed Uncertain/null advice, pause -> select Desk -> still
+paused -> explicit resume showed initial Listening, browser reload -> saved song
+reopened same session, Stop showed Stopped/Session ended rather than a device error.
+Fake labeling persisted; no public rehearsal/baseline action appeared. Screenshots
+and DOM/accessibility observations were inspected. The longer injected run produced
+Runtime stale_evidence; UI suppressed it correctly, with no freshness widening.
+
+### Mandatory synchronized-reference limitation
+
+For candidate comparison, a capture restart or microphone switch begins a new
+relative sample-zero timeline. The operator must restart playback/performance from
+the **beginning of the uploaded reference** at the same time. The current demo does
+not establish arbitrary-entry, tempo drift, section-jump, or unsynchronized musical
+alignment. A missing defensible match remains alignment unavailable; never present
+it as a comparable observation. The Fake test does not establish real alignment.
+
+Hardware stayed reserved for Runtime/Lead throughout this UI integration. Lead will
+inspect candidate visuals during its canonical native run. No physical microphone,
+model accuracy, two-device switching or Linux/PN54 claim is made here.
